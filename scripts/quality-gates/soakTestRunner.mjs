@@ -1,303 +1,230 @@
-#!/usr/bin/env node
-/**
- * BHALYAM Long-Duration Multiplayer Soak Test Runner (Phase 2I)
- * 
- * Validates extended runtime stability, memory leak prevention,
- * event deduplication, and connection lifecycle robustness:
- * - Sustained room operation with continuous multi-user actions
- * - Rapid concurrent chat streams & game actions
- * - Reconnection cycling & socket disconnect/reclaim storms
- * - Heap memory profiling before, during, and post-cleanup
- * - Generates SOAK-TEST-REPORT.md
- */
-
-import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import crypto from "node:crypto";
+import assert from "node:assert/strict";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+import { performance } from "node:perf_hooks";
+import { ROOT, MEMBERS, startReleaseFixture, readJson, waitUntil } from "./releaseFixture.mjs";
 import { captureEvidence, completeEvidence } from "./releaseEvidence.mjs";
+import { parseSoakOptions, evaluateSoakRun } from "./releaseWorkload.mjs";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const ROOT_DIR = path.resolve(__dirname, "../..");
+const clientRequire = createRequire(path.join(ROOT, "client", "package.json"));
+const { io } = clientRequire("socket.io-client");
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const serverRequire = createRequire(path.join(ROOT_DIR, "server", "package.json"));
-const clientRequire = createRequire(path.join(ROOT_DIR, "client", "package.json"));
-
-const express = serverRequire("express");
-const { Server } = serverRequire("socket.io");
-const { io: ClientIO } = clientRequire("socket.io-client");
-
-import { RoomManager } from "../../server/dist/server/src/rooms/RoomManager.js";
-import { registerSocketHandlers } from "../../server/dist/server/src/sockets/index.js";
-
-const PORT = 4056;
-const SERVER_URL = `http://127.0.0.1:${PORT}`;
-
-async function runSoakTest() {
-  const evidence = captureEvidence(ROOT_DIR);
-  console.log("==========================================================");
-  console.log("⏳ BHALYAM LONG-DURATION MULTIPLAYER SOAK TEST (PHASE 2I)");
-  console.log("==========================================================\n");
-
-  const results = {
-    timestamp: new Date().toISOString(),
-    durationSeconds: 0,
-    initialHeapMb: 0,
-    peakHeapMb: 0,
-    finalHeapMb: 0,
-    heapGrowthMb: 0,
-    totalEventsProcessed: 0,
-    totalRoomsCreated: 0,
-    totalSocketsConnected: 0,
-    activeSocketsPeak: 0,
-    duplicateEventsDetected: 0,
-    memoryLeakDetected: false,
-    webSocketLeakDetected: false,
-    status: "PASS",
-    details: [],
-  };
-
-  const startTime = Date.now();
-  if (global.gc) global.gc();
-  results.initialHeapMb = Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100;
-  console.log(`📊 Initial Heap Used: ${results.initialHeapMb} MB`);
-
-  const app = express();
-  const httpServer = http.createServer(app);
-  const ioServer = new Server(httpServer, {
-    cors: { origin: "*" },
-    pingInterval: 5000,
-    pingTimeout: 10000,
-  });
-
-  const roomManager = new RoomManager(ioServer);
-  ioServer.on("connection", (socket) => {
-    registerSocketHandlers(ioServer, socket, roomManager);
-    socket.on("disconnect", () => {
-      roomManager.handleDisconnect(socket.id);
-    });
-  });
-
-  await new Promise((resolve) => httpServer.listen(PORT, "127.0.0.1", resolve));
-  console.log(`🚀 Live Soak Server listening on ${SERVER_URL}\n`);
-
-  try {
-    console.log("🔄 Starting Sustained Multiplayer Workload Iterations...");
-
-    const TOTAL_CYCLES = 15;
-    const activeClients = [];
-
-    for (let cycle = 1; cycle <= TOTAL_CYCLES; cycle++) {
-      process.stdout.write(`   ⚙️ Cycle ${cycle}/${TOTAL_CYCLES}: Creating rooms, dispatching chat & cycling turns... `);
-
-      // 1. Host creates room
-      const host = ClientIO(SERVER_URL, { transports: ["websocket"], forceNew: true });
-      await waitForConnect(host);
-      activeClients.push(host);
-      results.totalSocketsConnected++;
-
-      const createRes = await emitAck(host, "room:create", {
-        name: `Host_C${cycle}`,
-        game: "ludo",
-        hostKind: "member",
-      });
-      const roomCode = createRes.code;
-      results.totalRoomsCreated++;
-      results.totalEventsProcessed += 2;
-
-      // 2. Add 3 Guests to room
-      const guests = [];
-      for (let g = 1; g <= 3; g++) {
-        const guest = ClientIO(SERVER_URL, { transports: ["websocket"], forceNew: true });
-        await waitForConnect(guest);
-        activeClients.push(guest);
-        results.totalSocketsConnected++;
-
-        await emitAck(guest, "room:join", {
-          code: roomCode,
-          name: `Guest_${g}_C${cycle}`,
-          accountKind: "guest",
-        });
-        guest.emit("room:setReady", true);
-        guests.push(guest);
-        results.totalEventsProcessed += 2;
-      }
-
-      host.emit("room:setReady", true);
-      results.totalEventsProcessed += 1;
-      await sleep(50);
-
-      // 3. Start Game
-      host.emit("room:startGame");
-      results.totalEventsProcessed += 1;
-      await sleep(50);
-
-      // 4. Send burst chat messages in parallel
-      for (let m = 1; m <= 6; m++) {
-        host.emit("chat:send", { text: `Host chat message #${m} for room ${roomCode} 🎲` });
-        guests[0].emit("chat:send", { text: `Guest 1 chat message #${m} 🚀` });
-        results.totalEventsProcessed += 2;
-      }
-
-      // 5. Simulate disconnect & reconnect cycle
-      const tempGuest = guests[1];
-      tempGuest.disconnect();
-      await sleep(100);
-
-      const reconnectedGuest = ClientIO(SERVER_URL, { transports: ["websocket"], forceNew: true });
-      await waitForConnect(reconnectedGuest);
-      activeClients.push(reconnectedGuest);
-      results.totalSocketsConnected++;
-
-      await emitAck(reconnectedGuest, "room:join", {
-        code: roomCode,
-        name: `Guest_2_C${cycle}`,
-        accountKind: "guest",
-      });
-      results.totalEventsProcessed += 1;
-
-      // 6. Track peak sockets & memory
-      results.activeSocketsPeak = Math.max(results.activeSocketsPeak, ioServer.sockets.sockets.size);
-      const currentHeap = Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100;
-      results.peakHeapMb = Math.max(results.peakHeapMb, currentHeap);
-
-      console.log(`Done (Active Sockets: ${ioServer.sockets.sockets.size}, Heap: ${currentHeap} MB)`);
-    }
-
-    console.log("\n🧹 Cleaning up client sockets and evaluating residual memory...");
-    for (const client of activeClients) {
-      client.disconnect();
-    }
-    await sleep(500);
-
-    if (global.gc) global.gc();
-    results.finalHeapMb = Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100;
-    results.heapGrowthMb = Math.round((results.finalHeapMb - results.initialHeapMb) * 100) / 100;
-    results.durationSeconds = Math.round((Date.now() - startTime) / 1000 * 10) / 10;
-
-    // Verify constraints
-    const residualSockets = ioServer.sockets.sockets.size;
-    if (residualSockets > 0) {
-      results.webSocketLeakDetected = true;
-      results.status = "FAIL";
-      results.details.push(`WebSocket leak detected: ${residualSockets} sockets remained open after disconnect.`);
-    }
-
-    if (results.heapGrowthMb > 50) {
-      results.memoryLeakDetected = true;
-      results.status = "FAIL";
-      results.details.push(`High memory growth detected: +${results.heapGrowthMb} MB growth after cleanup.`);
-    }
-
-    console.log("==========================================================");
-    console.log(`⏱️  Duration: ${results.durationSeconds}s`);
-    console.log(`📦 Rooms Created: ${results.totalRoomsCreated}`);
-    console.log(`🔌 Total Sockets: ${results.totalSocketsConnected} (Peak Active: ${results.activeSocketsPeak}, Residual: ${residualSockets})`);
-    console.log(`📡 Events Handled: ${results.totalEventsProcessed}`);
-    console.log(`🧠 Heap Usage: Initial ${results.initialHeapMb} MB -> Peak ${results.peakHeapMb} MB -> Post-GC ${results.finalHeapMb} MB (Δ ${results.heapGrowthMb} MB)`);
-    console.log(`🏆 SOAK TEST STATUS: ${results.status}`);
-    console.log("==========================================================\n");
-
-  } catch (err) {
-    console.error(`\n❌ Error during soak test: ${err.message}`);
-    results.status = "FAIL";
-    results.details.push(err.message);
-  } finally {
-    ioServer.close();
-    httpServer.close();
-  }
-
-  const reportPath = path.join(ROOT_DIR, "SOAK-TEST-REPORT.md");
-  fs.writeFileSync(path.join(ROOT_DIR, "SOAK-TEST-REPORT.json"),
-    JSON.stringify({ ...results, evidence: completeEvidence(evidence, ROOT_DIR) }, null, 2) + "\n");
-  generateSoakMarkdownReport(results, reportPath);
-  console.log(`📄 Saved Soak Test Report to: ${reportPath}`);
-
-  return results;
-}
-
-function emitAck(socket, event, payload) {
-  return new Promise((resolve) => {
-    socket.emit(event, payload, (res) => resolve(res));
-  });
-}
-
-function waitForConnect(socket) {
+function event(socket, name, predicate = () => true, timeout = 10000) {
   return new Promise((resolve, reject) => {
-    if (socket.connected) return resolve();
-    const timeout = setTimeout(() => reject(new Error("Socket connection timeout")), 4000);
-    socket.once("connect", () => {
-      clearTimeout(timeout);
-      resolve();
+    const listener = (value) => {
+      if (!predicate(value)) return;
+      clearTimeout(timer); socket.off(name, listener); resolve(value);
+    };
+    const timer = setTimeout(() => { socket.off(name, listener); reject(new Error(`Timed out waiting for ${name}`)); }, timeout);
+    socket.on(name, listener);
+  });
+}
+
+function ack(socket, name, payload) {
+  return new Promise((resolve, reject) => {
+    socket.timeout(10000).emit(name, payload, (error, response) => {
+      if (error) reject(new Error(`${name}: acknowledgement timed out`));
+      else if (response?.ok === false) reject(new Error(`${name}: ${response.error}`));
+      else resolve(response);
     });
   });
 }
 
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
+async function connect(url, run, clients) {
+  const socket = io(url, { autoConnect: false, transports: ["websocket"], forceNew: true, reconnection: false });
+  clients.add(socket);
+  const connected = event(socket, "connect");
+  socket.connect();
+  await connected;
+  run.totalSocketsConnected++;
+  socket.on("room:startPreflight", (payload) => {
+    socket.emit("room:acknowledgeStart", {
+      startAttemptId: payload.startAttemptId, roomRevision: payload.roomRevision,
+      visible: true, orientationSatisfied: true,
+    }, (response) => {
+      if (!response.accepted) run.errors.push("Preflight acknowledgement refused.");
+    });
+  });
+  socket.on("room:error", (error) => run.errors.push(`room:error: ${error}`));
+  socket.on("game:error", (error) => run.errors.push(`game:error: ${error}`));
+  return socket;
 }
 
-function generateSoakMarkdownReport(results, filePath) {
-  const content = `# SOAK-TEST-REPORT.md — Long-Duration Multiplayer Soak Test Report (Phase 2I)
+async function leave(socket) {
+  if (!socket.connected) return;
+  await new Promise((resolve, reject) => socket.timeout(5000).emit("room:leave",
+    (error) => error ? reject(new Error("room:leave timeout")) : resolve()));
+}
 
-> **Audited by:** SRE, Multiplayer Systems Architect, QA Lead  
-> **Date:** ${new Date().toISOString()}  
-> **Target:** BHALYAM Realtime Match Engine & RoomManager  
-> **Status:** **${results.status}**
+async function runCycle(fixture, run, cycle, clients) {
+  const host = await connect(fixture.url, run, clients);
+  let guest = await connect(fixture.url, run, clients);
+  try {
+    const before = await readJson(`${fixture.url}/fixture/economy`);
+    const created = await ack(host, "room:create", {
+      name: "Soak Host", game: "tictactoe", hostKind: "member", accessToken: fixture.tokens[0],
+      ticTacToeOptions: { mode: "classic", turnTimerSeconds: 60 }, entryStakeCoins: 100,
+    });
+    run.totalRoomsCreated++;
+    const joined = await ack(guest, "room:join", {
+      code: created.code, name: "Soak Joiner", accountKind: "member", accessToken: fixture.tokens[1],
+    });
+    const stateUrl = `${fixture.url}/fixture/room/${created.code}`;
+    const getState = () => readJson(stateUrl);
+    assert.equal(joined.state.players.length, 2);
 
----
+    const message = `soak-${cycle}-${crypto.randomUUID()}`;
+    const received = event(guest, "chat:message", (value) => value.text === message);
+    let deliveries = 0;
+    const observe = (value) => { if (value.text === message) deliveries++; };
+    guest.on("chat:message", observe);
+    host.emit("chat:send", { text: message });
+    await received;
+    run.totalEventsProcessed++;
 
-## 1. Executive Summary
+    host.emit("room:setReady", true);
+    guest.emit("room:setReady", true);
+    await waitUntil(async () => (await getState()).room.players.every((player) => player.isReady), "both ready");
+    host.emit("room:startGame");
+    await waitUntil(async () => (await getState()).room.phase === "playing", "authoritative match start");
+    const debited = await readJson(`${fixture.url}/fixture/economy`);
+    for (let i = 0; i < 2; i++) assert.equal(BigInt(debited.wallets[i].balance), BigInt(before.wallets[i].balance) - 100n);
 
-This soak test executed an intensive, sustained multi-room workload simulating continuous player joins, readiness synchronization, game starts, rapid concurrent chat messages, and reconnection storms over extended test cycles.
+    // Reclaim the SAME authenticated seat, never a new player with the same name.
+    const previousSocket = guest;
+    previousSocket.disconnect();
+    clients.delete(previousSocket);
+    guest = await connect(fixture.url, run, clients);
+    const reclaimed = await ack(guest, "room:join", {
+      code: created.code, name: "Soak Joiner", playerId: joined.playerId, seatToken: joined.seatToken,
+      accountKind: "member", accessToken: fixture.tokens[1],
+    });
+    assert.equal(reclaimed.playerId, joined.playerId);
+    assert.equal(reclaimed.state.players.length, 2);
+    assert.equal(reclaimed.gameState.moveCount, 0);
+    run.recoveryChecks++;
 
----
+    // Alternate a host win and a genuine full-board draw.
+    const draw = cycle % 2 === 0;
+    const cells = draw ? [0, 1, 2, 4, 3, 5, 7, 6, 8] : [0, 3, 1, 4, 2];
+    for (let i = 0; i < cells.length; i++) {
+      const socket = i % 2 === 0 ? host : guest;
+      const move = { type: "place", data: { cellIndex: cells[i] }, actionId: crypto.randomUUID() };
+      socket.emit("game:move", move);
+      if (i < cells.length - 1) socket.emit("game:move", move);
+      const state = await waitUntil(async () => {
+        const value = await getState();
+        return value.game?.moveCount >= i + 1 ? value : false;
+      }, "move broadcast");
+      if (state.game.moveCount !== i + 1) run.duplicateEventsDetected++;
+      assert.equal(state.game.moveCount, i + 1);
+      run.observedMoves++;
+      run.totalEventsProcessed++;
+    }
+    const finished = await getState();
+    assert.equal(finished.room.phase, "finished");
+    assert.equal(finished.game.winnerId, draw ? "draw" : created.playerId);
+    const settled = await waitUntil(async () => {
+      const value = await readJson(`${fixture.url}/fixture/economy`);
+      const row = value.snapshot.settlements.find((item) => item.roomCode === created.code);
+      return row && ["SETTLED", "REFUNDED"].includes(row.status) ? value : false;
+    }, "wallet settlement");
+    const settlement = settled.snapshot.settlements.find((item) => item.roomCode === created.code);
+    assert.equal(settlement.status, draw ? "REFUNDED" : "SETTLED");
+    const expected = draw ? [0n, 0n] : [60n, -100n];
+    for (let i = 0; i < 2; i++) assert.equal(BigInt(settled.wallets[i].balance), BigInt(before.wallets[i].balance) + expected[i]);
+    // Read back after settlement propagation; duplicate active-turn intents
+    // above must not advance twice or result in a second ledger credit.
+    await sleep(100);
+    const again = await readJson(`${fixture.url}/fixture/economy`);
+    assert.deepEqual(again.wallets.map((wallet) => wallet.balance), settled.wallets.map((wallet) => wallet.balance));
+    assert.equal(new Set(again.snapshot.walletLedger.map((entry) => entry.idempotencyKey)).size, again.snapshot.walletLedger.length);
+    run.settlementChecks++;
+    // The former listener belongs to the disconnected socket; it still proves
+    // a single delivery before recovery, not a count of attempted sends.
+    previousSocket.off("chat:message", observe);
+    if (deliveries !== 1) run.duplicateEventsDetected += Math.abs(deliveries - 1);
+    assert.equal(deliveries, 1);
+    await leave(guest);
+    await leave(host);
+    await waitUntil(async () => (await readJson(`${fixture.url}/health`)).rooms === 0, "room cleanup");
+    run.completedCycles++;
+  } finally {
+    for (const socket of [host, guest]) {
+      socket.disconnect();
+      clients.delete(socket);
+    }
+  }
+}
 
-## 2. Telemetry & Performance Metrics
-
-| Metric | Measured Value | Threshold / Target | Evaluation |
-|---|---|---|:---:|
-| **Test Duration** | \`${results.durationSeconds}s\` | Sustained execution | **PASS** |
-| **Total Rooms Created** | \`${results.totalRoomsCreated}\` | Multi-room concurrency | **PASS** |
-| **Total Sockets Handled** | \`${results.totalSocketsConnected}\` | High throughput | **PASS** |
-| **Peak Active Sockets** | \`${results.activeSocketsPeak}\` | Concurrent capacity | **PASS** |
-| **Residual Sockets Post-Cleanup** | \`0\` | Exactly 0 (No leaks) | **PASS** |
-| **Total Events Processed** | \`${results.totalEventsProcessed}\` | > 100 events | **PASS** |
-| **Initial Heap Used** | \`${results.initialHeapMb} MB\` | Baseline | **PASS** |
-| **Peak Heap Used** | \`${results.peakHeapMb} MB\` | Controlled headroom | **PASS** |
-| **Post-Cleanup Heap** | \`${results.finalHeapMb} MB\` | Full reclamation | **PASS** |
-| **Net Heap Growth** | \`${results.heapGrowthMb} MB\` | < 50 MB growth SLA | **PASS** |
-| **Duplicate Events Detected** | \`${results.duplicateEventsDetected}\` | Exactly 0 | **PASS** |
-| **WebSocket Leaks** | \`${results.webSocketLeakDetected ? "DETECTED" : "NONE"}\` | Zero leaks | **PASS** |
-
----
-
-## 3. Stability & Concurrency Findings
-
-1. **Room State Stability**: All ${results.totalRoomsCreated} rooms maintained consistent player rosters, readiness states, and game phase transitions.
-2. **Chat Stream Integrity**: Rapid concurrent chat broadcasts experienced zero message drops or cross-room bleeding.
-3. **Connection Lifecycle**: Disconnect and reconnect cycles properly invoked \`roomManager.handleDisconnect\`, allocated 90s grace periods, and reclaimed seats with zero ghost sockets.
-4. **Memory Profiling**: Net heap growth remained strictly bounded (${results.heapGrowthMb} MB), confirming that event listeners, timers, and inactive room references are promptly collected by the V8 GC.
-
----
-
-## 4. Final Verdict
-
-$$\\boxed{\\textbf{STATUS: ${results.status}}}$$
-
-*The BHALYAM realtime server demonstrated resilient, leak-free operation under sustained multi-user soak conditions.*
-`;
-
-  fs.writeFileSync(filePath, content, "utf8");
+export async function runSoakTest(options = parseSoakOptions(process.argv.slice(2))) {
+  const evidence = captureEvidence(ROOT);
+  let fixture;
+  const clients = new Set();
+  const run = {
+    requestedDurationSeconds: options.durationSeconds, durationSeconds: 0, completedCycles: 0,
+    totalEventsProcessed: 0, totalRoomsCreated: 0, totalSocketsConnected: 0, observedMoves: 0,
+    duplicateEventsDetected: 0, recoveryChecks: 0, settlementChecks: 0,
+    residualRooms: -1, residualSockets: -1, heapGrowthMb: 0, maxWorkGapSeconds: 0, errors: [],
+    scope: "Local Socket.IO handlers, real Tic Tac Toe engine, HS256 fixture members, in-memory economy. Not cloud durability, physical devices, traffic capacity or production authentication.",
+  };
+  let started = performance.now();
+  let initialHeapMb = Number.NaN;
+  try {
+    fixture = await startReleaseFixture({ paid: true });
+    initialHeapMb = (await readJson(`${fixture.url}/fixture/gc`, { method: "POST" })).heapMb;
+    started = performance.now();
+    let last = started;
+    do {
+      await runCycle(fixture, run, run.completedCycles + 1, clients);
+      const current = performance.now();
+      run.maxWorkGapSeconds = Math.max(run.maxWorkGapSeconds, (current - last) / 1000);
+      last = current;
+      if (run.errors.length) throw new Error(run.errors.join("; "));
+      if (run.completedCycles % 10 === 0) console.log(`Soak: ${run.completedCycles} observed matches, ${Math.floor((current - started) / 1000)}s elapsed`);
+      await sleep(options.pauseMs);
+    } while (performance.now() - started < options.durationSeconds * 1000);
+  } catch (error) {
+    run.errors.push(error.message);
+    console.error(`Soak workload failed: ${error.message}`);
+  } finally {
+    run.durationSeconds = (performance.now() - started) / 1000;
+    for (const client of clients) client.disconnect();
+    await sleep(200);
+    try {
+      if (!fixture) throw new Error("Fixture never became ready.");
+      const health = await readJson(`${fixture.url}/health`);
+      const final = await readJson(`${fixture.url}/fixture/gc`, { method: "POST" });
+      run.residualRooms = health.rooms;
+      run.residualSockets = health.sockets;
+      run.heapGrowthMb = final.heapMb - initialHeapMb;
+    } catch (error) {
+      run.errors.push(`Cleanup diagnostics failed: ${error.message}`);
+      run.heapGrowthMb = Number.NaN;
+    } finally {
+      if (fixture) await fixture.close();
+    }
+  }
+  const verdict = evaluateSoakRun(run);
+  const report = {
+    ...run, ...verdict, evidence: completeEvidence(evidence, ROOT),
+    memoryLeakDetected: !Number.isFinite(run.heapGrowthMb) || run.heapGrowthMb > 50,
+    webSocketLeakDetected: run.residualSockets !== 0,
+  };
+  fs.writeFileSync(path.join(ROOT, "SOAK-TEST-REPORT.json"), JSON.stringify(report, null, 2) + "\n");
+  fs.writeFileSync(path.join(ROOT, "SOAK-TEST-REPORT.md"), (
+    `# Measured local soak\n\nStatus: ${report.status}\nRelease duration met: ${report.releaseEligible}\n\n` +
+    `Duration: ${run.durationSeconds.toFixed(1)}s; completed matches: ${run.completedCycles}; observed moves: ${run.observedMoves}.\n\n` +
+    `${run.scope}\n\n${report.failures.join("\n")}`).trimEnd() + "\n");
+  console.log(`Soak: ${report.status}; ${run.completedCycles} matches; ${run.durationSeconds.toFixed(1)}s; release duration met: ${report.releaseEligible}`);
+  return report;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const result = await runSoakTest();
-  if (result.status !== "PASS") {
-    process.exit(1);
-  } else {
-    process.exit(0);
-  }
+  try { process.exitCode = (await runSoakTest()).status === "PASS" ? 0 : 1; }
+  catch (error) { console.error(error); process.exitCode = 1; }
 }

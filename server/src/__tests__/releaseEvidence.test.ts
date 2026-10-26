@@ -77,13 +77,17 @@ function fixture(kind: EvidenceKind): Record<string, unknown> {
         evidence: { ...evidence, startedAt: "2026-10-26T22:30:00.000Z" }, status: "PASS", durationSeconds: 3600,
         totalEventsProcessed: 100, totalRoomsCreated: 2, totalSocketsConnected: 8,
         duplicateEventsDetected: 0, memoryLeakDetected: false, webSocketLeakDetected: false,
+        completedCycles: 2, observedMoves: 14, recoveryChecks: 2, settlementChecks: 2,
+        requestedDurationSeconds: 3600,
+        residualRooms: 0, residualSockets: 0, heapGrowthMb: 4, maxWorkGapSeconds: 5,
+        releaseEligible: true, errors: [],
       };
     case "browserCompatibility":
       return {
-        evidence: { ...evidence },
+        evidence: { ...evidence }, status: "PASS", errors: [],
         browsers: ["chromium", "edge", "firefox", "safari"].map((id) => ({
-          id, status: "PASS",
-          flows: { identity: true, roomCreation: true, roomJoin: true, chat: true, modal: true, gameArena: true },
+          id, status: "PASS", errors: [],
+          flows: { identity: true, roomCreation: true, roomJoin: true, chat: true, modal: true, gameArena: true, gameFinished: true, recovery: true, cleanup: true },
         })),
       };
     case "supabaseCloud":
@@ -106,6 +110,23 @@ const kinds: EvidenceKind[] = [
 ];
 
 describe("release receipt evidence", () => {
+  it.each(["gameFinished", "recovery", "cleanup"])("rejects browsers without %s", (step) => {
+    const receipt = fixture("browserCompatibility");
+    const browsers = receipt.browsers as Array<{ flows: Record<string, boolean> }>;
+    browsers[0].flows[step] = false;
+    expect(validateReleaseReceipt("browserCompatibility", receipt, context).status).toBe("FAIL");
+  });
+
+  it.each([
+    { completedCycles: 0 }, { observedMoves: 0 }, { recoveryChecks: 1 },
+    { settlementChecks: 1 }, { residualRooms: 1 }, { residualSockets: 1 },
+    { heapGrowthMb: 51 }, { maxWorkGapSeconds: 61 }, { releaseEligible: false },
+    { errors: ["timeout"] },
+    { totalRoomsCreated: 3 }, { totalSocketsConnected: 2 }, { totalEventsProcessed: 1 },
+    { requestedDurationSeconds: 7200 }, { maxWorkGapSeconds: -1 },
+  ])("rejects unmeasured or failed soak outcomes %j", (patch) => {
+    expect(validateReleaseReceipt("soak", { ...fixture("soak"), ...patch }, context).status).toBe("FAIL");
+  });
   it.each(kinds)("accepts complete current %s evidence", (kind) => {
     expect(validateReleaseReceipt(kind, fixture(kind), context).status).toBe("PASS");
   });

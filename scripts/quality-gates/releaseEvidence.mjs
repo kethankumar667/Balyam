@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { evaluateBrowserJourney, evaluateSoakRun } from "./releaseWorkload.mjs";
 
 const MAX_AGE_MS = 7 * 86_400_000;
 const FILES = {
@@ -31,7 +32,6 @@ const SCHEMA_CHECKS = [
   "no progression tables remain after rollback",
   "migration re-applies after a rollback",
 ];
-const BROWSER_FLOWS = ["identity", "roomCreation", "roomJoin", "chat", "modal", "gameArena"];
 const object = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const count = (value) => Number.isSafeInteger(value) && value >= 0;
 const positive = (value) => count(value) && value > 0;
@@ -124,17 +124,23 @@ function validMultiplayer(report) {
 
 function validSoak(report) {
   const elapsed = (Date.parse(report.evidence.completedAt) - Date.parse(report.evidence.startedAt)) / 1000;
-  return report.status === "PASS" && Number.isFinite(report.durationSeconds) && report.durationSeconds >= 3600 &&
-    report.durationSeconds <= elapsed + 1 &&
-    positive(report.totalEventsProcessed) && positive(report.totalRoomsCreated) && positive(report.totalSocketsConnected) &&
+  const numeric = ["durationSeconds", "requestedDurationSeconds", "completedCycles", "totalEventsProcessed",
+    "totalRoomsCreated", "totalSocketsConnected", "duplicateEventsDetected", "residualRooms", "residualSockets",
+    "heapGrowthMb", "maxWorkGapSeconds", "settlementChecks", "recoveryChecks", "observedMoves"];
+  if (!numeric.every((key) => typeof report[key] === "number") || !Array.isArray(report.errors)) return false;
+  const measured = evaluateSoakRun(report);
+  return report.status === "PASS" && measured.status === "PASS" && measured.releaseEligible &&
+    report.durationSeconds <= elapsed + 1 && report.releaseEligible === true &&
     report.duplicateEventsDetected === 0 && report.memoryLeakDetected === false && report.webSocketLeakDetected === false;
 }
 
 function validBrowsers(report) {
-  return Array.isArray(report.browsers) && report.browsers.length === 4 &&
+  return report.status === "PASS" && Array.isArray(report.errors) && report.errors.length === 0 &&
+    Array.isArray(report.browsers) && report.browsers.length === 4 &&
     ["chromium", "edge", "firefox", "safari"].every((id) => report.browsers.some(
       (browser) => object(browser) && browser.id === id && browser.status === "PASS" &&
-        object(browser.flows) && BROWSER_FLOWS.every((flow) => browser.flows[flow] === true),
+        Array.isArray(browser.errors) && object(browser.flows) &&
+        evaluateBrowserJourney(browser.flows, browser.errors),
     ));
 }
 

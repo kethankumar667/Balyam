@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-10-26T19:41:43.281Z",
-  "gitCommit": "c4544913d95042c93f3ed78b2aa45d21a2b493b9",
+  "timestamp": "2026-10-26T20:54:13.512Z",
+  "gitCommit": "5f78b778b163f5f7ae941207530d4c2078627e6c",
   "certificationState": "INTERNAL TESTING READY",
   "releaseApproved": false,
   "stateCapped": true,
@@ -14,7 +14,7 @@
     "testIntegrity": {
       "status": "PASS",
       "passed": true,
-      "message": "722 test files scanned; 0 forbidden directives. This is not test execution."
+      "message": "724 test files scanned; 0 forbidden directives. This is not test execution."
     },
     "accessibilitySource": {
       "status": "PASS",
@@ -59,12 +59,12 @@
     "soakTesting": {
       "status": "UNVERIFIED",
       "passed": false,
-      "message": "SOAK-TEST-REPORT.json: Missing evidence. Regenerate using the documented verifier."
+      "message": "Source changes are not committed; evidence cannot certify this commit."
     },
     "browserCompatibility": {
       "status": "UNVERIFIED",
       "passed": false,
-      "message": "BROWSER-COMPATIBILITY-REPORT.json: Missing evidence. Regenerate using the documented verifier."
+      "message": "Source changes are not committed; evidence cannot certify this commit."
     },
     "supabaseCloud": {
       "status": "UNVERIFIED",
@@ -78,8 +78,8 @@
     "accessibility: Missing versioned evidence provenance; regenerate the report.",
     "mobile: Missing versioned evidence provenance; regenerate the report.",
     "multiplayer: MULTIPLAYER-RESILIENCE-REPORT.json: Missing evidence. Regenerate using the documented verifier.",
-    "soak: SOAK-TEST-REPORT.json: Missing evidence. Regenerate using the documented verifier.",
-    "browserCompatibility: BROWSER-COMPATIBILITY-REPORT.json: Missing evidence. Regenerate using the documented verifier.",
+    "soak: Source changes are not committed; evidence cannot certify this commit.",
+    "browserCompatibility: Source changes are not committed; evidence cannot certify this commit.",
     "supabaseCloud: Missing versioned evidence provenance; regenerate the report."
   ],
   "advisories": [],

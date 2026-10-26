@@ -1,289 +1,246 @@
-#!/usr/bin/env node
-/**
- * BHALYAM Multi-Browser Compatibility Smoke Test Runner (Phase 2J)
- *
- * Exercises critical end-to-end user journeys across real browsers:
- * - Chromium / Google Chrome
- * - Microsoft Edge (Chromium engine)
- * - Mozilla Firefox (Gecko engine)
- * - WebKit / Apple Safari (Explicitly NOT TESTED if unavailable)
- *
- * Verifies:
- * 1. Guest identity creation
- * 2. Room creation & host ownership
- * 3. Room join from second browser context
- * 4. In-room chat send & broadcast
- * 5. Modal interactions & keyboard traps
- * 6. Game start flow & board rendering
- *
- * Generates BROWSER-COMPATIBILITY-REPORT.md.
- */
-
-import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import assert from "node:assert/strict";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+import { ROOT, startReleaseFixture, startReleaseFrontend, readJson, waitUntil } from "./releaseFixture.mjs";
 import { captureEvidence, completeEvidence } from "./releaseEvidence.mjs";
+import { JOURNEY_STEPS, evaluateBrowserJourney } from "./releaseWorkload.mjs";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const ROOT_DIR = path.resolve(__dirname, "../..");
+const { chromium, firefox, webkit } = createRequire(path.join(ROOT, "client", "package.json"))("playwright");
 
-const serverRequire = createRequire(path.join(ROOT_DIR, "server", "package.json"));
-const clientRequire = createRequire(path.join(ROOT_DIR, "client", "package.json"));
-
-const express = serverRequire("express");
-const { Server } = serverRequire("socket.io");
-const { chromium, firefox, webkit } = clientRequire("playwright");
-
-import { RoomManager } from "../../server/dist/server/src/rooms/RoomManager.js";
-import { registerSocketHandlers } from "../../server/dist/server/src/sockets/index.js";
-
-const BACKEND_PORT = 4058;
-const FRONTEND_PORT = 4175;
-const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`;
-const FRONTEND_URL = `http://127.0.0.1:${FRONTEND_PORT}`;
-
-async function runBrowserCompatibilityAudit() {
-  const evidence = captureEvidence(ROOT_DIR);
-  console.log("==========================================================");
-  console.log("🌐 BHALYAM MULTI-BROWSER COMPATIBILITY AUDIT (PHASE 2J)");
-  console.log("==========================================================\n");
-
-  const matrix = [
-    {
-      id: "chromium",
-      name: "Google Chrome / Chromium",
-      engine: "Blink / V8",
-      type: "chromium",
-      options: { headless: true },
-      status: "PENDING",
-      flows: {},
-      error: null,
-    },
-    {
-      id: "edge",
-      name: "Microsoft Edge",
-      engine: "Blink (Edge Channel)",
-      type: "chromium",
-      options: { channel: "msedge", headless: true },
-      status: "PENDING",
-      flows: {},
-      error: null,
-    },
-    {
-      id: "firefox",
-      name: "Mozilla Firefox",
-      engine: "Gecko / SpiderMonkey",
-      type: "firefox",
-      options: { headless: true },
-      status: "PENDING",
-      flows: {},
-      error: null,
-    },
-    {
-      id: "safari",
-      name: "Apple Safari / WebKit",
-      engine: "WebKit",
-      type: "webkit",
-      options: { headless: true },
-      status: "NOT TESTED",
-      flows: {},
-      error: "WebKit binary not distributed for Windows host environment",
-    },
-  ];
-
-  // 1. Start test backend server
-  const backendApp = express();
-  const backendServer = http.createServer(backendApp);
-  const ioServer = new Server(backendServer, { cors: { origin: "*" } });
-  const roomManager = new RoomManager(ioServer);
-  ioServer.on("connection", (socket) => {
-    registerSocketHandlers(ioServer, socket, roomManager);
-    socket.on("disconnect", () => roomManager.handleDisconnect(socket.id));
-  });
-  await new Promise((res) => backendServer.listen(BACKEND_PORT, "127.0.0.1", res));
-
-  // 2. Start static frontend file server from client/dist
-  const clientDist = path.join(ROOT_DIR, "client", "dist");
-  if (!fs.existsSync(clientDist)) {
-    console.error("❌ client/dist does not exist. Run npm --prefix client run build first.");
-    process.exit(1);
-  }
-
-  const frontendApp = express();
-  frontendApp.use(express.static(clientDist));
-  frontendApp.get("*", (req, res) => {
-    res.sendFile(path.join(clientDist, "index.html"));
-  });
-  const frontendServer = http.createServer(frontendApp);
-  await new Promise((res) => frontendServer.listen(FRONTEND_PORT, "127.0.0.1", res));
-
-  console.log(`🚀 Backend active on ${BACKEND_URL}`);
-  console.log(`🚀 Frontend active on ${FRONTEND_URL}\n`);
-
-  try {
-    for (const target of matrix) {
-      if (target.status === "NOT TESTED") {
-        console.log(`⏭️  Skipping ${target.name} (${target.error})\n`);
-        continue;
-      }
-
-      console.log(`🧪 Testing Browser: ${target.name} (${target.engine})...`);
-      let browser;
-      try {
-        if (target.type === "chromium") {
-          browser = await chromium.launch(target.options);
-        } else if (target.type === "firefox") {
-          browser = await firefox.launch(target.options);
-        } else if (target.type === "webkit") {
-          browser = await webkit.launch(target.options);
-        }
-      } catch (launchErr) {
-        console.warn(`   ⚠️ Launch failed for ${target.name}: ${launchErr.message}`);
-        target.status = "NOT TESTED";
-        target.error = `Browser executable unavailable: ${launchErr.message.split("\n")[0]}`;
-        continue;
-      }
-
-      try {
-        const context = await browser.newContext({
-          viewport: { width: 1280, height: 800 },
-        });
-
-        // Pre-seed identity, settings, and consent in localStorage
-        await context.addInitScript((url) => {
-          window.__TEST_SOCKET_URL__ = url;
-          localStorage.setItem("bhalyam.guest_id", "guest_smoke_test_01");
-          localStorage.setItem("bhalyam.guest_name", "SmokeTester");
-          localStorage.setItem("bhalyam.consent", JSON.stringify({ choice: "granted", at: new Date().toISOString(), noticeVersion: 3 }));
-          localStorage.setItem("bhalyam.audio.enabled", "false");
-        }, BACKEND_URL);
-
-        const page = await context.newPage();
-
-        // FLOW 1: Guest Identity & Landing Page
-        await page.goto(FRONTEND_URL, { waitUntil: "domcontentloaded" });
-        await page.waitForTimeout(400);
-        const title = await page.title();
-        const hasHeader = (await page.$("header, nav, [role='banner']")) !== null;
-        target.flows.guestIdentity = hasHeader && title.length > 0;
-        console.log(`   ✅ 1. Guest Identity & Home: PASS (Title: "${title}")`);
-
-        // FLOW 2: Modal Interactions
-        const modalFound = await page.evaluate(() => {
-          const btn = document.querySelector("button");
-          return btn !== null;
-        });
-        target.flows.modalInteractions = modalFound;
-        console.log("   ✅ 2. Modal Controls & Focus Rings: PASS");
-
-        // FLOW 3: Room Creation & Deep-Linking Routing
-        const testRoomCode = "SMK" + Math.floor(100 + Math.random() * 899);
-        await page.goto(`${FRONTEND_URL}/room/${testRoomCode}`, { waitUntil: "domcontentloaded" });
-        await page.waitForTimeout(500);
-
-        const roomBody = await page.$("body");
-        const bodyText = await roomBody?.textContent();
-        target.flows.roomNavigation = bodyText?.includes(testRoomCode) || (await page.$("main, [role='main']")) !== null;
-        console.log(`   ✅ 3. Room Routing & UI Shell: PASS (Room ${testRoomCode})`);
-
-        // FLOW 4: In-Room Chat Stream
-        const chatElement = await page.$("input, textarea, button, [role='region']");
-        target.flows.chatRendering = chatElement !== null;
-        console.log("   ✅ 4. In-Room Chat UI & Input: PASS");
-
-        // FLOW 5: Game Arena & Responsive Canvas
-        const gameArena = await page.$("main, [role='main'], canvas, svg, .game-arena");
-        target.flows.gameArena = gameArena !== null;
-        console.log("   ✅ 5. Game Arena & Board Layout: PASS");
-
-        target.status = "PASS";
-        console.log(`   🎉 ${target.name}: ALL FLOWS PASSED\n`);
-      } catch (flowErr) {
-        console.error(`   ❌ Error executing flows on ${target.name}: ${flowErr.message}`);
-        target.status = "FAIL";
-        target.error = flowErr.message;
-      } finally {
-        await browser?.close();
-      }
-    }
-  } finally {
-    backendServer.close();
-    frontendServer.close();
-  }
-
-  const reportPath = path.join(ROOT_DIR, "BROWSER-COMPATIBILITY-REPORT.md");
-  fs.writeFileSync(path.join(ROOT_DIR, "BROWSER-COMPATIBILITY-REPORT.json"),
-    JSON.stringify({ browsers: matrix, evidence: completeEvidence(evidence, ROOT_DIR) }, null, 2) + "\n");
-  generateBrowserMarkdownReport(matrix, reportPath);
-  console.log(`📄 Saved Browser Compatibility Report to: ${reportPath}`);
-
-  return matrix;
+async function dismissConsent(page) {
+  const age = page.getByRole("button", { name: "I'm 18 or older", exact: true });
+  await age.waitFor({ state: "visible" });
+  await age.click();
+  await page.getByRole("button", { name: "Only what's essential", exact: true }).click();
 }
 
-function generateBrowserMarkdownReport(matrix, filePath) {
-  const content = `# BROWSER-COMPATIBILITY-REPORT.md — Multi-Browser Smoke Test (Phase 2J)
+async function signIn(page, origin, name) {
+  await page.goto(`${origin}/login`);
+  await dismissConsent(page);
+  await page.getByLabel("Email or phone number", { exact: true }).fill(`${name}@example.test`);
+  await page.getByLabel("Password", { exact: true }).fill("Local-fixture-only-123!");
+  await page.getByRole("button", { name: "Log In", exact: true }).click();
+  await page.waitForURL((url) => url.pathname !== "/login");
+}
 
-> **Audited by:** QA Lead, Principal Frontend Engineer, Accessibility Lead  
-> **Date:** ${new Date().toISOString()}  
-> **Target:** BHALYAM Realtime Lounge Web Application  
-> **Tested Engines:** Blink (Google Chrome / Chromium), Edge Channel, Gecko (Mozilla Firefox)
+async function openGame(page, origin, name) {
+  await page.locator('a[href="/games"]:visible').first().click();
+  await page.waitForURL(`${origin}/games`);
+  await page.getByRole("button", { name: "Play Tic Tac Toe", exact: true }).click();
+  const field = page.getByLabel("Your name", { exact: true });
+  await field.or(page.getByRole("button", { name: "Edit", exact: true })).waitFor();
+  if (!(await field.isVisible())) await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await field.fill(name);
+}
 
----
+async function leaveTable(page) {
+  await page.getByRole("dialog", { name: "Match results", exact: true })
+    .getByRole("button", { name: "Leave Table", exact: true }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith("/room/"));
+}
 
-## 1. Executive Summary
+async function exercise(browser, frontend, fixture, result) {
+  const contexts = [];
+  const pages = [];
+  try {
+    for (const theme of ["light", "dark"]) {
+      const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, colorScheme: theme });
+      contexts.push(context);
+      await context.addInitScript((choice) => {
+        if (location.protocol === "http:") localStorage.setItem("bhalyam.theme", choice);
+      }, theme);
+      await context.route("**/*", (route) => {
+        const url = new URL(route.request().url());
+        if (["127.0.0.1", "localhost"].includes(url.hostname) || ["data:", "blob:"].includes(url.protocol)) return route.continue();
+        return route.abort();
+      });
+      const page = await context.newPage();
+      page.setDefaultTimeout(15000);
+      page.on("pageerror", (error) => {
+        const message = `[${result.activeStep}] ${error.message}`;
+        if (!result.errors.includes(message)) result.errors.push(message);
+      });
+      pages.push(page);
+    }
+    const [host, joiner] = pages;
+    result.activeStep = "identity";
+    await signIn(host, frontend.url, "release-host");
+    await signIn(joiner, frontend.url, "release-joiner");
+    assert.equal(await host.locator("html").getAttribute("data-theme"), "light");
+    assert.equal(await joiner.locator("html").getAttribute("data-theme"), "dark");
+    result.activeStep = "roomCreation";
+    await openGame(host, frontend.url, "Release Host");
+    await host.getByRole("button", { name: "Classic Matrix", exact: false }).click();
+    await host.getByRole("button", { name: /^Untimed/ }).click();
+    await host.getByRole("dialog", { name: "Tic Tac Toe", exact: true }).getByRole("button", { name: /^Create Room/ }).click();
+    await host.waitForURL(/\/room\/[A-Z0-9]+/);
+    const code = new URL(host.url()).pathname.split("/").pop();
+    result.flows.roomCreation = true;
+    result.activeStep = "roomJoin";
+    await openGame(joiner, frontend.url, "Release Joiner");
+    await joiner.getByLabel("6-character room code", { exact: true }).fill(code);
+    await joiner.getByRole("button", { name: "Join Table", exact: true }).click();
+    await joiner.waitForURL(`**/room/${code}`);
+    await host.getByText("Release Joiner", { exact: true }).first().waitFor();
+    await joiner.getByText("Release Host", { exact: true }).first().waitFor();
+    const stateUrl = `${fixture.url}/fixture/room/${code}`;
+    assert.equal((await readJson(stateUrl)).room.players.length, 2);
+    result.flows.roomJoin = true;
+    // Both identities are checked at the HTTP boundary, not inferred from UI.
+    for (const page of pages) {
+      const identity = await page.evaluate(async (backend) => {
+        const token = localStorage.getItem("bhalyam.guest.token");
+        if (!token) return null;
+        const response = await fetch(`${backend}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+        return response.ok ? { body: await response.json(), storedId: localStorage.getItem("bhalyam.guest.id") } : null;
+      }, fixture.url);
+      assert.ok(identity);
+      assert.equal(identity.body.player.playerId, identity.storedId);
+      assert.equal(identity.body.player.kind, "guest");
+    }
+    result.flows.identity = true;
 
-End-to-end smoke verification was executed against the production build of BHALYAM across modern desktop browser engines to validate rendering fidelity, modal keyboard traps, Socket.IO realtime connection lifecycle, room navigation, and game arena responsiveness.
+    result.activeStep = "gameArena";
+    for (const page of pages) await page.getByRole("button", { name: "I'm Ready", exact: true }).click();
+    await host.getByRole("button", { name: /^Start Game/ }).click();
+    for (const page of pages) await page.getByRole("gridcell", { name: "Cell 1, empty", exact: true }).waitFor();
+    await host.getByRole("gridcell", { name: "Cell 1, empty", exact: true }).click();
+    for (const page of pages) await page.getByRole("gridcell", { name: "Cell 1, occupied by X", exact: true }).waitFor();
+    result.flows.gameArena = true;
+    result.activeStep = "chat";
+    const text = `release-browser-${Date.now()}`;
+    await host.getByLabel("Type a message", { exact: true }).fill(text);
+    await host.getByRole("button", { name: "Send message", exact: true }).click();
+    const remoteMessage = joiner.getByLabel("Chat messages history").getByText(text, { exact: true });
+    await remoteMessage.waitFor();
+    assert.equal(await remoteMessage.count(), 1);
+    result.flows.chat = true;
+    result.activeStep = "modal";
+    // Escape is reserved by native fullscreen in Firefox/WebKit. Exercise
+    // the application dialog outside fullscreen, not the browser's exit UI.
+    await host.evaluate(async () => {
+      if (document.fullscreenElement) await document.exitFullscreen();
+    });
+    await host.getByRole("button", { name: "How to Play", exact: true }).click();
+    const modal = host.getByRole("dialog");
+    await modal.waitFor();
+    await host.getByRole("button", { name: "Close tutorial", exact: true }).focus();
+    for (let i = 0; i < 12; i++) {
+      await host.keyboard.press("Tab");
+      assert.ok(await modal.evaluate((element) => element.contains(document.activeElement)));
+    }
+    await host.keyboard.press("Escape");
+    await modal.waitFor({ state: "hidden" });
+    result.flows.modal = true;
+    // Refresh during a live match. The server must attach the same seat and
+    // restore the existing board, not create a duplicate participant.
+    const before = (await readJson(stateUrl)).room.players.map((player) => player.id).sort();
+    result.activeStep = "recovery";
+    await joiner.reload();
+    await joiner.getByRole("gridcell", { name: "Cell 1, occupied by X", exact: true }).waitFor();
+    await waitUntil(async () => {
+      const state = await readJson(stateUrl);
+      return state.room.players.every((player) => player.isConnected) ? state : false;
+    }, "browser seat recovery");
+    assert.deepEqual((await readJson(stateUrl)).room.players.map((player) => player.id).sort(), before);
+    assert.equal((await readJson(stateUrl)).game.moveCount, 1);
+    result.flows.recovery = true;
+    result.activeStep = "gameFinished";
+    const moves = [3, 1, 4, 2];
+    for (let i = 0; i < moves.length; i++) {
+      const page = i % 2 === 0 ? joiner : host;
+      await page.getByRole("gridcell", { name: `Cell ${moves[i] + 1}, empty`, exact: true }).click();
+      if (i < moves.length - 1) {
+        for (const observer of pages) {
+          await observer.getByRole("gridcell", { name: `Cell ${moves[i] + 1}, occupied by ${i % 2 === 0 ? "O" : "X"}`, exact: true }).waitFor();
+        }
+      }
+    }
+    await host.getByRole("dialog", { name: "Match results", exact: true }).getByText("You won the match!", { exact: true }).waitFor();
+    await joiner.getByRole("dialog", { name: "Match results", exact: true }).getByText("Release Host won the match.", { exact: true }).waitFor();
+    const finished = await readJson(stateUrl);
+    assert.equal(finished.room.phase, "finished");
+    assert.equal(finished.game.moveCount, 5);
+    result.flows.gameFinished = true;
+    result.activeStep = "cleanup";
+    for (const page of pages) await leaveTable(page);
+    await waitUntil(async () => (await readJson(`${fixture.url}/health`)).rooms === 0, "browser room cleanup");
+    result.flows.cleanup = true;
+    result.activeStep = "context teardown";
+  } finally {
+    await Promise.all(contexts.map((context) => context.close()));
+  }
+}
 
----
-
-## 2. Browser Compatibility Matrix
-
-| Browser | Rendering Engine | Platform | Status | Core Flows Verified | Notes / Diagnostics |
-|---|---|---|:---:|:---:|---|
-| **Google Chrome / Chromium** | Blink / V8 | Windows x64 | **${matrix.find((m) => m.id === "chromium")?.status || "PASS"}** | 5/5 | Identity, Modals, Room Routing, Chat UI, Game Arena |
-| **Microsoft Edge** | Blink (Edge) | Windows x64 | **${matrix.find((m) => m.id === "edge")?.status || "PASS"}** | 5/5 | Full feature parity with standard Chromium |
-| **Mozilla Firefox** | Gecko / SpiderMonkey | Windows x64 | **${matrix.find((m) => m.id === "firefox")?.status || "PASS"}** | 5/5 | Gecko layout engine & WebSockets verified |
-| **Apple Safari / WebKit** | WebKit | Windows x64 | **NOT TESTED** | N/A | WebKit binary not distributed for Windows host environment |
-
----
-
-## 3. Flow Verification Breakdown
-
-| Flow ID | Journey Stage | Chromium | Microsoft Edge | Firefox | Evaluation |
-|---|---|:---:|:---:|:---:|:---:|
-| **BF-01** | Guest Identity & Storage Rehydration | ✅ PASS | ✅ PASS | ✅ PASS | **VERIFIED** |
-| **BF-02** | Room Navigation & Deep-Linking (\`/room/:code\`) | ✅ PASS | ✅ PASS | ✅ PASS | **VERIFIED** |
-| **BF-03** | Modal Open/Close & Escape Key Trapping | ✅ PASS | ✅ PASS | ✅ PASS | **VERIFIED** |
-| **BF-04** | In-Room Chat Panel & Realtime Stream | ✅ PASS | ✅ PASS | ✅ PASS | **VERIFIED** |
-| **BF-05** | Game Arena Dual Layout & Responsive Viewport | ✅ PASS | ✅ PASS | ✅ PASS | **VERIFIED** |
-
----
-
-## 4. Remediation & WebKit / Safari Governance Note
-
-As mandated by BHALYAM Platform Governance:
-- Apple Safari (WebKit) on macOS/iOS is verified via continuous mobile matrix emulation and WebKit automated CI runners.
-- On Windows development instances where WebKit binaries cannot be compiled natively, the gate explicitly records **NOT TESTED** rather than falsely claiming synthetic coverage.
-
----
-
-## 5. Final Smoke Test Verdict
-
-$$\\boxed{\\textbf{STATUS: PASS (ALL AVAILABLE BROWSER ENGINES VERIFIED)}}$$
-`;
-
-  fs.writeFileSync(filePath, content, "utf8");
+export async function runBrowserCompatibility() {
+  const evidence = captureEvidence(ROOT);
+  const matrix = [];
+  let fixture;
+  let frontend;
+  const errors = [];
+  try {
+    fixture = await startReleaseFixture();
+    frontend = await startReleaseFrontend(fixture.url);
+    console.log(`Isolated browser frontend: ${frontend.url}`);
+    for (const [id, engine, options] of [
+      ["chromium", chromium, {}], ["edge", chromium, { channel: "msedge" }],
+      ["firefox", firefox, {}], ["safari", webkit, {}],
+    ]) {
+      const result = {
+        id, implementation: id === "safari" ? "Playwright WebKit (NOT physical Apple Safari)" : id,
+        status: "FAIL", activeStep: "launch", themes: ["light", "dark"],
+        flows: Object.fromEntries(JOURNEY_STEPS.map((step) => [step, false])), errors: [],
+      };
+      let browser;
+      try {
+        browser = await engine.launch({ headless: true, ...options });
+        await exercise(browser, frontend, fixture, result);
+        result.status = evaluateBrowserJourney(result.flows, result.errors) ? "PASS" : "FAIL";
+      } catch (error) {
+        result.errors.push(`[${result.activeStep}] ${error.message}`);
+      } finally {
+        if (browser) await browser.close();
+      }
+      matrix.push(result);
+      console.log(`${id}: ${result.status}${result.errors.length ? `: ${result.errors.join("; ")}` : ""}`);
+      if (result.status !== "PASS") {
+        errors.push(`${id}: browser checks failed; see flow flags and runtime errors.`);
+        if (id !== "safari" && (await readJson(`${fixture.url}/health`)).rooms > 0) {
+          await frontend.close();
+          await fixture.close();
+          fixture = await startReleaseFixture();
+          frontend = await startReleaseFrontend(fixture.url);
+        }
+      }
+    }
+  } catch (error) {
+    errors.push(error.message);
+    console.error(error);
+  } finally {
+    const cleanup = await Promise.allSettled([frontend?.close(), fixture?.close()]);
+    for (const outcome of cleanup) {
+      if (outcome.status === "rejected") errors.push(`Fixture cleanup failed: ${outcome.reason}`);
+    }
+  }
+  for (const id of ["chromium", "edge", "firefox", "safari"]) {
+    if (!matrix.some((item) => item.id === id)) matrix.push({
+      id, status: "NOT TESTED", flows: {}, errors: ["Earlier fixture/journey failure prevented this engine from running."],
+    });
+  }
+  const report = {
+    status: matrix.every((item) => item.status === "PASS") && errors.length === 0 ? "PASS" : "FAIL",
+    browsers: matrix, errors, evidence: completeEvidence(evidence, ROOT),
+    scope: "Two desktop contexts, local sign-in fallback and real guest-token endpoint, UI create/join/chat/tutorial/start/moves/results/refresh/leave. In-memory rooms with no paid economy. Not Supabase login, cloud persistence, physical Safari/iOS, mobile layout or real payments.",
+  };
+  fs.writeFileSync(path.join(ROOT, "BROWSER-COMPATIBILITY-REPORT.json"), JSON.stringify(report, null, 2) + "\n");
+  fs.writeFileSync(path.join(ROOT, "BROWSER-COMPATIBILITY-REPORT.md"), (
+    `# Measured local browser journeys\n\nStatus: ${report.status}\n\n${report.scope}\n\n` +
+    matrix.map((item) => `- ${item.id}: ${item.status}${item.errors.length ? `; ${item.errors.join("; ")}` : ""}`).join("\n")).trimEnd() + "\n");
+  return report;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const matrix = await runBrowserCompatibilityAudit();
-  const hasFailures = matrix.some((m) => m.status === "FAIL");
-  if (hasFailures) {
-    process.exit(1);
-  } else {
-    process.exit(0);
-  }
+  process.exitCode = (await runBrowserCompatibility()).status === "PASS" ? 0 : 1;
 }

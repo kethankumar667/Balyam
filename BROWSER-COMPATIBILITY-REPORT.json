@@ -1,0 +1,112 @@
+{
+  "status": "FAIL",
+  "browsers": [
+    {
+      "id": "chromium",
+      "implementation": "chromium",
+      "status": "PASS",
+      "activeStep": "context teardown",
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "flows": {
+        "identity": true,
+        "roomCreation": true,
+        "roomJoin": true,
+        "chat": true,
+        "modal": true,
+        "gameArena": true,
+        "gameFinished": true,
+        "recovery": true,
+        "cleanup": true
+      },
+      "errors": []
+    },
+    {
+      "id": "edge",
+      "implementation": "edge",
+      "status": "FAIL",
+      "activeStep": "context teardown",
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "flows": {
+        "identity": true,
+        "roomCreation": true,
+        "roomJoin": true,
+        "chat": true,
+        "modal": true,
+        "gameArena": true,
+        "gameFinished": true,
+        "recovery": true,
+        "cleanup": true
+      },
+      "errors": [
+        "[identity] AudioContext closed before a pending resume() could complete.",
+        "[gameFinished] AudioContext closed before a pending resume() could complete."
+      ]
+    },
+    {
+      "id": "firefox",
+      "implementation": "firefox",
+      "status": "PASS",
+      "activeStep": "context teardown",
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "flows": {
+        "identity": true,
+        "roomCreation": true,
+        "roomJoin": true,
+        "chat": true,
+        "modal": true,
+        "gameArena": true,
+        "gameFinished": true,
+        "recovery": true,
+        "cleanup": true
+      },
+      "errors": []
+    },
+    {
+      "id": "safari",
+      "implementation": "Playwright WebKit (NOT physical Apple Safari)",
+      "status": "FAIL",
+      "activeStep": "context teardown",
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "flows": {
+        "identity": true,
+        "roomCreation": true,
+        "roomJoin": true,
+        "chat": true,
+        "modal": true,
+        "gameArena": true,
+        "gameFinished": true,
+        "recovery": true,
+        "cleanup": true
+      },
+      "errors": [
+        "[gameArena] TypeError: OffscreenCanvas is required but not supported by this browser",
+        "[gameFinished] TypeError: OffscreenCanvas is required but not supported by this browser"
+      ]
+    }
+  ],
+  "errors": [
+    "edge: browser checks failed; see flow flags and runtime errors.",
+    "safari: browser checks failed; see flow flags and runtime errors."
+  ],
+  "evidence": {
+    "schemaVersion": 1,
+    "gitCommit": "5f78b778b163f5f7ae941207530d4c2078627e6c",
+    "sourceClean": false,
+    "environment": "local",
+    "startedAt": "2026-10-26T20:42:47.684Z",
+    "completedAt": "2026-10-26T20:45:55.542Z"
+  },
+  "scope": "Two desktop contexts, local sign-in fallback and real guest-token endpoint, UI create/join/chat/tutorial/start/moves/results/refresh/leave. In-memory rooms with no paid economy. Not Supabase login, cloud persistence, physical Safari/iOS, mobile layout or real payments."
+}

@@ -1,0 +1,31 @@
+{
+  "requestedDurationSeconds": 3600,
+  "durationSeconds": 3601.6667415,
+  "completedCycles": 1138,
+  "totalEventsProcessed": 9104,
+  "totalRoomsCreated": 1138,
+  "totalSocketsConnected": 3414,
+  "observedMoves": 7966,
+  "duplicateEventsDetected": 0,
+  "recoveryChecks": 1138,
+  "settlementChecks": 1138,
+  "residualRooms": 0,
+  "residualSockets": 0,
+  "heapGrowthMb": 10.217697143554688,
+  "maxWorkGapSeconds": 5.16430849999981,
+  "errors": [],
+  "scope": "Local Socket.IO handlers, real Tic Tac Toe engine, HS256 fixture members, in-memory economy. Not cloud durability, physical devices, traffic capacity or production authentication.",
+  "status": "PASS",
+  "releaseEligible": true,
+  "failures": [],
+  "evidence": {
+    "schemaVersion": 1,
+    "gitCommit": "5f78b778b163f5f7ae941207530d4c2078627e6c",
+    "sourceClean": false,
+    "environment": "local",
+    "startedAt": "2026-10-26T19:53:10.685Z",
+    "completedAt": "2026-10-26T20:53:18.043Z"
+  },
+  "memoryLeakDetected": false,
+  "webSocketLeakDetected": false
+}

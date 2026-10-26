@@ -30,8 +30,8 @@ Required reports:
 | Rendered accessibility | `ACCESSIBILITY_REPORT.json` | Build client, then `npm run check:a11y-rendered` |
 | Mobile layout, including a live room | `MOBILE_LAYOUT_REPORT.json` | Build client, run a local server, then `npm run check:mobile-layout -- --server=<port>` |
 | Multiplayer | `MULTIPLAYER-RESILIENCE-REPORT.json` | Build server, then `npm run check:multiplayer` |
-| Soak | `SOAK-TEST-REPORT.json` | Build server, then `npm run check:soak` |
-| Browsers | `BROWSER-COMPATIBILITY-REPORT.json` | Build client/server, then `npm run check:browser` |
+| Soak | `SOAK-TEST-REPORT.json` | `npm run check:soak` (one hour by default) |
+| Browsers | `BROWSER-COMPATIBILITY-REPORT.json` | `npm run check:browser` (builds its own isolated client artifact) |
 | Hosted Supabase | `docs/remediation/supabase-cloud-verification.json` | Authorized staging verification; there is no automated cloud receipt producer |
 
 Every report requires an `evidence` object emitted by the verifier:
@@ -51,16 +51,38 @@ findings; a mobile run without the room screen cannot establish room readiness.
 
 Known scope limits deliberately remain blockers:
 
-- The existing 15-cycle soak runner is a short stress test. Its JSON does not
-  qualify as an extended soak unless it records at least 3,600 seconds of real
-  elapsed workload, with events/rooms/sockets and no recorded leak or duplicates.
-  The runner still needs an actual hour-long workload implementation.
-- The legacy browser runner checks broad UI-shell selectors. Those are not
-  proof of six completed journeys. Browser receipts require Chromium, Edge,
-  Firefox and WebKit (`safari`), each with explicit successful `identity`,
-  `roomCreation`, `roomJoin`, `chat`, `modal` and `gameArena` checks. The old
-  shell-only fields are intentionally rejected; real interactions must replace
-  them, not be renamed.
+- The soak runner repeatedly plays real two-human Tic Tac Toe matches, alternating
+  wins and draws. Every cycle checks chat delivery, ready/start preflight, an
+  authenticated reclaim of the same seat, duplicate active-turn intents, final
+  wallet balances, ledger idempotency and room/socket cleanup. Counters describe
+  observed chat and authoritative state transitions, not attempted emissions.
+  `npm run check:soak -- --duration-seconds=20` is a development smoke run;
+  even a PASS is **not release-eligible** below 3,600 seconds. Invalid or
+  duplicate options fail. A stalled cycle, failed ACK, wrong payout, leaked
+  room/socket, duplicate outcome or post-GC heap growth over 50 MiB fails.
+  The heap threshold is a leak heuristic, not proof of unlimited capacity.
+- The browser runner requires Chromium, installed Microsoft Edge, Firefox and
+  Playwright WebKit (`safari`). Missing engines fail, rather than being silently
+  accepted. Install missing engines using the existing client's Playwright CLI
+  (for example, `cd client` then `npx playwright install chromium firefox webkit`;
+  Edge uses the `msedge` channel). Each engine uses two contexts and real UI
+  sign-in/create/join/chat/tutorial/start/moves/results/refresh/leave interactions.
+  Keyboard focus must stay inside the tutorial and Escape must dismiss it
+  outside native browser fullscreen (which reserves Escape for its own exit).
+  The receipt requires all nine steps: `identity`, `roomCreation`, `roomJoin`,
+  `chat`, `modal`, `gameArena`, `gameFinished`, `recovery`, `cleanup`.
+  Runtime page errors fail the journey. There is no selector-only success path.
+- Both runners bind to ephemeral **loopback** ports and launch the real socket
+  handlers/RoomManager in a child with an allowlisted environment, a fresh
+  signing secret and a temporary working directory. They do not load `.env`,
+  inherit cloud keys, call production or write production state. Browser
+  builds preserve the real Tailwind configuration with absolute content paths.
+  They require the existing client/server development dependencies installed.
+  The soak uses locally signed test-member JWTs and an in-memory economy.
+  The browser fixture uses the existing, explicitly local sign-in fallback plus
+  real server-minted guest credentials, **without paid match economy**. Neither
+  proves Supabase login, durable cloud settlement, physical Safari/iOS or load
+  capacity. WebKit is not to be relabelled as a physical Safari device.
 - Local multiplayer scenarios are not physical-device or deployed-network proof.
   Review their scope and complete the manual staging journeys separately.
 
