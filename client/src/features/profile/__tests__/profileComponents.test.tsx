@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import ProfileHeader from "../ProfileHeader";
@@ -7,6 +7,8 @@ import CareerMetrics from "../CareerMetrics";
 import AchievementsPanel from "../AchievementsPanel";
 import { INITIAL_PLAYER_STATS } from "@shared/profile/PlayerStats";
 import { ACHIEVEMENT_CATALOG } from "@shared/profile/Achievements";
+
+vi.mock("../../../lib/publicAvatarAura", () => ({ usePublicAvatarAura: () => undefined }));
 
 describe("Profile UI Sub-Components", () => {
   it("renders ProfileHeader component element", () => {
@@ -23,6 +25,12 @@ describe("Profile UI Sub-Components", () => {
     const { container } = render(<ProfileHeader profile={profile} />);
     expect(container).toBeDefined();
     expect(container.firstChild).not.toBeNull();
+    const level = screen.getByText("LVL 5");
+    expect(level.className).not.toContain("absolute");
+    const portrait = container.querySelector("header .select-none");
+    expect(portrait).not.toBeNull();
+    expect(portrait?.className).not.toContain("rounded-[");
+    expect(portrait?.parentElement?.parentElement?.className).toContain("p-3");
   });
 
   it("ProfileHeader prefers the live `name`/`avatar` props over profile.displayName/avatar — this REST snapshot must not shadow a name/avatar saved elsewhere (Settings, the header's own profile sheet) while the page stays mounted", () => {

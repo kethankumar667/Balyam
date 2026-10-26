@@ -59,17 +59,17 @@ export default function ProfileHeader({
 
       <div className="relative flex flex-col gap-5 p-4 pb-5 sm:p-5 md:flex-row md:items-center md:justify-between lg:p-6">
         <div className="flex min-w-0 items-center gap-3.5 sm:gap-5">
-          <div className="relative shrink-0">
-            <div className="h-[4.5rem] w-[4.5rem] rounded-[1.15rem] border-2 border-info/70 bg-surface-1 p-1 shadow-[0_0_30px_-12px_var(--color-info)] sm:h-24 sm:w-24 sm:rounded-[1.4rem]">
+          <div className="flex shrink-0 flex-col items-center gap-1">
+            <div className="p-3">
               <SeatAvatar
                 playerId={profile.playerId}
                 avatar={effectiveAvatar}
                 name={effectiveName}
-                className="h-full w-full rounded-[0.9rem] sm:rounded-[1.1rem]"
+                className="h-[4.5rem] w-[4.5rem] sm:h-24 sm:w-24"
                 textClassName="text-xl sm:text-3xl font-black text-ink-hi"
               />
             </div>
-            <span className="absolute -bottom-2 left-1/2 min-w-12 -translate-x-1/2 rounded-md border border-lamp-600 bg-lamp-500 px-2 py-1 text-center font-mono text-[10px] font-black text-sand-950 shadow-sm">
+            <span className="min-w-12 rounded-md border border-lamp-600 bg-lamp-500 px-2 py-1 text-center font-mono text-[10px] font-black text-sand-950 shadow-sm">
               LVL {profile.level}
             </span>
           </div>

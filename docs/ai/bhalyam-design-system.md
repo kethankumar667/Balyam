@@ -39,6 +39,9 @@ box. Clip only the picture, not the frame: artwork extends 12% on each side.
 Do not also enable owner lookup on an inner `SeatAvatar` in that box, which
 would draw the decoration twice. Both artwork and legacy equipped rings work.
 Decoration is non-interactive and hidden from assistive technology.
+Profile portraits reserve padding around that overflow instead of adding a
+square backing frame. Keep level labels below the frame; an edit badge must
+sit outside its ring with a higher stacking layer, not on top of the portrait.
 
 Live room cosmetics are server-filtered and take precedence. Outside rooms,
 `GET /api/cosmetics/avatar-auras?playerIds=...` exposes only equipped aura IDs,

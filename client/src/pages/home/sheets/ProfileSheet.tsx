@@ -168,7 +168,7 @@ export function ProfileSheet({
                      hover:shadow-[0_8px_20px_-6px_rgba(228,177,40,0.7)] active:scale-[0.99] transition-all duration-200"
         >
           {/* Avatar with edit pencil badge */}
-          <div className="relative mx-auto w-20 h-20 mb-3">
+          <div className="relative mx-auto w-[104px] h-[104px] p-3 mb-5">
             {/* The frame is drawn outside the avatar's edge, so nothing here may clip: the plain gold ring is a
                 sibling that only shows when no frame is worn, and the frame replaces it. */}
             <div className="relative w-20 h-20 group-hover:scale-105 transition-transform duration-150">
@@ -179,18 +179,19 @@ export function ProfileSheet({
                              shadow-[0_6px_20px_rgba(212,158,36,0.45),inset_0_2px_4px_rgba(0,0,0,0.15)]"
                 />
               )}
-              <span className="absolute inset-0 flex items-center justify-center">
+              <span className={`absolute inset-0 flex items-center justify-center ${equippedFrame ? "" : "p-0.5"}`}>
                 <SeatAvatar
                   avatar={avatarId ?? undefined}
                   aura={equippedFrame}
                   name={shownName || identity.label}
-                  className={equippedFrame ? "h-full w-full" : "h-[calc(100%-4px)] w-[calc(100%-4px)]"}
+                  className="h-full w-full"
                   textClassName="text-2xl font-black"
                 />
               </span>
             </div>
             <span
-              className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full inline-flex items-center
+              aria-hidden="true"
+              className="absolute -bottom-4 -right-4 z-20 w-8 h-8 rounded-full inline-flex items-center
                          justify-center bg-[#FFFDF8] text-[#5C3717]
                          ring-2 ring-[#FFF7E2] border-2 border-[#D49E24]
                          shadow-[0_3px_8px_rgba(92,55,23,0.35)]

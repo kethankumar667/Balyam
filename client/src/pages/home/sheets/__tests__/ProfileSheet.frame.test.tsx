@@ -36,6 +36,10 @@ describe("ProfileSheet avatar frame", () => {
     const { baseElement } = renderDrawer();
 
     expect(baseElement.querySelector(`svg[data-frame="${FRAME}"]`)).toBeInTheDocument();
+    const pencil = baseElement.querySelector("button .lucide-pencil")?.parentElement;
+    expect(pencil).toHaveClass("z-20", "-bottom-4", "-right-4");
+    expect(pencil).toHaveAttribute("aria-hidden", "true");
+    expect(pencil?.parentElement).toHaveClass("p-3", "w-[104px]", "h-[104px]");
   });
 
   it("does not sit the frame inside anything that clips", () => {
