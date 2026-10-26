@@ -96,13 +96,18 @@ describe("the players strip", () => {
 
   it("offers the switch between your board and every table, worded for where you are", () => {
     const toggle = vi.fn();
-    const first = render(<BingoPlayersStrip skin={BINGO_SKIN_DARK} seats={seats} layout="list" viewingAllTables={false} onToggleTables={toggle} />);
+    const first = render(<BingoPlayersStrip skin={BINGO_SKIN_DARK} seats={seats} layout="list" viewingAllTables={false} canInspectBoards onToggleTables={toggle} />);
     fireEvent.click(screen.getByRole("button", { name: "View all tables" }));
     expect(toggle).toHaveBeenCalledTimes(1);
     first.unmount();
 
-    render(<BingoPlayersStrip skin={BINGO_SKIN_DARK} seats={seats} layout="list" viewingAllTables onToggleTables={toggle} />);
+    render(<BingoPlayersStrip skin={BINGO_SKIN_DARK} seats={seats} layout="list" viewingAllTables canInspectBoards onToggleTables={toggle} />);
     expect(screen.getByRole("button", { name: "Back to my board" })).toBeInTheDocument();
+  });
+
+  it("hides inspection while the match is still active", () => {
+    render(<BingoPlayersStrip skin={BINGO_SKIN_LIGHT} seats={seats} layout="row" viewingAllTables={false} canInspectBoards={false} onToggleTables={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: "View all tables" })).not.toBeInTheDocument();
   });
 
   it("shows each seat's progress in the desktop list", () => {

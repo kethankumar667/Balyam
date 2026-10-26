@@ -465,7 +465,7 @@ export class BingoEngine implements GameEngine {
         autoMark: p.autoMark,
         hasMarkedCurrent:
           this.pendingMark == null || p.markedSet.has(this.pendingMark.value),
-        board: boardWithMarked,
+        board: this.phase === "finished" ? boardWithMarked : [],
       };
     });
   }

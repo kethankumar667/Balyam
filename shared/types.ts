@@ -2354,7 +2354,7 @@ export interface BingoPlayerPublic {
   hasWon: boolean;
   isBot: boolean;
   isConnected: boolean;
-  /** Board sent for all players so opponents can view each other's 5x5 boards */
+  /** Empty during arrangement/play; revealed with marks only after the match finishes. Own board is sent privately in myBoard. */
   board: BingoBoard;
   /**
    * Per-PLAYER preference, not a room setting — it is an accessibility

@@ -68,7 +68,7 @@ export default function BingoBoardDesktop(props: BingoBoardProps) {
   const isArranging = state.phase === "arranging";
   const myPlayer = state.players.find((p) => p.id === model.selfId);
   const myBoard = state.myBoard ?? [];
-  const viewingAll = activeTab === "allBoards";
+  const viewingAll = isOver && activeTab === "allBoards";
 
   const seats = useMemo(
     () => buildBingoSeats(state.players, model.players, model.selfId, state.currentTurnPlayerId),
@@ -184,6 +184,7 @@ export default function BingoBoardDesktop(props: BingoBoardProps) {
                 seats={seats}
                 layout="list"
                 viewingAllTables={viewingAll}
+                canInspectBoards={isOver}
                 onToggleTables={() => setActiveTab(viewingAll ? "myBoard" : "allBoards")}
                 registerCardRef={viewingAll ? undefined : reactions.registerCardRef}
                 onTarget={viewingAll ? undefined : reactions.openTarget}

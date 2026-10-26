@@ -223,6 +223,7 @@ interface PlayersStripProps {
   /** `row` is the phone's strip of faces; `list` is the desktop side panel with each seat's progress. */
   layout: "row" | "list";
   viewingAllTables: boolean;
+  canInspectBoards?: boolean;
   onToggleTables: () => void;
   registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
   onTarget?: (playerId: string) => void;
@@ -264,13 +265,13 @@ export function BingoPlayersStrip(props: PlayersStripProps) {
     <section aria-label="Players" className={`rounded-3xl px-3 pb-3 pt-2 ${skin.card}`}>
       <div className="mb-1 flex items-center justify-between gap-2 px-1">
         <h2 className={`text-sm font-extrabold ${skin.ink}`}>Players ({seats.length})</h2>
-        <button
+        {props.canInspectBoards && <button
           type="button"
           onClick={onToggleTables}
           className={`min-h-[44px] cursor-pointer rounded-xl px-3 text-xs font-extrabold ${skin.link} ${skin.focus}`}
         >
           {viewingAllTables ? "Back to my board" : "View all tables"}
-        </button>
+        </button>}
       </div>
 
       {layout === "row" ? (

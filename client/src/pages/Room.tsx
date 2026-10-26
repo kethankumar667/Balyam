@@ -88,6 +88,7 @@ const WordBuildingBoard = lazy(() => import("../games/wordbuilding/WordBuildingB
 const DotsBoxesBoard = lazy(() => import("../games/dotsboxes/DotsBoxesBoard"));
 const StarBoard = lazy(() => import("../games/stargame/StarBoard"));
 const BingoBoard = lazy(() => import("../games/bingo/BingoBoard"));
+const BingoBoardInspection = lazy(() => import("../games/bingo/BingoBoardInspection"));
 const NamePlaceAnimalBoard = lazy(() => import("../games/namesplaceanimal/NamePlaceAnimalBoard"));
 const TambolaBoard = lazy(() => import("../games/tambola/TambolaBoard"));
 const SnakeBoard = lazy(() => import("../games/snake/SnakeBoard"));
@@ -2170,6 +2171,11 @@ export default function Room() {
               <>
                 <GuestWelcomeCard />
                 <FinishedTableCard game={roomState.game} onNewRoom={leaveAndCreateRoom} onLeave={leaveRoom} />
+                {roomState.game === "bingo" && gameState != null && (
+                  <Suspense fallback={<p role="status">Loading Bingo boards...</p>}>
+                    <BingoBoardInspection state={gameState as BingoPlayerState} selfId={playerId} players={effectiveMatchPlayers} />
+                  </Suspense>
+                )}
               </>
             ) : (
               <>

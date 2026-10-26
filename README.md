@@ -22,6 +22,11 @@ Eighteen games ship in `GameKind` (`shared/types.ts`); the home catalog
 | **Arcade & quick** | Rock Paper Scissors, Hand Cricket, Snake, Block Blast, Space War, Road Rash |
 | **Classroom** | Word Building |
 
+Bingo boards are private during arrangement and play: each player receives only their own grid.
+After the whole match ends, close the scorecard and choose **View all tables** on the finished
+table to inspect everyone's final grid, including marked numbers. An accepted Bingo claim
+ends the match; boards are never revealed just because a player can claim.
+
 The Samethalu and Telugu Cinema quizzes and Bounce are gone — engines,
 boards, question banks, catalog entries, slugs, icons and wiring have all
 been deleted, along with the "Upcoming" filter that only ever held them.
