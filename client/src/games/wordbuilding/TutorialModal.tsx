@@ -33,7 +33,7 @@ const SLIDES: Slide[] = [
         <p>
           Take turns writing a single letter into any empty cell on the
           shared workbook page. When your letter completes a real English
-          word along a row or column, you score points equal to the word's
+          word along a row, column or diagonal, forwards or backwards, you score points equal to the word's
           length.
         </p>
         <p className="mt-2" style={{ color: "#7c2d12" }}>
@@ -51,7 +51,7 @@ const SLIDES: Slide[] = [
         <p>
           When it's your turn, tap any empty cell. A dashed border shows
           your pick. Then pick a letter from the pad — or just type on
-          your keyboard. Tap a different cell to change your mind.
+          your keyboard to preview it. Change the letter or cell freely, then press Place or Enter to confirm. Cancel or Escape discards the preview.
         </p>
         <p className="mt-2" style={{ color: "#7c2d12" }}>
           Each player writes in their own ink color so you can see who
@@ -66,14 +66,13 @@ const SLIDES: Slide[] = [
     body: (
       <>
         <p>
-          After every letter, the engine scans the row and column it
-          landed in. Any 3+ letter dictionary word that wasn't already
-          scored credits the player who closed it.
+          After every letter, the engine scans all eight straight directions
+          through it. The longest new 3+ letter dictionary word credits the player who completed it, even if others placed earlier letters.
         </p>
         <p className="mt-2">
-          A single letter can finish a word horizontally AND vertically
-          at the same time — both score. Overlapping words across the
-          board are fine.
+          Only ONE best word scores per placement, not every crossing word.
+          Equal lengths prefer row, column, downward diagonal, then upward diagonal.
+          The same word scores once per match. Other letter contributors are acknowledged, not awarded points.
         </p>
         <p className="mt-2" style={{ color: "#7c2d12" }}>
           ✓ Good (3) · ✓ Well done (4) · ✓ Very Good (5) · ✓ Excellent (6+)
@@ -97,8 +96,9 @@ const SLIDES: Slide[] = [
             in multiple directions.
           </li>
           <li>
-            The board ends when every cell is filled. Class topper wins!
+            Classic ends when the board fills. Quick Match uses an 8×8 board, 15-second turns and eight turns per seat; missed turns count. Human timeouts pass without an automatic letter. Equal highest scores are a draw.
           </li>
+          <li>In Claim &amp; Vote, identify a straight word through your new letter. A strict majority of opponents must accept; silence and tied votes do not score.</li>
         </ul>
       </>
     ),

@@ -214,9 +214,11 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
     defaultModeId: "classroom_10x10",
     modes: [
       { modeId: "classroom_10x10", displayName: "Classroom 10×10", description: "Everyday English (~20k words) on standard grid", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
-      { modeId: "classroom_8x8", displayName: "Classroom 8×8", description: "Quick compact match on 8×8 board", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "classroom_8x8", displayName: "Classroom 8×8", description: "Full-board Classic match on a compact 8×8 board", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
       { modeId: "tournament_10x10", displayName: "Tournament 10×10", description: "Full 275k lexicon with rare tournament words on the standard grid", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
       { modeId: "tournament_8x8", displayName: "Tournament 8×8", description: "Full 275k lexicon with rare tournament words on the compact grid", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "classroom_quick", displayName: "Classroom Quick Match", description: "8×8, 15-second turns, eight turns per seat including passes", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "tournament_quick", displayName: "Tournament Quick Match", description: "Tournament dictionary, 8×8, eight turns per seat including passes", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
     ],
   },
   nokiacricket: {
@@ -482,7 +484,7 @@ const MODE_RESOLVERS: Readonly<Record<string, ModeResolver>> = {
     return target <= 300 ? "race_300" : target <= 500 ? "race_500" : "race_1000";
   },
   dotsboxes: (o) => ({ 5: "grid_5x5", 7: "grid_7x7", 9: "grid_9x9" } as Record<number, string>)[finiteNumber(o.boardSize) ?? 0],
-  wordbuilding: (o) => `${o.dictionaryMode === "tournament" ? "tournament" : "classroom"}_${o.boardSize === 8 ? "8x8" : "10x10"}`,
+  wordbuilding: (o) => `${o.dictionaryMode === "tournament" ? "tournament" : "classroom"}_${o.matchLength === "quick" ? "quick" : o.boardSize === 8 ? "8x8" : "10x10"}`,
   snake: (o) => {
     // Speed is a mode of its own whatever the walls; otherwise the walls decide. A missing
     // `wallMode` is the engine's default, which wraps.

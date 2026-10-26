@@ -7,7 +7,7 @@ import type {
   WordBuildingPublicState,
   WordBuildingScoredWord,
 } from "@shared/types.js";
-import { DEFAULT_WORDBUILDING_OPTIONS } from "@shared/types.js";
+import { DEFAULT_WORDBUILDING_OPTIONS, resolveWordBuildingOptions } from "@shared/types.js";
 import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
 import { isDictionaryWord } from "./dictionary.js";
 
@@ -21,9 +21,9 @@ import { isDictionaryWord } from "./dictionary.js";
  * Word Building — English Workbook Edition (Phase 1+2).
  *
  * Turn-based shared-board vocab game. On each move the active player picks
- * an empty cell and writes a single uppercase letter. The engine then scans
- * the affected row and column and credits any newly-completed dictionary
- * words to the player. Each word can only score once per match.
+ * an empty cell and writes a single uppercase letter. Auto-score awards one
+ * best new dictionary word across eight straight directions through it.
+ * Each word can only score once per match.
  */
 
 const RECENT_MOVES_CAP = 32;
@@ -36,6 +36,9 @@ const BOT_THINK_MS = 120;
 const BOT_DEFENCE_WEIGHT = 0.85;
 
 interface InternalState {
+  owners: Record<string, string>;
+  turnsTaken: Record<string, number>;
+  lastNotice: string;
   phase: "playing" | "finished";
   options: WordBuildingOptions;
   board: string[][];
@@ -63,7 +66,7 @@ export class WordBuildingEngine implements GameEngine {
   private pendingOptions: WordBuildingOptions = { ...DEFAULT_WORDBUILDING_OPTIONS };
 
   setOptions(options: WordBuildingOptions): void {
-    this.pendingOptions = { ...DEFAULT_WORDBUILDING_OPTIONS, ...options };
+    this.pendingOptions = resolveWordBuildingOptions(options);
   }
 
   setTurnDeadline(deadline: number): void {
@@ -90,6 +93,9 @@ export class WordBuildingEngine implements GameEngine {
     for (const id of ids) scores[id] = 0;
 
     this.s = {
+      owners: {},
+      turnsTaken: Object.fromEntries(ids.map(id => [id, 0])),
+      lastNotice: "Pick an empty cell, preview a letter, then place it. One best new word scores per turn.",
       phase: "playing",
       options: opts,
       board,
@@ -128,12 +134,7 @@ export class WordBuildingEngine implements GameEngine {
     }
   }
 
-  /**
-   * Today's behavior, untouched: place a letter, silently auto-score any
-   * dictionary word it completes, always advance the turn. Kept exactly
-   * as-is (only extracted out of `applyMove`) so `claimToScoreMode: false`
-   * — the default — carries zero regression risk from this feature.
-   */
+  /** Auto-score mode: credit one best new word, then consume one turn opportunity. */
   private applyPlaceLegacy(move: MoveContext): MoveResult {
     if (move.type !== "place") {
       return { ok: false, error: `Unknown move type: ${move.type}` };
@@ -149,6 +150,7 @@ export class WordBuildingEngine implements GameEngine {
     const size = this.s.options.boardSize;
     if (
       typeof r !== "number" || typeof c !== "number" ||
+      !Number.isInteger(r) || !Number.isInteger(c) ||
       r < 0 || c < 0 || r >= size || c >= size
     ) {
       return { ok: false, error: "Cell out of range" };
@@ -163,6 +165,7 @@ export class WordBuildingEngine implements GameEngine {
 
     // Commit the placement, then scan for newly-formed words.
     this.s.board[r][c] = letter;
+    this.s.owners[`${r},${c}`] = move.playerId;
     this.s.filledCells += 1;
     const scored = this.detectNewWords(r, c, move.playerId);
     for (const w of scored) this.s.scores[move.playerId] += w.points;
@@ -178,15 +181,10 @@ export class WordBuildingEngine implements GameEngine {
       this.s.recentMoves.splice(0, this.s.recentMoves.length - RECENT_MOVES_CAP);
     }
     this.s.scoredWords.push(...scored);
-
-    // End-of-game check: every cell filled.
-    if (this.s.filledCells >= this.s.totalCells) {
-      this.finalizeGame();
-      return { ok: true, isOver: true, winnerId: this.s.winnerId };
-    }
-
-    this.advanceTurn();
-    return { ok: true };
+    this.s.lastNotice = scored.length
+      ? `${scored[0].word}: +${scored[0].points} to the completing player. One best new word per placement.`
+      : `No points: no new ${this.s.options.minWordLength}+ letter word in the ${this.s.options.dictionaryMode} dictionary through that cell. Previously scored words cannot score again.`;
+    return this.concludeTurn();
   }
 
   /**
@@ -211,6 +209,7 @@ export class WordBuildingEngine implements GameEngine {
     const size = this.s.options.boardSize;
     if (
       typeof r !== "number" || typeof c !== "number" ||
+      !Number.isInteger(r) || !Number.isInteger(c) ||
       r < 0 || c < 0 || r >= size || c >= size
     ) {
       return { ok: false, error: "Cell out of range" };
@@ -224,6 +223,7 @@ export class WordBuildingEngine implements GameEngine {
     }
 
     this.s.board[r][c] = letter;
+    this.s.owners[`${r},${c}`] = move.playerId;
     this.s.filledCells += 1;
     const record: WordBuildingMoveRecord = {
       playerId: move.playerId,
@@ -237,6 +237,7 @@ export class WordBuildingEngine implements GameEngine {
     }
 
     if (this.hasQualifyingRun(r, c)) {
+      this.s.lastNotice = "Identify one straight word through your new letter. Opponents must give a strict majority of accept votes.";
       this.s.pendingClaim = {
         id: `claim_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
         claimantId: move.playerId,
@@ -252,6 +253,7 @@ export class WordBuildingEngine implements GameEngine {
       };
       return { ok: true };
     }
+    this.s.lastNotice = `No claim yet: connect at least ${this.s.options.minWordLength} letters in a straight line.`;
     return this.concludeTurn();
   }
 
@@ -277,6 +279,7 @@ export class WordBuildingEngine implements GameEngine {
       const c = cell?.c;
       if (
         typeof r !== "number" || typeof c !== "number" ||
+        !Number.isInteger(r) || !Number.isInteger(c) ||
         r < 0 || c < 0 || r >= size || c >= size
       ) {
         return { ok: false, error: "Cells must be on the board" };
@@ -326,19 +329,12 @@ export class WordBuildingEngine implements GameEngine {
     if (move.playerId !== pc.claimantId) {
       return { ok: false, error: "Not your claim" };
     }
+    this.s.lastNotice = "Claim skipped. No points awarded.";
     this.s.pendingClaim = null;
     return this.concludeTurn();
   }
 
-  /**
-   * claimToScoreMode: an opponent's vote on the current pending claim.
-   * A single "accept" resolves the claim ACCEPTED immediately — the direct
-   * reading of "anyone of opponents needs to accept... otherwise it's not
-   * valid." A "reject" only resolves the claim (REJECTED) once every
-   * voter has explicitly rejected; a timeout can only push toward
-   * acceptance (see resolvePendingClaimOnTimeout), so it never
-   * contributes to this all-reject tally.
-   */
+  /** A strict majority of eligible opponents must accept; abstentions never grant points. */
   private handleVoteClaim(move: MoveContext): MoveResult {
     const pc = this.s.pendingClaim;
     if (!pc || pc.status !== "voting") {
@@ -356,12 +352,9 @@ export class WordBuildingEngine implements GameEngine {
       return { ok: false, error: "Vote must be accept or reject" };
     }
     pc.votes[move.playerId] = decision;
-    if (decision === "accept") {
-      return this.resolveClaim(true);
-    }
-    if (pc.voters.every((id) => pc.votes[id] === "reject")) {
-      return this.resolveClaim(false);
-    }
+    const accepts = pc.voters.filter(id => pc.votes[id] === "accept").length;
+    if (accepts > pc.voters.length / 2) return this.resolveClaim(true);
+    if (pc.voters.every(id => id in pc.votes)) return this.resolveClaim(false);
     return { ok: true };
   }
 
@@ -380,23 +373,32 @@ export class WordBuildingEngine implements GameEngine {
           points: pc.points,
           ts: Date.now(),
           orientation: pc.orientation,
+          contributorIds: this.contributors(pc.cells),
         };
         this.s.scoredWords.push(scoredWord);
         this.s.scores[pc.claimantId] += pc.points;
       }
     }
+    this.s.lastNotice = accepted ? `${pc?.word ?? "Word"} accepted by a majority; +${pc?.points ?? 0} to the completing player.` : "Claim not accepted: no majority. No points awarded.";
     this.s.pendingClaim = null;
     return this.concludeTurn();
   }
 
   /** Finalizes the match if the board is now full, else advances the turn. Deferring the fill check to here (rather than at placement time) lets a claim on the last cell still get its vote before the match ends. */
   private concludeTurn(): MoveResult {
-    if (this.s.filledCells >= this.s.totalCells) {
+    const actor = this.s.playerOrder[this.s.turnIndex];
+    this.s.turnsTaken[actor] = (this.s.turnsTaken[actor] ?? 0) + 1;
+    if (this.s.filledCells >= this.s.totalCells ||
+        this.s.options.matchLength === "quick" && this.s.playerOrder.every(id => this.s.turnsTaken[id] >= 8)) {
       this.finalizeGame();
       return { ok: true, isOver: true, winnerId: this.s.winnerId };
     }
     this.advanceTurn();
     return { ok: true };
+  }
+
+  private contributors(cells: Array<{ r: number; c: number }>): string[] {
+    return [...new Set(cells.map(cell => this.s.owners[`${cell.r},${cell.c}`]).filter((id): id is string => Boolean(id)))];
   }
 
   /** True if any of the 4 axes through (r,c) has a run of filled cells long enough to possibly contain a claimable word — no dictionary check, just length. */
@@ -519,6 +521,7 @@ export class WordBuildingEngine implements GameEngine {
       points: best.letters.length,
       ts: Date.now(),
       orientation: best.orientation,
+      contributorIds: this.contributors(best.cells),
     }];
   }
 
@@ -614,13 +617,14 @@ export class WordBuildingEngine implements GameEngine {
 
   private advanceTurn(): void {
     const total = this.s.playerOrder.length;
-    this.s.turnIndex = (this.s.turnIndex + 1) % total;
+    for (let i = 0; i < total; i++) {
+      this.s.turnIndex = (this.s.turnIndex + 1) % total;
+      if (this.s.options.matchLength !== "quick" || this.s.turnsTaken[this.s.playerOrder[this.s.turnIndex]] < 8) break;
+    }
   }
 
   private finalizeGame(): void {
     this.s.phase = "finished";
-    // Winner = highest score. Ties pick the player whose final scoring
-    // move landed first — deterministic, no fuss.
     let bestId: string | null = null;
     let bestScore = -1;
     for (const pid of this.s.playerOrder) {
@@ -630,7 +634,7 @@ export class WordBuildingEngine implements GameEngine {
         bestId = pid;
       }
     }
-    this.s.winnerId = bestId;
+    this.s.winnerId = this.s.playerOrder.filter(id => this.s.scores[id] === bestScore).length === 1 ? bestId : null;
     this.s.turnDeadline = null;
   }
 
@@ -658,6 +662,8 @@ export class WordBuildingEngine implements GameEngine {
             votes: { ...this.s.pendingClaim.votes },
           }
         : null,
+      turnsTaken: { ...this.s.turnsTaken },
+      lastNotice: this.s.lastNotice,
     };
   }
 
@@ -695,11 +701,18 @@ export class WordBuildingEngine implements GameEngine {
     return this.s.playerOrder[this.s.turnIndex];
   }
 
-  /** Silence = accept (decision #3): called when the turn timer expires while a claim is awaiting votes. No-op otherwise. */
+  /** Missing votes are abstentions, not acceptance. */
   resolvePendingClaimOnTimeout(): void {
     const pc = this.s.pendingClaim;
     if (!pc || pc.status !== "voting") return;
-    this.resolveClaim(true);
+    this.resolveClaim(pc.voters.filter(id => pc.votes[id] === "accept").length > pc.voters.length / 2);
+  }
+
+  handleHumanTimeout(playerId: string): void {
+    if (this.s.phase !== "playing" || this.getTimeoutActor() !== playerId) return;
+    this.s.pendingClaim = null;
+    this.s.lastNotice = "Time expired: the turn passed without an automatic letter or points.";
+    this.concludeTurn();
   }
 
   /**
@@ -1005,6 +1018,7 @@ export class WordBuildingEngine implements GameEngine {
     // Mid-game removal: drop from the rotation. If we're down to one
     // player, they win by default.
     const wasCurrent = this.s.playerOrder[this.s.turnIndex] === playerId;
+    const removedIndex = this.s.playerOrder.indexOf(playerId);
     this.s.playerOrder = this.s.playerOrder.filter((id) => id !== playerId);
     if (this.s.playerOrder.length < 2 && this.s.phase === "playing") {
       this.s.winnerId = this.s.playerOrder[0] ?? null;
@@ -1014,7 +1028,9 @@ export class WordBuildingEngine implements GameEngine {
       return;
     }
     // Re-anchor the turn index if the removed player was at or before it.
-    if (wasCurrent) {
+    if (removedIndex < this.s.turnIndex) {
+      this.s.turnIndex -= 1;
+    } else if (wasCurrent) {
       if (this.s.turnIndex >= this.s.playerOrder.length) this.s.turnIndex = 0;
     } else if (this.s.turnIndex >= this.s.playerOrder.length) {
       this.s.turnIndex = 0;
@@ -1033,12 +1049,20 @@ export class WordBuildingEngine implements GameEngine {
       } else if (pc.status === "voting" && pc.voters.includes(playerId)) {
         pc.voters = pc.voters.filter((id) => id !== playerId);
         if (pc.voters.length === 0) {
-          // No one left to vote — treat like a timeout (silence = accept).
-          this.resolveClaim(true);
-        } else if (pc.voters.every((id) => pc.votes[id] === "reject")) {
           this.resolveClaim(false);
+        } else {
+          const accepts = pc.voters.filter(id => pc.votes[id] === "accept").length;
+          if (accepts > pc.voters.length / 2) this.resolveClaim(true);
+          else if (pc.voters.every(id => id in pc.votes)) this.resolveClaim(false);
         }
       }
+    }
+    if (this.s.phase !== "playing" || this.s.pendingClaim) return;
+    if (this.s.filledCells >= this.s.totalCells ||
+        this.s.options.matchLength === "quick" && this.s.playerOrder.every(id => this.s.turnsTaken[id] >= 8)) {
+      this.finalizeGame();
+    } else if (this.s.options.matchLength === "quick" && this.s.turnsTaken[this.s.playerOrder[this.s.turnIndex]] >= 8) {
+      this.advanceTurn();
     }
   }
 }

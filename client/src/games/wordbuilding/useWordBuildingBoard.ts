@@ -7,6 +7,7 @@ import type {
   WordBuildingScoredWord,
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
+import { connectionStateManager } from "../../core/recovery/ConnectionStateManager";
 import { useTurnHaptics } from "../../hooks/useHaptics";
 import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 import { useTutorialGate } from "../../components/GameTutorial";
@@ -47,10 +48,13 @@ export interface WordBuildingBoardModel {
   activeWordBurst: { word: string; points: number; playerName: string; scorerId: string } | null;
   comboBanner: string | null;
   selected: { r: number; c: number } | null;
-  setSelected: (cell: { r: number; c: number } | null) => void;
   error: string | null;
   pickCell: (r: number, c: number) => void;
   placeLetter: (letter: string) => void;
+  previewLetter: string | null;
+  confirmPlacement: () => void;
+  cancelPlacement: () => void;
+  submitting: boolean;
   remainingSec: number | null;
   theme: GameSkinTheme;
   toggleTheme: () => void;
@@ -64,7 +68,7 @@ export interface WordBuildingBoardModel {
   isVoter: boolean;
   /** Cells I've tapped so far, in order, while building my claim. */
   claimPath: Array<{ r: number; c: number }>;
-  /** Adds a cell to the claim path if it's a filled cell that extends a straight line from what's tapped so far (silently ignored otherwise — the server is the real authority). */
+  /** Guides ordered straight-line selection; the server still validates the submitted path. */
   tapClaimCell: (r: number, c: number) => void;
   undoLastClaimCell: () => void;
   clearClaimPath: () => void;
@@ -87,7 +91,9 @@ export function useWordBuildingBoard({
 }: WordBuildingBoardProps): WordBuildingBoardModel {
   const size = state.options.boardSize;
   const myTurn = state.turnPlayerId === selfId;
-  const canPlay = myTurn && state.phase === "playing";
+  const [submitting, setSubmitting] = useState(false);
+  const inFlight = useRef(false);
+  const canPlay = myTurn && state.phase === "playing" && !state.pendingClaim && !submitting;
 
   // Buzz the device once per transition into your turn — same hook
   // Rummy / Ludo / SnL use, so the cue is consistent across BHALYAM.
@@ -155,16 +161,13 @@ export function useWordBuildingBoard({
   const [activePulse, setActivePulse] = useState<WordBuildingScoredWord | null>(null);
   const [activeWordBurst, setActiveWordBurst] = useState<{ word: string; points: number; playerName: string; scorerId: string } | null>(null);
   const [comboBanner, setComboBanner] = useState<string | null>(null);
-  const seenWordIdsRef = useRef<Set<string>>(new Set());
+  const seenWordIdsRef = useRef<Set<string>>(new Set(state.scoredWords.map(word => word.id)));
+  const scoreTimers = useRef<number[]>([]);
+  useEffect(() => () => scoreTimers.current.forEach(window.clearTimeout), []);
   useEffect(() => {
-    // First mount: seed the set so we don't fire a burst of annotations
-    // for a mid-game rejoin.
-    if (seenWordIdsRef.current.size === 0 && state.scoredWords.length > 0) {
-      for (const w of state.scoredWords) seenWordIdsRef.current.add(w.id);
-      return;
-    }
     const fresh = state.scoredWords.filter((w) => !seenWordIdsRef.current.has(w.id));
     if (fresh.length === 0) return;
+    scoreTimers.current.forEach(window.clearTimeout);
     for (const w of fresh) seenWordIdsRef.current.add(w.id);
     
     const top = fresh.reduce((a, b) => (a.points >= b.points ? a : b));
@@ -190,16 +193,57 @@ export function useWordBuildingBoard({
     const bT = window.setTimeout(() => {
       setComboBanner(null);
     }, 1800);
-    return () => {
-      window.clearTimeout(aT);
-      window.clearTimeout(pT);
-      window.clearTimeout(bT);
-    };
+    scoreTimers.current = [aT, pT, bT];
   }, [state.scoredWords, nameOf]);
 
   /* ─── Cell selection + letter input ─── */
   const [selected, setSelected] = useState<{ r: number; c: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [previewLetter, setPreviewLetter] = useState<string | null>(null);
+  const actionVersion = JSON.stringify([
+    state.turnPlayerId, state.phase, state.filledCells, state.turnsTaken,
+    state.pendingClaim?.id, state.pendingClaim?.status, state.pendingClaim?.votes,
+  ]);
+  useEffect(() => {
+    inFlight.current = false;
+    setSubmitting(false);
+    setSelected(null);
+    setPreviewLetter(null);
+    setError(null);
+  }, [actionVersion, selfId]);
+  useEffect(() => {
+    const socket = getSocket();
+    const onError = (message: string) => {
+      inFlight.current = false;
+      setSubmitting(false);
+      setError(message);
+    };
+    const onDisconnect = () => onError("Connection lost. Reconnect before placing a letter.");
+    socket.on("game:error", onError);
+    socket.on("disconnect", onDisconnect);
+    return () => {
+      socket.off("game:error", onError);
+      socket.off("disconnect", onDisconnect);
+    };
+  }, []);
+
+  function beginSubmit(): boolean {
+    if (inFlight.current) return false;
+    if (!getSocket().connected || !connectionStateManager.isOnline()) {
+      setError("Connection is not ready. Reconnect before submitting; your preview is kept.");
+      return false;
+    }
+    inFlight.current = true;
+    setSubmitting(true);
+    setError(null);
+    return true;
+  }
+  function cancelPlacement() {
+    if (inFlight.current) return;
+    setSelected(null);
+    setPreviewLetter(null);
+    setError(null);
+  }
 
   // Auto-clear cell selection whenever turn flips so the previous player's
   // dangling pick doesn't carry over.
@@ -211,6 +255,7 @@ export function useWordBuildingBoard({
     if (!canPlay) return;
     if (state.board[r]?.[c] !== "") return;
     setSelected({ r, c });
+    setPreviewLetter(null);
     setError(null);
   }
 
@@ -221,17 +266,17 @@ export function useWordBuildingBoard({
       setError("A–Z only");
       return;
     }
-    // `playerId: selfId` lets the server proxy this move to a local
-    // pass-and-play seat when the host is acting on its behalf. For
-    // normal multiplayer selfId === the caller's own id and the proxy
-    // is a no-op.
+    setPreviewLetter(L);
+    setError(null);
+  }
+
+  function confirmPlacement() {
+    if (!canPlay || !selected || !previewLetter || !beginSubmit()) return;
     getSocket().emit("game:move", {
       type: "place",
-      data: { r: selected.r, c: selected.c, letter: L },
+      data: { r: selected.r, c: selected.c, letter: previewLetter },
       playerId: selfId ?? undefined,
     });
-    setSelected(null);
-    setError(null);
   }
 
   /* ─── Claim-to-score: identify + submit the claimed word, and vote ───
@@ -265,23 +310,27 @@ export function useWordBuildingBoard({
   }
 
   function tapClaimCell(r: number, c: number) {
-    if (!isClaimant) return;
+    if (!isClaimant || inFlight.current) return;
     if (state.board[r]?.[c] === "") return;
-    setClaimPath((prev) => {
-      if (prev.some((cell) => cell.r === r && cell.c === c)) return prev;
-      if (prev.length === 0) return [{ r, c }];
-      if (prev.length === 1) {
-        if (!isUnitAxisDelta(r - prev[0].r, c - prev[0].c)) return prev;
-        return [...prev, { r, c }];
+    if (claimPath.some(cell => cell.r === r && cell.c === c)) {
+      setError("That letter is already selected. Use Undo to change the path.");
+      return;
+    }
+    if (claimPath.length === 1 && !isUnitAxisDelta(r - claimPath[0].r, c - claimPath[0].c)) {
+      setError("Select the adjacent letter in the word's direction.");
+      return;
+    }
+    if (claimPath.length >= 2) {
+      const dr = claimPath[1].r - claimPath[0].r;
+      const dc = claimPath[1].c - claimPath[0].c;
+      const last = claimPath[claimPath.length - 1];
+      if (last.r + dr !== r || last.c + dc !== c) {
+        setError("Continue in the same straight direction, or Undo/Clear to restart.");
+        return;
       }
-      // Axis is locked from the first two taps — only accept the cell that
-      // continues it in the same direction.
-      const dr = prev[1].r - prev[0].r;
-      const dc = prev[1].c - prev[0].c;
-      const last = prev[prev.length - 1];
-      if (last.r + dr !== r || last.c + dc !== c) return prev;
-      return [...prev, { r, c }];
-    });
+    }
+    setError(null);
+    setClaimPath(prev => [...prev, { r, c }]);
   }
 
   function undoLastClaimCell() {
@@ -294,26 +343,29 @@ export function useWordBuildingBoard({
 
   function submitClaim() {
     if (!isClaimant || claimPath.length < state.options.minWordLength) return;
+    if (!claimPath.some(cell => cell.r === pendingClaim.anchor.r && cell.c === pendingClaim.anchor.c)) {
+      setError("Your word must include the newly placed letter (the outlined anchor).");
+      return;
+    }
+    if (!beginSubmit()) return;
     getSocket().emit("game:move", {
       type: "claimWord",
       data: { cells: claimPath },
       playerId: selfId ?? undefined,
     });
-    setClaimPath([]);
     setError(null);
   }
 
   function skipClaim() {
-    if (!isClaimant) return;
+    if (!isClaimant || !beginSubmit()) return;
     getSocket().emit("game:move", {
       type: "skipClaim",
       playerId: selfId ?? undefined,
     });
-    setClaimPath([]);
   }
 
   function castVote(decision: "accept" | "reject") {
-    if (!isVoter) return;
+    if (!isVoter || !beginSubmit()) return;
     getSocket().emit("game:move", {
       type: "voteClaim",
       data: { decision },
@@ -321,7 +373,7 @@ export function useWordBuildingBoard({
     });
   }
 
-  // Keyboard input: when a cell is selected, A–Z places the letter.
+  // Typing previews; Enter commits and Escape cancels.
   useEffect(() => {
     if (!selected) return;
     function onKey(e: KeyboardEvent) {
@@ -330,7 +382,12 @@ export function useWordBuildingBoard({
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const key = e.key;
       if (key === "Escape") {
-        setSelected(null);
+        cancelPlacement();
+        return;
+      }
+      if (key === "Enter") {
+        e.preventDefault();
+        confirmPlacement();
         return;
       }
       if (/^[a-zA-Z]$/.test(key)) {
@@ -341,7 +398,7 @@ export function useWordBuildingBoard({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, canPlay]);
+  }, [selected, previewLetter, canPlay, selfId]);
 
   /* ─── Turn timer countdown ───
    * Consolidated onto the shared useTurnSecondsLeft (the same hook
@@ -370,10 +427,13 @@ export function useWordBuildingBoard({
     activeWordBurst,
     comboBanner,
     selected,
-    setSelected,
     error,
     pickCell,
     placeLetter,
+    previewLetter,
+    confirmPlacement,
+    cancelPlacement,
+    submitting,
     remainingSec,
     theme,
     toggleTheme,

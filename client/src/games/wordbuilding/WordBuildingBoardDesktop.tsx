@@ -74,7 +74,7 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
   // Notebook Frame vs Cyber Neon Frame
   return (
     <div
-      className={`fixed inset-0 h-screen max-h-screen w-full flex items-center justify-center p-2 sm:p-4 overflow-hidden select-none transition-colors duration-300 ${
+      className={`fixed inset-0 h-screen max-h-screen w-full flex flex-col items-center justify-center p-2 sm:p-4 overflow-hidden select-none transition-colors duration-300 ${
         m.isNeon
           ? "bg-[#070919] text-slate-100"
           : "bg-[#1C1814] text-stone-900 font-['Patrick_Hand',cursive]"
@@ -89,7 +89,7 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
 
       {/* ── Main Book / Terminal Container ── */}
       <div
-        className={`relative z-10 w-full max-w-[1440px] h-[96vh] rounded-3xl border-2 flex overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.6)] ${
+        className={`relative z-10 w-full max-w-[1440px] h-[96vh] min-h-0 flex-1 rounded-3xl border-2 flex overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.6)] ${
           m.isNeon
             ? "bg-[#090B20]/95 border-slate-800/90 shadow-[0_0_40px_rgba(56,189,248,0.15)]"
             : "bg-[#FCF8EE] border-[#D7C9B1]"
@@ -490,7 +490,11 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
                     size={m.size}
                     cellPx={cellPx}
                     selected={m.selected}
-                    canPlay={m.isClaimant ? true : m.canPlay}
+                    previewLetter={m.previewLetter}
+                    claimMode={m.isClaimant}
+                    claimPath={m.claimPath}
+                    anchor={m.pendingClaim?.anchor}
+                    canPlay={m.isClaimant ? !m.submitting : m.canPlay}
                     cellOverlays={m.cellOverlays}
                     inkOf={m.inkOf}
                     activePulse={m.activePulse}
@@ -511,13 +515,21 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
                 >
                   <LetterPad
                     onPick={m.placeLetter}
-                    onCancel={() => m.setSelected(null)}
+                    onCancel={m.cancelPlacement}
+                    previewLetter={m.previewLetter}
+                    onConfirm={m.confirmPlacement}
+                    submitting={m.submitting}
                     isNeon={m.isNeon}
                     selectedCell={m.selected}
-                    disabled={!m.canPlay || !m.selected}
+                    disabled={!m.canPlay}
+                    myTurn={m.myTurn}
                     alwaysOpen
                   />
 
+                  <div role="status" aria-live="polite" className="w-full rounded-lg bg-surface-1 text-ink-hi p-2 text-sm">
+                    {m.error ?? state.lastNotice}
+                    {state.options.matchLength === "quick" && <p>Quick Match · eight turns each · yours: {state.turnsTaken?.[props.selfId ?? ""] ?? 0}/8. Missed turns count.</p>}
+                  </div>
                   {/* Error or Turn Guidance */}
                   {m.error ? (
                     <div className="mt-1 text-xs sm:text-sm font-bold text-rose-500 animate-shake">
@@ -598,8 +610,11 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
       <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
 
       {/* claimToScoreMode: identify my word, or vote on someone else's claim, or wait */}
+      {m.pendingClaim && <div role="status" aria-live="polite" className="rounded-lg bg-surface-1 text-ink-hi p-3 text-sm">{m.error ?? state.lastNotice}</div>}
       {m.isClaimant && (
         <ClaimBuilderBar
+          submitting={m.submitting}
+          error={m.error}
           claimPath={m.claimPath}
           board={state.board}
           minWordLength={state.options.minWordLength}
@@ -612,6 +627,7 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
       )}
       {m.isVoter && m.pendingClaim?.word && (
         <ClaimVotePrompt
+          submitting={m.submitting}
           claimantName={m.nameOf(m.pendingClaim.claimantId)}
           word={m.pendingClaim.word}
           onAccept={() => m.castVote("accept")}
@@ -634,5 +650,3 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
     </div>
   );
 }
-
-

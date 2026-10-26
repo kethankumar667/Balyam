@@ -307,6 +307,17 @@ Guest permissions are pinned by `server/src/rooms/__tests__/guestSealedRoom.test
 — sealed rooms, the host's own reclaim, bots and Pass & Play still being
 admitted, and host migration sealing a room that lands on a guest.
 
+## Word Building rules and controls
+
+- Classic keeps the existing 10×10 / 30-second defaults (8×8 is also available) and ends when the board fills.
+- Optional **Quick Match** uses 8×8, 15-second turns and eight turn opportunities per seat. A missed turn consumes an opportunity, so inactivity cannot extend it indefinitely. Claim/vote steps finish before the final result.
+- Auto-score checks rows, columns and both diagonals, forwards and backwards, through the new letter. Only the longest new dictionary word scores; equal lengths prefer row, column, downward diagonal, upward diagonal. A word scores once per match.
+- The completing player earns the word's length in points. Earlier letter contributors are acknowledged without splitting the reward.
+- In **Claim & Vote**, select filled cells in word order, including the new letter anywhere in a straight consecutive path. A strict majority of remaining opponents must accept. Ties and missing votes do not grant points.
+- A connected human's expired turn passes without placing a bot-selected letter. Actual bots and explicit server takeover keep automatic play. Equal highest final scores are a draw; existing ambiguous-ranking settlement refunds apply, not an invented split prize.
+- Select a cell and letter to preview; **Place / Enter** submits, **Cancel / Escape** discards. Input waits for a server state/error before resubmission. Mobile keyboards have 44px targets and an enlarged scrollable board offers 44px cells.
+- Quick Match records are separate from full-board Classroom/Tournament records. Old room options without a match length remain Classic.
+
 ## Roadmap
 This project is planned as a long-running effort. See [ROADMAP.md](./ROADMAP.md)
 for the full 10-year vision, architecture principles, decision records, risks

@@ -1289,6 +1289,8 @@ export type WordBuildingBoardSize = 8 | 10;
 export type WordBuildingDictionaryMode = "common" | "tournament";
 
 export interface WordBuildingOptions {
+  /** Classic fills the board. Quick gives each seat eight turns, including missed turns. */
+  matchLength?: "classic" | "quick";
   /** Square grid edge length. */
   boardSize: WordBuildingBoardSize;
   /** Seconds per turn. 0 disables the timer. */
@@ -1299,16 +1301,17 @@ export interface WordBuildingOptions {
   dictionaryMode: WordBuildingDictionaryMode;
   /**
    * true = the placing player must explicitly claim the straight-line word
-   * their letter completed, and an opponent must accept it before it
+   * their letter completed, and a strict majority of opponents must accept it before it
    * scores (the dictionary only judges for bot seats). false (default) =
-   * today's behavior, an automatic dictionary scan silently credits any
-   * word the placement completes. Off by default so existing rooms are
+   * an automatic dictionary scan credits one best new word through the
+   * placement. Off by default so existing rooms are
    * unaffected; a host opts in per match.
    */
   claimToScoreMode: boolean;
 }
 
 export const DEFAULT_WORDBUILDING_OPTIONS: WordBuildingOptions = {
+  matchLength: "classic",
   boardSize: 10,
   turnTimerSeconds: 30,
   minWordLength: 3,
@@ -1316,8 +1319,21 @@ export const DEFAULT_WORDBUILDING_OPTIONS: WordBuildingOptions = {
   claimToScoreMode: false,
 };
 
+/** Shared by the room and engine so timer, records and broadcasts describe the same preset. */
+export function resolveWordBuildingOptions(options?: Partial<WordBuildingOptions>): WordBuildingOptions {
+  const resolved = { ...DEFAULT_WORDBUILDING_OPTIONS, ...options };
+  resolved.matchLength = options?.matchLength === "quick" ? "quick" : "classic";
+  if (resolved.matchLength === "quick") {
+    resolved.boardSize = 8;
+    resolved.turnTimerSeconds = 15;
+  }
+  return resolved;
+}
+
 /** A scored word with the cells it occupies and who placed it. */
 export interface WordBuildingScoredWord {
+  /** Acknowledgement only; the completing player still earns all points. */
+  contributorIds?: string[];
   /** Stable id for animations + dedupe. */
   id: string;
   word: string;
@@ -1387,6 +1403,10 @@ export interface WordBuildingMoveRecord {
 }
 
 export interface WordBuildingPublicState {
+  /** Authoritative feedback for the most recent action, including zero-point moves and passes. */
+  lastNotice?: string;
+  /** Completed turn opportunities; passes count, claim/vote substeps do not. */
+  turnsTaken?: Record<string, number>;
   kind: "wordbuilding";
   phase: "playing" | "finished";
   options: WordBuildingOptions;
@@ -1404,7 +1424,7 @@ export interface WordBuildingPublicState {
   recentMoves: WordBuildingMoveRecord[];
   /** Wall-clock ms after which the turn auto-passes. null = timer disabled. */
   turnDeadline: number | null;
-  /** Final winner — null until phase flips to finished. */
+  /** Final winner — null while playing, or when the highest final score is tied. */
   winnerId: string | null;
   /** Cells filled count, for endgame check + UI progress. */
   filledCells: number;

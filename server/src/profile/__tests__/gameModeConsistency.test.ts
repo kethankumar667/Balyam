@@ -90,6 +90,8 @@ const LOBBY_CHOICES: Record<string, Choice[]> = {
     { options: { boardSize: 9 }, expect: "grid_9x9" },
   ],
   wordbuilding: [
+    { options: { dictionaryMode: "common", matchLength: "quick" }, expect: "classroom_quick" },
+    { options: { dictionaryMode: "tournament", matchLength: "quick" }, expect: "tournament_quick" },
     { options: { dictionaryMode: "common", boardSize: 10 }, expect: "classroom_10x10" },
     { options: { dictionaryMode: "common", boardSize: 8 }, expect: "classroom_8x8" },
     { options: { dictionaryMode: "tournament", boardSize: 10 }, expect: "tournament_10x10" },

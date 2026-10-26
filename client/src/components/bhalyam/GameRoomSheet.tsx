@@ -282,13 +282,13 @@ const WB_DICT_MODES: { id: "common" | "tournament"; label: string; blurb: string
 // OptionGrid only takes string ids; we store the numeric board size as a
 // string here and parse on commit.
 const WB_BOARD_SIZES: { id: "8" | "10"; label: string; blurb: string }[] = [
-  { id: "8",  label: "8 × 8",   blurb: "Quick game. Fills up fast." },
+  { id: "8",  label: "8 × 8",   blurb: "Compact Classic. Ends when the board fills." },
   { id: "10", label: "10 × 10", blurb: "Balanced — the default workbook page." },
 ];
 
 const WB_CLAIM_MODES: { id: "off" | "on"; label: string; blurb: string }[] = [
-  { id: "off", label: "Auto-score",    blurb: "The dictionary silently credits any word your letter completes." },
-  { id: "on",  label: "Claim & vote",  blurb: "Tap out your word after placing a letter — an opponent must accept it to score." },
+  { id: "off", label: "Auto-score",    blurb: "One best new dictionary word through your letter scores. The completer gets all points." },
+  { id: "on",  label: "Claim & vote",  blurb: "Identify your word; a strict majority of opponents must accept. Silence or a tied vote does not score." },
 ];
 
 // Dots & Boxes — dot-grid size. Box count = (n-1)^2 so 5→16, 7→36, 9→64.
@@ -453,6 +453,7 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
   const [wbDictMode, setWbDictMode] =
     useState<"common" | "tournament">("common");
   const [wbBoardSize, setWbBoardSize] = useState<8 | 10>(10);
+  const [wbMatchLength, setWbMatchLength] = useState<"classic" | "quick">("classic");
   // Word Building: off (default) keeps today's silent auto-dictionary
   // scoring; on requires the placer to claim their word and an opponent
   // to accept it before it scores.
@@ -553,7 +554,7 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
       return `${unoMatchLength === "single" ? "Single Round" : `Race to ${unoMatchLength}`} · ${unoTurnTimer === "0" ? "Untimed" : `${unoTurnTimer}s`}`;
     }
     if (game === "wordbuilding") {
-      return `${wbDictMode === "tournament" ? "Tournament" : "Classroom"} · ${wbBoardSize}×${wbBoardSize}`;
+      return `${wbDictMode === "tournament" ? "Tournament" : "Classroom"} · ${wbMatchLength === "quick" ? "Quick · 8×8" : `${wbBoardSize}×${wbBoardSize}`}`;
     }
     if (game === "dotsboxes") {
       return `${dbBoardSize}×${dbBoardSize} Grid (${(dbBoardSize - 1) ** 2} boxes)`;
@@ -597,6 +598,7 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
     unoTurnTimer,
     wbDictMode,
     wbBoardSize,
+    wbMatchLength,
     dbBoardSize,
     bingoWinMode,
     bingoCallSpeed,
@@ -754,7 +756,7 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
               : undefined,
           wordBuildingOptions:
             game === "wordbuilding"
-              ? { dictionaryMode: wbDictMode, boardSize: wbBoardSize, claimToScoreMode: wbClaimToScoreMode === "on" }
+              ? { dictionaryMode: wbDictMode, boardSize: wbMatchLength === "quick" ? 8 : wbBoardSize, turnTimerSeconds: wbMatchLength === "quick" ? 15 : 30, matchLength: wbMatchLength, claimToScoreMode: wbClaimToScoreMode === "on" }
               : undefined,
           dotsBoxesOptions:
             game === "dotsboxes" ? { boardSize: dbBoardSize } : undefined,
@@ -942,7 +944,7 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
         snlOptions: game === "snl" ? { difficulty } : undefined,
         wordBuildingOptions:
           game === "wordbuilding"
-            ? { dictionaryMode: wbDictMode, boardSize: wbBoardSize, claimToScoreMode: wbClaimToScoreMode === "on" }
+            ? { dictionaryMode: wbDictMode, boardSize: wbMatchLength === "quick" ? 8 : wbBoardSize, turnTimerSeconds: wbMatchLength === "quick" ? 15 : 30, matchLength: wbMatchLength, claimToScoreMode: wbClaimToScoreMode === "on" }
             : undefined,
         dotsBoxesOptions:
           game === "dotsboxes" ? { boardSize: dbBoardSize } : undefined,
@@ -1609,6 +1611,12 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
 
             {game === "wordbuilding" && (
               <>
+                <Field label="Match length">
+                  <OptionGrid items={[
+                    { id: "classic" as const, label: "Classic", blurb: "Fill the whole board. 30-second turns." },
+                    { id: "quick" as const, label: "Quick Match", blurb: "8×8 · 15-second turns · eight turns per seat. Missed turns count." },
+                  ]} value={wbMatchLength} onChange={setWbMatchLength} cols={2} />
+                </Field>
                 <Field label="Dictionary">
                   <OptionGrid
                     items={WB_DICT_MODES}
@@ -1617,14 +1625,14 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
                     cols={2}
                   />
                 </Field>
-                <Field label="Board size">
+                {wbMatchLength === "classic" && <Field label="Board size">
                   <OptionGrid
                     items={WB_BOARD_SIZES}
                     value={String(wbBoardSize) as "8" | "10"}
                     onChange={(v) => setWbBoardSize(Number(v) as 8 | 10)}
                     cols={2}
                   />
-                </Field>
+                </Field>}
                 <Field label="Scoring">
                   <OptionGrid
                     items={WB_CLAIM_MODES}
@@ -2455,4 +2463,3 @@ function PassPlayBlock({
     </div>
   );
 }
-

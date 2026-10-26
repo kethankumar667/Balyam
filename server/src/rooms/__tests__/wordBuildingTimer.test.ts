@@ -106,6 +106,8 @@ describe("RoomManager — Word Building turn timer wiring", () => {
       // for getTimeoutActor() (the current turn player in legacy mode) —
       // the turn flips between the two players on every accepted move.
       expect(after.turnPlayerId).not.toBe(before.turnPlayerId);
+      expect(after.filledCells).toBe(before.filledCells);
+      expect(after.lastNotice).toContain("turn passed");
       // A fresh timer must have been scheduled for the resulting state too.
       expect(after.turnDeadline).not.toBeNull();
     } finally {
@@ -157,7 +159,7 @@ describe("RoomManager — Word Building turn timer wiring", () => {
     }
   });
 
-  it("claimToScoreMode: a claim awaiting votes times out into a silent accept via resolvePendingClaimOnTimeout(), crediting the claimant", async () => {
+  it("claimToScoreMode: a claim awaiting votes times out without points when nobody accepts", async () => {
     const { rooms, latestGameStateFor, latestRoomState } = setup(true);
 
     vi.useFakeTimers();
@@ -191,9 +193,9 @@ describe("RoomManager — Word Building turn timer wiring", () => {
       // getTimeoutActor() returned null (no single actor to force while
       // votes are outstanding) — RoomManager's onTurnTimeout must have
       // fallen through to resolvePendingClaimOnTimeout() instead, which
-      // resolves accepted (silence = accept) and credits the claimant.
+      // Missing votes do not count as acceptance.
       expect(after.pendingClaim).toBeNull();
-      expect(after.scores[claimantId]).toBe(3);
+      expect(after.scores[claimantId]).toBe(0);
       expect(after.turnPlayerId).not.toBe(claimantId);
       expect(after.turnDeadline).not.toBeNull();
     } finally {

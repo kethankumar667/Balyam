@@ -134,6 +134,7 @@ import { SnlEngine } from "../games/snl/SnlEngine.js";
 import { RummyEngine } from "../games/rummy/RummyEngine.js";
 import { HandCricketEngine } from "../games/handcricket/HandCricketEngine.js";
 import { WordBuildingEngine } from "../games/wordbuilding/WordBuildingEngine.js";
+import { resolveWordBuildingOptions } from "@shared/types.js";
 import { DotsBoxesEngine } from "../games/dotsboxes/DotsBoxesEngine.js";
 import { RpsEngine } from "../games/rps/RpsEngine.js";
 import { StarGameEngine } from "../games/stargame/StarGameEngine.js";
@@ -1944,7 +1945,7 @@ export class RoomManager {
       snlOptions: { ...DEFAULT_SNL_OPTIONS, ...(snlOptions ?? {}) },
       rummyOptions: { ...DEFAULT_RUMMY_OPTIONS, ...(rummyOptions ?? {}) },
       hcOptions: { ...DEFAULT_HC_OPTIONS, ...(hcOptions ?? {}) },
-      wordBuildingOptions: { ...DEFAULT_WORDBUILDING_OPTIONS, ...(wordBuildingOptions ?? {}) },
+      wordBuildingOptions: resolveWordBuildingOptions(wordBuildingOptions),
       dotsBoxesOptions: { ...DEFAULT_DOTSBOXES_OPTIONS, ...(dotsBoxesOptions ?? {}) },
       starGameOptions: { ...DEFAULT_STARGAME_OPTIONS, ...(starGameOptions ?? {}) },
       unoOptions: { ...DEFAULT_UNO_OPTIONS, ...(unoOptions ?? {}) },
@@ -6162,11 +6163,14 @@ export class RoomManager {
       // claimToScoreMode a claim awaiting SUBMISSION forces the claimant
       // (skip/auto-claim), but a claim awaiting VOTES has no single actor
       // to force: resolvePendingClaimOnTimeout() resolves it systemically
-      // instead (silence = accept). Mirrors UnoEngine's pendingChallenge
+      // instead (missing votes are abstentions). Mirrors UnoEngine's pendingChallenge
       // dispatch below.
       const actorId = engine.getTimeoutActor();
       if (actorId) {
-        if (this.canApplyTimeoutMove(room, actorId)) engine.applyAutoMove(actorId);
+        if (this.canApplyTimeoutMove(room, actorId)) {
+          if (room.players.get(actorId)?.isBot || this.isAutoDriven(room, actorId)) engine.applyAutoMove(actorId);
+          else engine.handleHumanTimeout(actorId);
+        }
       } else {
         engine.resolvePendingClaimOnTimeout();
       }

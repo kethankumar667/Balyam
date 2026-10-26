@@ -1,3 +1,5 @@
+import Modal from "../../components/Modal";
+
 /**
  * Claim-to-score UI (claimToScoreMode only). Three small, focused pieces:
  *
@@ -8,14 +10,13 @@
  *                      the claimant during voting, and for an opponent who
  *                      already voted.
  *
- * v1 scope (see the feature plan): plain ordered taps, no axis-lock visual
- * highlighting on the grid itself — the server is the real authority and
- * rejects a bad path with a clear error toast via the existing game:error
- * pipe, so nothing here needs to pre-validate beyond what
- * useWordBuildingBoard's tapClaimCell already silently enforces.
+ * The grid numbers the selected path and outlines the new-letter anchor.
+ * Client guidance never replaces the engine's path and vote validation.
  */
 
 export interface ClaimBuilderBarProps {
+  submitting?: boolean;
+  error?: string | null;
   claimPath: Array<{ r: number; c: number }>;
   board: string[][];
   minWordLength: number;
@@ -35,13 +36,15 @@ export function ClaimBuilderBar({
   onClear,
   onSkip,
   isNeon,
+  submitting,
+  error,
 }: ClaimBuilderBarProps) {
   const letters = claimPath.map((cell) => board[cell.r]?.[cell.c] ?? "").join("");
-  const canSubmit = claimPath.length >= minWordLength;
+  const canSubmit = !submitting && claimPath.length >= minWordLength;
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[env(safe-area-inset-bottom)]"
+      className="relative z-30 flex justify-center px-3 pb-[env(safe-area-inset-bottom)]"
       role="region"
       aria-label="Identify your word"
     >
@@ -54,8 +57,9 @@ export function ClaimBuilderBar({
         }}
       >
         <p className="text-xs font-semibold opacity-80">
-          Tap the rest of your word — you placed the first letter.
+          Tap every letter in word order along one straight line. Include your newly placed, outlined letter anywhere in the path.
         </p>
+        {error && <p role="alert" className="text-sm text-rose-300">{error}</p>}
         <div
           className="min-h-[44px] rounded-xl flex items-center justify-center gap-1 px-3 font-black text-2xl tracking-[0.2em]"
           style={{
@@ -69,7 +73,7 @@ export function ClaimBuilderBar({
           <button
             type="button"
             onClick={onUndo}
-            disabled={claimPath.length === 0}
+            disabled={submitting || claimPath.length === 0}
             className="flex-1 rounded-lg py-2.5 text-sm font-bold transition-all active:scale-95 disabled:opacity-40"
             style={{ background: "rgba(255,255,255,0.1)" }}
           >
@@ -78,7 +82,7 @@ export function ClaimBuilderBar({
           <button
             type="button"
             onClick={onClear}
-            disabled={claimPath.length === 0}
+            disabled={submitting || claimPath.length === 0}
             className="flex-1 rounded-lg py-2.5 text-sm font-bold transition-all active:scale-95 disabled:opacity-40"
             style={{ background: "rgba(255,255,255,0.1)" }}
           >
@@ -87,6 +91,7 @@ export function ClaimBuilderBar({
           <button
             type="button"
             onClick={onSkip}
+            disabled={submitting}
             className="flex-1 rounded-lg py-2.5 text-sm font-bold transition-all active:scale-95"
             style={{ background: "rgba(255,255,255,0.1)" }}
           >
@@ -103,7 +108,7 @@ export function ClaimBuilderBar({
             color: isNeon ? "#0f172a" : "#2B2118",
           }}
         >
-          {canSubmit ? `Claim "${letters}"` : `Need ${minWordLength}+ letters`}
+          {submitting ? "Waiting for server…" : canSubmit ? `Claim "${letters}"` : `Need ${minWordLength}+ letters`}
         </button>
       </div>
     </div>
@@ -111,6 +116,7 @@ export function ClaimBuilderBar({
 }
 
 export interface ClaimVotePromptProps {
+  submitting?: boolean;
   claimantName: string;
   word: string;
   onAccept: () => void;
@@ -124,15 +130,9 @@ export interface ClaimVotePromptProps {
  * dialog is warranted here too since, unlike a routine toast, a claim vote
  * blocks the whole table until it resolves.
  */
-export function ClaimVotePrompt({ claimantName, word, onAccept, onReject, isNeon }: ClaimVotePromptProps) {
+export function ClaimVotePrompt({ claimantName, word, onAccept, onReject, isNeon, submitting }: ClaimVotePromptProps) {
   return (
-    <div
-      className="fixed inset-0 z-40 flex items-end sm:items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.45)" }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Word claim decision"
-    >
+    <Modal open ariaLabel="Word claim decision" mobileSheet panelClassName="w-full max-w-sm">
       <div
         className="w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl"
         style={{
@@ -150,12 +150,13 @@ export function ClaimVotePrompt({ claimantName, word, onAccept, onReject, isNeon
           >
             {word}
           </p>
-          <p className="text-sm opacity-70">Is this a real word? Any one of you accepting scores it.</p>
+          <p className="text-sm opacity-70">Is this a real word? A strict majority of opponents must accept. A tied vote or silence does not score.</p>
         </div>
         <div className="flex flex-col gap-2">
           <button
             type="button"
             onClick={onAccept}
+            disabled={submitting}
             className="w-full rounded-lg py-3 font-bold text-white transition-all active:scale-95"
             style={{ background: "#16a34a" }}
           >
@@ -164,6 +165,7 @@ export function ClaimVotePrompt({ claimantName, word, onAccept, onReject, isNeon
           <button
             type="button"
             onClick={onReject}
+            disabled={submitting}
             className="w-full rounded-lg py-3 font-bold transition-all active:scale-95"
             style={{
               background: isNeon ? "rgba(255,255,255,0.08)" : "#F0E1D0",
@@ -174,7 +176,7 @@ export function ClaimVotePrompt({ claimantName, word, onAccept, onReject, isNeon
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

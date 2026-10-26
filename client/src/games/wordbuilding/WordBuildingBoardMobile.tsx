@@ -55,7 +55,7 @@ function useFitCellPx(size: number): number {
     };
   }, []);
   const cap = size === 8 ? 44 : 36;
-  const avail = Math.min(vw, 480) - 32;
+  const avail = Math.min(vw, 480) - 64;
   const raw = Math.floor((avail - (size - 1) * 2) / size);
   return Math.max(20, Math.min(cap, raw));
 }
@@ -105,7 +105,7 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
 
       {/* Main Container Card (For Notebook: Parchment Card with Top Spiral) */}
       <div
-        className={`relative z-10 w-full flex-1 flex flex-col rounded-3xl overflow-hidden shadow-2xl transition-all duration-300 ${
+        className={`relative z-10 w-full flex-1 min-h-0 flex flex-col rounded-3xl overflow-x-hidden overflow-y-auto shadow-2xl transition-all duration-300 ${
           m.isNeon
             ? "bg-[#090B20]/95 border-2 border-slate-800/90 shadow-[0_0_30px_rgba(56,189,248,0.12)] p-2 sm:p-3"
             : "bg-[#FCF8EE] border-2 border-[#D7C9B1] p-2 sm:p-3"
@@ -412,7 +412,11 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
               size={m.size}
               cellPx={cellPx}
               selected={m.selected}
-              canPlay={m.isClaimant ? true : m.canPlay}
+              previewLetter={m.previewLetter}
+              claimMode={m.isClaimant}
+              claimPath={m.claimPath}
+              anchor={m.pendingClaim?.anchor}
+              canPlay={m.isClaimant ? !m.submitting : m.canPlay}
               cellOverlays={m.cellOverlays}
               inkOf={m.inkOf}
               activePulse={m.activePulse}
@@ -432,7 +436,10 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
             >
               <LetterPad
                 onPick={m.placeLetter}
-                onCancel={() => m.setSelected(null)}
+                onCancel={m.cancelPlacement}
+                previewLetter={m.previewLetter}
+                onConfirm={m.confirmPlacement}
+                submitting={m.submitting}
                 isNeon={m.isNeon}
                 selectedCell={m.selected}
                 myTurn={m.myTurn}
@@ -456,6 +463,10 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
             </div>
           )}
         </main>
+        <div role="status" aria-live="polite" className="w-full rounded-xl bg-surface-1 text-ink-hi p-3 text-sm">
+          {m.error ?? state.lastNotice}
+          {state.options.matchLength === "quick" && <p>Quick Match · eight turns each · yours: {state.turnsTaken?.[props.selfId ?? ""] ?? 0}/8. Missed turns count.</p>}
+        </div>
 
         {/* ── 5. Info Banner ── */}
         <div className="w-full flex items-center justify-between text-xs px-2 my-1 text-stone-500 dark:text-slate-400">
@@ -677,6 +688,8 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
       {/* claimToScoreMode: identify my word, or vote on someone else's claim, or wait */}
       {m.isClaimant && (
         <ClaimBuilderBar
+          submitting={m.submitting}
+          error={m.error}
           claimPath={m.claimPath}
           board={state.board}
           minWordLength={state.options.minWordLength}
@@ -689,6 +702,7 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
       )}
       {m.isVoter && m.pendingClaim?.word && (
         <ClaimVotePrompt
+          submitting={m.submitting}
           claimantName={m.nameOf(m.pendingClaim.claimantId)}
           word={m.pendingClaim.word}
           onAccept={() => m.castVote("accept")}
@@ -711,4 +725,3 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
     </div>
   );
 }
-

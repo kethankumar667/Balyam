@@ -246,12 +246,14 @@ describe("WordBuildingEngine — vote resolution", () => {
     engine.applyMove({ playerId: "p1", type: "claimWord", data: { cells: [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 0, c: 2 }] } });
   }
 
-  it("a single accept resolves the claim immediately, even with other voters outstanding", () => {
+  it("requires both opponents to accept at a three-seat table", () => {
     const engine = makeEngine(3);
     openVote(engine);
     expect(pub(engine).pendingClaim?.voters).toEqual(["p2", "p3"]);
     const res = engine.applyMove({ playerId: "p2", type: "voteClaim", data: { decision: "accept" } });
     expect(res.ok).toBe(true);
+    expect(pub(engine).pendingClaim).not.toBeNull();
+    engine.applyMove({ playerId: "p3", type: "voteClaim", data: { decision: "accept" } });
     const s = pub(engine);
     expect(s.pendingClaim).toBeNull();
     expect(s.scores.p1).toBe(3);
@@ -300,7 +302,7 @@ describe("WordBuildingEngine — timeout behavior", () => {
     expect(engine.getTimeoutActor()).toBeNull(); // voting — no single forced actor
   });
 
-  it("resolvePendingClaimOnTimeout() resolves ACCEPTED even with a reject already recorded (silence leans toward acceptance)", () => {
+  it("resolvePendingClaimOnTimeout() rejects without a majority, even when an opponent stays silent", () => {
     const engine = makeEngine(3);
     place(engine, "p1", 0, 0, "C");
     place(engine, "p2", 5, 5, "Z");
@@ -316,8 +318,8 @@ describe("WordBuildingEngine — timeout behavior", () => {
     engine.resolvePendingClaimOnTimeout();
     const s = pub(engine);
     expect(s.pendingClaim).toBeNull();
-    expect(s.scores.p1).toBe(3);
-    expect(s.scoredWords.some((w) => w.word === "CAT")).toBe(true);
+    expect(s.scores.p1).toBe(0);
+    expect(s.scoredWords.some((w) => w.word === "CAT")).toBe(false);
   });
 
   it("resolvePendingClaimOnTimeout() is a no-op when nothing is pending, or a claim is still collecting", () => {

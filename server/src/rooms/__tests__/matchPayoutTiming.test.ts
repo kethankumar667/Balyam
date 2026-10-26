@@ -3,7 +3,7 @@ import type { Server } from "socket.io";
 import { RoomManager, type Room } from "../RoomManager.js";
 import { EconomyService } from "../../economy/EconomyService.js";
 import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
-import type { AccountKind, ClientToServerEvents, GameKind, ServerToClientEvents } from "@shared/types.js";
+import type { AccountKind, ClientToServerEvents, GameKind, ServerToClientEvents, WordBuildingPublicState } from "@shared/types.js";
 
 /**
  * A finished paid match must credit the winner promptly — not on the next
@@ -37,7 +37,7 @@ function createRoomAs(rooms: RoomManager, socketId: string, name: string, game: 
 
 const MEMBER_C = "cccccccc-1111-2222-3333-444444444444";
 
-async function startPaidMatch(withThirdMember = false) {
+async function startPaidMatch(withThirdMember = false, game: GameKind = "dotsboxes") {
   const repo = new InMemoryEconomyRepository();
   const service = new EconomyService(repo, { delay: async () => undefined });
   for (const id of [MEMBER_A, MEMBER_B, MEMBER_C, STRANGER]) {
@@ -45,7 +45,7 @@ async function startPaidMatch(withThirdMember = false) {
   }
   const rooms = new RoomManager(makeIo(), service);
   rooms.startEconomyRecovery(); // exactly what index.ts does in production
-  const host = createRoomAs(rooms, "s_a", "Alice", "dotsboxes", "member", MEMBER_A);
+  const host = createRoomAs(rooms, "s_a", "Alice", game, "member", MEMBER_A);
   const joined = rooms.joinRoom("s_b", "Bob", host.code, undefined, undefined, undefined, "member", MEMBER_B);
   expect(joined.ok).toBe(true);
   let thirdPlayerId = "";
@@ -107,6 +107,21 @@ describe("paid match payout timing — Dots & Boxes, two signed-in members", () 
   const balances = async (service: EconomyService) => ({
     a: (await service.getWallet(MEMBER_A)).balance,
     b: (await service.getWallet(MEMBER_B)).balance,
+  });
+
+  it("refunds a tied Word Building table promptly and exactly once, without crowning a seat", async () => {
+    const { rooms, room, service, hostId, joinerId, matchId } = await startPaidMatch(false, "wordbuilding");
+    const sockets = { [hostId]: "s_a", [joinerId]: "s_b" };
+    for (let i = 0; i < 100; i++) {
+      const state = room.engine!.getPublicState() as WordBuildingPublicState;
+      await rooms.applyMove(sockets[state.turnPlayerId], "place", { r: Math.floor(i / 10), c: i % 10, letter: "Q" });
+    }
+    expect((room.engine!.getPublicState() as WordBuildingPublicState).winnerId).toBeNull();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(await balances(service)).toEqual({ a: STAKE_BALANCE, b: STAKE_BALANCE });
+    expect((await service.getSettlement(matchId))?.status).toBe("REFUNDED");
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(await balances(service)).toEqual({ a: STAKE_BALANCE, b: STAKE_BALANCE });
   });
 
   it.each([

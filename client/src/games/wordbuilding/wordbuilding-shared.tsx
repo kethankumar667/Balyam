@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import Modal from "../../components/Modal";
 import { motion, AnimatePresence } from "framer-motion";
 import type {
   Player,
@@ -230,12 +231,22 @@ export function Grid({
   hintCells,
   onPickCell,
   isNeon,
+  claimMode = false,
+  claimPath = [],
+  anchor,
+  previewLetter,
+  allowZoom = true,
 }: {
   board: string[][];
   size: number;
   cellPx: number;
   selected: { r: number; c: number } | null;
   canPlay: boolean;
+  claimMode?: boolean;
+  claimPath?: Array<{ r: number; c: number }>;
+  anchor?: { r: number; c: number };
+  previewLetter?: string | null;
+  allowZoom?: boolean;
   cellOverlays: Map<string, WordBuildingScoredWord[]>;
   inkOf: Record<string, Ink>;
   /** Word whose cells should pulse-highlight right now (or null). */
@@ -245,6 +256,7 @@ export function Grid({
   onPickCell: (r: number, c: number) => void;
   isNeon?: boolean;
 }) {
+  const [zoomOpen, setZoomOpen] = useState(false);
   // Cell key set for the pulsing word — used inside the cell render to overlay
   // the brief highlight. Memoised so an unrelated re-render (timer tick, hover)
   // doesn't rebuild the set; only changes when the pulsing word changes.
@@ -254,6 +266,26 @@ export function Grid({
   );
   const pulseInk = activePulse ? inkOf[activePulse.scorerId] : null;
   return (
+    <div className="min-w-0 max-w-full flex flex-col items-center">
+      {allowZoom && cellPx < 44 && (
+        <button type="button" onClick={() => setZoomOpen(true)} className="min-h-11 rounded-lg px-3 mb-1 bg-surface-1 text-ink-hi border border-ink-mute text-sm font-semibold">
+          Enlarge board · easier selection
+        </button>
+      )}
+      {allowZoom && (
+        <Modal open={zoomOpen} onClose={() => setZoomOpen(false)} ariaLabel="Enlarged Word Building board" mobileSheet panelClassName="w-full max-w-xl bg-surface-0 text-ink-hi p-3">
+          <p className="text-sm mb-2">Scroll the board to reach every cell. {claimMode ? "Select letters in word order, then return to claim." : "Choose a cell, then return to preview a letter."}</p>
+          <div className="overflow-auto max-h-[65dvh]" tabIndex={0} role="region" aria-label="Scrollable enlarged board">
+            <div className="w-max">
+              <Grid board={board} size={size} cellPx={44} selected={selected} canPlay={canPlay}
+                cellOverlays={cellOverlays} inkOf={inkOf} activePulse={activePulse}
+                hintCells={hintCells} onPickCell={onPickCell} isNeon={isNeon}
+                claimMode={claimMode} claimPath={claimPath} anchor={anchor} previewLetter={previewLetter} allowZoom={false} />
+            </div>
+          </div>
+          <button type="button" onClick={() => setZoomOpen(false)} className="min-h-11 w-full mt-2 rounded-lg bg-brand-500 text-white font-bold">Return to controls</button>
+        </Modal>
+      )}
     <div
       className="relative inline-block rounded-2xl transition-colors duration-300"
       style={{
@@ -278,6 +310,8 @@ export function Grid({
             const overlays = cellOverlays.get(k) ?? [];
             const filled = cell !== "";
             const isSel = selected?.r === r && selected?.c === c;
+            const pathIndex = claimPath.findIndex(cell => cell.r === r && cell.c === c);
+            const isAnchor = anchor?.r === r && anchor?.c === c;
             const isHint = hintCells?.has(k) ?? false;
             const lastOverlay = overlays[overlays.length - 1];
             const inkOwner = lastOverlay?.scorerId ? inkOf[lastOverlay.scorerId] : null;
@@ -286,12 +320,13 @@ export function Grid({
                 key={k}
                 type="button"
                 onClick={() => onPickCell(r, c)}
-                disabled={!canPlay || filled}
-                className="relative flex items-center justify-center transition"
+                disabled={!canPlay || (claimMode ? !filled : filled)}
+                aria-pressed={claimMode ? pathIndex >= 0 : isSel}
+                className="relative flex items-center justify-center transition focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:z-10"
                 style={{
                   width: cellPx,
                   height: cellPx,
-                  background: isSel
+                  background: isSel || pathIndex >= 0
                     ? isNeon ? "rgba(224, 242, 254, 0.95)" : "rgba(251,191,36,0.55)"
                     : filled
                     ? isNeon
@@ -300,18 +335,18 @@ export function Grid({
                     : isNeon
                     ? "rgba(255, 255, 255, 0.95)"
                     : "rgba(255,255,255,0.55)",
-                  border: isSel
+                  border: isSel || isAnchor
                     ? isNeon ? "2px dashed #0284c7" : "1.5px dashed #b45309"
                     : isNeon
                     ? "1px solid rgba(203, 213, 225, 0.8)"
                     : "1px solid rgba(120,82,40,0.18)",
-                  cursor: canPlay && !filled ? "pointer" : "default",
+                  cursor: canPlay && (claimMode ? filled : !filled) ? "pointer" : "default",
                   outline: isHint ? (isNeon ? "2.5px solid #0284c7" : "2.5px solid #E6A11E") : undefined,
                   outlineOffset: isHint ? 1 : undefined,
                   fontFamily: "'Caveat', 'Patrick Hand', cursive",
                   fontSize: cellPx * 0.62,
                   lineHeight: 1,
-                  color: filled
+                  color: filled || isSel && previewLetter
                     ? overlays.length > 0
                       ? (lastOverlay?.scorerId && inkOf[lastOverlay.scorerId]?.inkColor) || "#0f172a"
                       : "#0f172a"
@@ -336,7 +371,8 @@ export function Grid({
                   >
                     {cell}
                   </motion.span>
-                ) : null}
+                ) : isSel && previewLetter ? <span className="opacity-60">{previewLetter}</span> : null}
+                {pathIndex >= 0 && <span className="absolute -top-1 -right-1 rounded-full bg-blue-800 text-white text-[10px] px-1">{pathIndex + 1}</span>}
                 {/* Brief celebration pulse over freshly-scored cells. Pointer
                     events disabled so it never blocks the next placement. */}
                 {pulseCells.has(k) && pulseInk && (
@@ -382,6 +418,7 @@ export function Grid({
           }),
         )}
       </div>
+    </div>
     </div>
   );
 }
@@ -570,6 +607,9 @@ export function LetterPad({
   myTurn = true,
   disabled,
   alwaysOpen,
+  previewLetter,
+  onConfirm,
+  submitting,
 }: {
   onPick: (letter: string) => void;
   onCancel?: () => void;
@@ -578,6 +618,9 @@ export function LetterPad({
   myTurn?: boolean;
   disabled?: boolean;
   alwaysOpen?: boolean;
+  previewLetter?: string | null;
+  onConfirm?: () => void;
+  submitting?: boolean;
 }) {
   const isCellPicked = myTurn && !!selectedCell;
   const isOpponentTurn = !myTurn || disabled;
@@ -587,20 +630,21 @@ export function LetterPad({
     <div className="w-full flex flex-col items-center gap-1.5 select-none">
       {/* Header Guidance Banner */}
       <div className="text-xs sm:text-sm font-bold tracking-wide flex items-center justify-between w-full px-1">
-        {isOpponentTurn ? (
+        {submitting ? <span className={isNeon ? "text-cyan-300" : "text-blue-800"}>Waiting for server confirmation…</span> : isOpponentTurn ? (
           <span className={isNeon ? "text-slate-500" : "text-stone-400"}>
             🔒 Opponent's Turn — Waiting for move...
           </span>
         ) : isCellPicked ? (
           <div className="flex items-center justify-between w-full">
             <span className={isNeon ? "text-cyan-300 font-extrabold" : "text-[#1E3A8A] font-extrabold"}>
-              🎯 Cell ({selectedCell.r + 1}, {selectedCell.c + 1}) selected — Tap a letter to write:
+              Cell ({selectedCell.r + 1}, {selectedCell.c + 1}) — choose a letter to preview
             </span>
             {onCancel && (
               <button
                 type="button"
                 onClick={onCancel}
-                className={`px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wider transition active:scale-95 cursor-pointer ${
+                disabled={submitting}
+                className={`min-h-11 px-2 rounded text-[11px] font-black uppercase tracking-wider transition active:scale-95 cursor-pointer ${
                   isNeon
                     ? "bg-rose-950/60 text-rose-300 hover:bg-rose-900 border border-rose-800/60"
                     : "bg-rose-100 text-rose-800 hover:bg-rose-200 border border-rose-300"
@@ -618,9 +662,9 @@ export function LetterPad({
       </div>
 
       {/* Keyboard Grid */}
-      <div className="flex flex-col items-center gap-1.5 w-full">
+      <div className="grid grid-cols-5 min-[360px]:grid-cols-6 sm:grid-cols-[repeat(9,minmax(0,1fr))] gap-1 w-full max-w-lg">
         {LETTER_PAD_ROWS.map((row) => (
-          <div key={row} className="flex gap-1 sm:gap-1.5 justify-center w-full">
+          <div key={row} className="contents">
             {row.split("").map((L) => {
               // 3 distinct color states:
               // 1. Opponent turn: muted disabled styling
@@ -674,8 +718,8 @@ export function LetterPad({
                       : ""
                   }`}
                   style={{
-                    width: 34,
-                    height: 38,
+                    minWidth: 44,
+                    height: 44,
                     background: btnBg,
                     border: btnBorder,
                     borderRadius: 6,
@@ -693,6 +737,13 @@ export function LetterPad({
           </div>
         ))}
       </div>
+      {onConfirm && (
+            <button type="button" disabled={!previewLetter || !selectedCell || disabled || submitting}
+              onClick={onConfirm}
+              className="min-h-11 w-full rounded-lg bg-brand-500 text-white px-3 font-bold disabled:opacity-50">
+              {submitting ? "Waiting for server…" : previewLetter ? `Place ${previewLetter} · Enter` : "Preview a letter, then Place"}
+            </button>
+      )}
     </div>
   );
 }
@@ -757,19 +808,21 @@ export function VocabularyFoundCard({
                   border: isNeon ? "1px solid rgba(56,189,248,0.15)" : "1px solid rgba(120,82,40,0.12)",
                 }}
               >
-                <div className="flex items-baseline gap-2 min-w-0">
+                <div className="min-w-0 flex-1">
                   <span
-                    className="font-black text-xl truncate"
+                    className="block font-black text-xl break-words"
                     style={{ color: getInkDisplayColor(ink, isNeon) }}
                   >
                     {w.word}
                   </span>
-                  <span className="text-xs truncate" style={{ color: isNeon ? "#94a3b8" : "#7a6651" }}>
+                  <span className="block text-xs break-words" style={{ color: isNeon ? "#94a3b8" : "#7a6651" }}>
                     — {nameOf(w.scorerId)} ({w.orientation})
+                    {w.contributorIds && w.contributorIds.filter(id => id !== w.scorerId).length > 0 &&
+                      <span className="block">Letters also by {w.contributorIds.filter(id => id !== w.scorerId).map(nameOf).join(", ")} · credit: completer</span>}
                   </span>
                 </div>
                 <span
-                  className="font-black text-lg px-2 py-0.2 rounded-md"
+                  className="shrink-0 font-black text-lg px-2 py-0.2 rounded-md"
                   style={{
                     color: isNeon ? "#38bdf8" : "#b45309",
                     background: isNeon ? "rgba(56,189,248,0.15)" : "rgba(180,83,9,0.1)",
@@ -815,14 +868,7 @@ export function ReportCardOverlay({
   );
   const totalWords = state.scoredWords.length;
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4"
-      style={{ background: "rgba(0,0,0,0.55)" }}
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Word Building report card"
-    >
+    <Modal open onClose={onClose} ariaLabel="Word Building report card" mobileSheet panelClassName="w-full max-w-md">
       <motion.div
         initial={{ scale: 0.85, opacity: 0, rotate: -2 }}
         animate={{ scale: 1, opacity: 1, rotate: 0 }}
@@ -850,8 +896,8 @@ export function ReportCardOverlay({
           aria-label="Close report card"
           className="absolute right-2 top-2 rounded-full transition active:translate-y-px"
           style={{
-            width: 30,
-            height: 30,
+            width: 44,
+            height: 44,
             background: "rgba(124,45,18,0.12)",
             border: "1px solid rgba(124,45,18,0.4)",
             color: "#7c2d12",
@@ -868,7 +914,7 @@ export function ReportCardOverlay({
           ×
         </button>
         <div
-          className="text-center mb-2"
+          className="text-center mb-2 pr-8"
           style={{
             fontSize: 28,
             color: "#7c2d12",
@@ -879,9 +925,9 @@ export function ReportCardOverlay({
           ★ Vocabulary Report Card ★
         </div>
         <div className="text-center mb-3" style={{ fontSize: 20, color: "#1e3a8a" }}>
-          Class Topper:{" "}
+          {champ ? "Class Topper: " : "Draw: "}
           <span style={{ color: champ ? inkOf[champ]?.inkColor : "#1e3a8a", fontWeight: 800 }}>
-            {champ ? nameOf(champ) : "—"}
+            {champ ? nameOf(champ) : "Joint highest score"}
           </span>
         </div>
         <Row label="Total Words Found" value={String(totalWords)} />
@@ -901,9 +947,9 @@ export function ReportCardOverlay({
         </div>
         <ol className="space-y-0.5 mt-1">
           {standings.map((s, i) => (
-            <li key={s.pid} className="flex justify-between" style={{ fontSize: 20 }}>
+            <li key={s.pid} className="flex justify-between" style={{ fontSize: 20, color: "#7c2d12" }}>
               <span>
-                {i + 1}.{" "}
+                {standings.findIndex(other => other.score === s.score) + 1}.{" "}
                 <span style={{ color: inkOf[s.pid]?.inkColor, fontWeight: 700 }}>
                   {nameOf(s.pid)}
                 </span>
@@ -947,7 +993,7 @@ export function ReportCardOverlay({
           </div>
         </div>
       </motion.div>
-    </div>
+    </Modal>
   );
 }
 
@@ -1005,17 +1051,22 @@ export function WorkbookBoard({
           size={m.size}
           cellPx={cellPx}
           selected={m.selected}
-          canPlay={m.canPlay}
+          previewLetter={m.previewLetter}
+          claimMode={m.isClaimant}
+          claimPath={m.claimPath}
+          anchor={m.pendingClaim?.anchor}
+          canPlay={m.isClaimant ? !m.submitting : m.canPlay}
           cellOverlays={m.cellOverlays}
           inkOf={m.inkOf}
           activePulse={m.activePulse}
-          onPickCell={m.pickCell}
+          onPickCell={m.isClaimant ? m.tapClaimCell : m.pickCell}
           isNeon={m.isNeon}
         />
 
         {/* Letter input — keyboard on desktop, on-screen for mobile */}
         {m.canPlay && m.selected && (
-          <LetterPad onPick={m.placeLetter} onCancel={() => m.setSelected(null)} isNeon={m.isNeon} />
+          <LetterPad onPick={m.placeLetter} onCancel={m.cancelPlacement} isNeon={m.isNeon}
+            selectedCell={m.selected} previewLetter={m.previewLetter} onConfirm={m.confirmPlacement} submitting={m.submitting} />
         )}
         {!m.myTurn && state.phase === "playing" && (
           <div className="mt-3 transition-colors duration-300" style={{ color: m.isNeon ? "#94a3b8" : "#7a6651", fontSize: 22 }}>
