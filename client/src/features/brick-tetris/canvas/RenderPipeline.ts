@@ -85,7 +85,7 @@ export class RenderPipeline {
       { length: BOARD_HEIGHT },
       (_, r) =>
         Array.from({ length: BOARD_WIDTH }, (_, c) => ({
-          val: params.board[r]?.[c] ?? 0,
+          val: params.board[r]?.[c] ? 1 : 0,
           ghost: false,
           clear: params.clearingLines.includes(r),
         })),

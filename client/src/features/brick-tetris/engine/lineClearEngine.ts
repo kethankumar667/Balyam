@@ -2,13 +2,13 @@ import type { BoardMatrix, CellValue } from "../types";
 import { BOARD_HEIGHT, BOARD_WIDTH } from "../constants/gameConstants";
 
 /**
- * Finds all row indices that are fully populated (all 1s).
+ * Finds all row indices that are fully populated.
  */
 export function getCompletedLines(board: BoardMatrix): number[] {
   const completed: number[] = [];
 
   for (let r = 0; r < BOARD_HEIGHT; r++) {
-    if (board[r].every((cell) => cell === 1)) {
+    if (board[r].every((cell) => cell !== 0)) {
       completed.push(r);
     }
   }

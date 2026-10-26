@@ -28,6 +28,7 @@ import {
   SOFT_DROP_POINT_PER_CELL,
   HARD_DROP_POINT_PER_CELL,
 } from "../constants/scoringConstants";
+import { dailySeed } from "../arcade/rules";
 
 export function createInitialState(savedHighScore = 0, initialMode: GameMode = "CLASSIC"): GameState {
   const seed = Date.now();
@@ -35,6 +36,13 @@ export function createInitialState(savedHighScore = 0, initialMode: GameMode = "
   const bag = generateShuffledBag(initialMode, rng);
 
   return {
+    challenge: initialMode === "PENTIX" ? "pentix" : "marathon",
+    elapsedMs: 0,
+    piecesPlaced: 0,
+    outcome: null,
+    pausedFrom: "playing",
+    practiceSpeed: 1000,
+    dailyDate: null,
     status: "boot",
     mode: initialMode,
     board: createEmptyBoard(),
@@ -64,7 +72,7 @@ export function createInitialState(savedHighScore = 0, initialMode: GameMode = "
       arrMs: DEFAULT_ARR_MS,
       garbageRowsEnabled: false,
     },
-    rngSeed: seed,
+    rngSeed: (seed + 0x6d2b79f5) >>> 0,
     bag,
     garbageAccumulatorMs: 0,
     selectedMenuItem: 0,
@@ -78,7 +86,7 @@ function refillBagIfNeeded(bag: PieceType[], mode: GameMode, rng: () => number):
   return bag;
 }
 
-export function gameReducer(state: GameState, action: GameAction): GameState {
+function reduceGame(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case "TICK": {
       const { deltaMs } = action.payload;
@@ -158,7 +166,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       }
 
       // Compute current gravity speed
-      const baseSpeed = BASE_GRAVITY_BY_LEVEL[state.level] ?? 40;
+      const baseSpeed = state.challenge === "practice" ? state.practiceSpeed : BASE_GRAVITY_BY_LEVEL[state.level] ?? 40;
       const gravityInterval = state.isSoftDropping ? Math.max(25, baseSpeed / 16) : baseSpeed;
 
       let newGravityAccumulator = state.gravityAccumulatorMs + deltaMs;
@@ -459,14 +467,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "PAUSE_TOGGLE": {
-      if (state.status === "playing") return { ...state, status: "paused" };
-      if (state.status === "paused") return { ...state, status: "playing" };
+      if (state.status === "playing" || state.status === "line-clearing") return { ...state, status: "paused", pausedFrom: state.status, isSoftDropping: false };
+      if (state.status === "paused") return { ...state, status: state.pausedFrom };
       return state;
     }
 
     case "START_GAME": {
-      const mode = action.payload?.mode ?? state.mode;
-      const seed = Date.now();
+      const challenge = action.payload?.challenge ?? (action.payload?.mode === "PENTIX" ? "pentix" : "marathon");
+      const mode = challenge === "pentix" ? "PENTIX" : action.payload?.mode ?? "CLASSIC";
+      const seed = action.payload?.seed ?? Date.now();
       const rng = mulberry32(seed);
       let bag = generateShuffledBag(mode, rng);
 
@@ -484,12 +493,16 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         activePiece: createActivePiece(firstPieceType),
         nextQueue,
         bag,
-        rngSeed: seed,
+        rngSeed: (seed + 0x6d2b79f5) >>> 0,
+        challenge,
+        practiceSpeed: action.payload?.practiceSpeed ?? 1000,
+        dailyDate: action.payload?.dailyDate ?? null,
+        settings: state.settings,
       };
     }
 
     case "RESTART_GAME": {
-      return gameReducer(state, { type: "START_GAME", payload: { mode: state.mode } });
+      return gameReducer(state, { type: "START_GAME", payload: { mode: state.mode, challenge: state.challenge, practiceSpeed: state.practiceSpeed, seed: state.dailyDate ? dailySeed(state.dailyDate) : undefined, dailyDate: state.dailyDate ?? undefined } });
     }
 
     case "NAVIGATE_MENU": {
@@ -562,4 +575,38 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     default:
       return state;
   }
+}
+
+/** Track mode goals separately from the shared movement/rotation rules. */
+export function gameReducer(state: GameState, action: GameAction): GameState {
+  if (action.type === "RESTORE_GAME") return { ...action.payload, status: "paused", isSoftDropping: false };
+  const running = state.status === "playing" || state.status === "line-clearing";
+  const timed = state.challenge === "attack" || state.challenge === "sprint" || state.challenge === "daily";
+  let input = state;
+  if (action.type === "TICK") {
+    if (!Number.isFinite(action.payload.deltaMs) || action.payload.deltaMs < 0) return state;
+    if (running || (timed && state.status === "paused")) {
+      input = { ...state, elapsedMs: state.elapsedMs + action.payload.deltaMs };
+    }
+    const remaining = state.challenge === "attack" ? Math.max(0, 120000 - state.elapsedMs) : Infinity;
+    action = { ...action, payload: { deltaMs: Math.min(100, remaining, action.payload.deltaMs) } };
+  }
+  let next = reduceGame(input, action);
+  if (next.bag.length > state.bag.length && action.type !== "START_GAME") {
+    next = { ...next, rngSeed: (state.rngSeed + 0x6d2b79f5) >>> 0 };
+  }
+  if (running && next.board !== state.board && !state.clearingLines.length &&
+      (next.status === "line-clearing" || next.activePiece !== state.activePiece)) {
+    next = { ...next, piecesPlaced: state.piecesPlaced + 1 };
+  }
+  const reachedLines = (next.challenge === "sprint" || next.challenge === "daily") && next.linesCleared >= 40;
+  const reachedTime = next.challenge === "attack" && next.elapsedMs >= 120000;
+  if ((running || state.status === "paused") && (reachedLines || reachedTime)) {
+    if (reachedTime && next.clearingLines.length) {
+      next = reduceGame({ ...next, status: "line-clearing" }, { type: "TICK", payload: { deltaMs: LINE_CLEAR_ANIMATION_MS } });
+    }
+    return { ...next, elapsedMs: reachedTime ? 120000 : next.elapsedMs, status: "game-over", outcome: "complete", isSoftDropping: false };
+  }
+  if (next.status === "game-over" && !next.outcome) next = { ...next, outcome: "top-out" };
+  return next;
 }

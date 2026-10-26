@@ -28,7 +28,7 @@ export function checkCollision(
         }
 
         // Check locked cell on board (ignore cells above ceiling)
-        if (boardY >= 0 && board[boardY][boardX] === 1) {
+        if (boardY >= 0 && board[boardY][boardX] !== 0) {
           return true;
         }
       }

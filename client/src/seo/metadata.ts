@@ -693,9 +693,9 @@ const RAW_PUBLIC_ROUTES_METADATA: Record<string, RouteMetadata> = {
   },
   "/brickblocks": {
     path: "/brickblocks",
-    title: "Brick Blocks 9999-in-1 | Retro Handheld Falling Blocks — BHALYAM",
+    title: "Brick Blocks Color Arcade | Falling Blocks Puzzle — BHALYAM",
     description:
-      "Stack blocks, clear lines, and test your reflexes in authentic 90s handheld 9999-in-1 brick game console simulation.",
+      "Stack colorful blocks in Marathon, Pentix, 40-line Sprint, Score Attack, Free Play and a daily seeded challenge. Play on mobile or desktop in light and dark modes.",
     keywords: [
       "brick blocks",
       "9999 in 1 brick game",
@@ -704,9 +704,9 @@ const RAW_PUBLIC_ROUTES_METADATA: Record<string, RouteMetadata> = {
       "retro block stacker",
     ],
     canonical: `${BASE_URL}/brickblocks`,
-    ogTitle: "Brick Blocks 9999-in-1 | Retro Handheld Falling Blocks — BHALYAM",
+    ogTitle: "Brick Blocks Color Arcade | Falling Blocks Puzzle — BHALYAM",
     ogDescription:
-      "Play classic 90s handheld brick console Brick Blocks. Stack falling shapes and clear rows.",
+      "Six ways to stack colorful shapes, clear rows and beat your device-local personal best.",
     ogImage: `${BASE_URL}/og/brickblocks.jpg`,
     ogImageWidth: "800",
     ogImageHeight: "800",
@@ -718,9 +718,9 @@ const RAW_PUBLIC_ROUTES_METADATA: Record<string, RouteMetadata> = {
     twitterCard: "summary_large_image",
     twitterSite: DEFAULT_TWITTER_HANDLE,
     twitterCreator: DEFAULT_TWITTER_HANDLE,
-    twitterTitle: "Brick Blocks 9999-in-1 | Retro Handheld Falling Blocks — BHALYAM",
+    twitterTitle: "Brick Blocks Color Arcade | Falling Blocks Puzzle — BHALYAM",
     twitterDescription:
-      "Stack falling blocks and clear rows in authentic 90s handheld LCD arcade style.",
+      "Colorful falling blocks with six solo modes, customizable controls, and light and dark themes.",
     twitterImage: `${BASE_URL}/og/brickblocks.jpg`,
     twitterImageAlt: "Brick Blocks 9999-in-1 Handheld Falling Blocks Puzzle",
   },

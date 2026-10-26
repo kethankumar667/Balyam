@@ -1,6 +1,23 @@
 class BrickTetrisAudioService {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = false;
+  private output: GainNode | null = null;
+  private volume = 0.5;
+
+  public setVolume(volume: number): void {
+    this.volume = Math.max(0, Math.min(1, volume));
+    if (this.output) this.output.gain.value = this.volume;
+  }
+
+  private destination(ctx: AudioContext): GainNode {
+    if (!this.output) {
+      this.output = ctx.createGain();
+      this.output.gain.value = this.volume;
+      this.output.connect(ctx.destination);
+    }
+    if (ctx.state === "suspended") void ctx.resume().catch(error => console.warn("Brick Blocks audio could not resume.", error));
+    return this.output;
+  }
 
   private initCtx(): AudioContext | null {
     if (this.ctx) return this.ctx;
@@ -36,7 +53,7 @@ class BrickTetrisAudioService {
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.02);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(this.destination(ctx));
 
       osc.start();
       osc.stop(ctx.currentTime + 0.02);
@@ -62,7 +79,7 @@ class BrickTetrisAudioService {
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.03);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(this.destination(ctx));
 
       osc.start();
       osc.stop(ctx.currentTime + 0.03);
@@ -88,7 +105,7 @@ class BrickTetrisAudioService {
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(this.destination(ctx));
 
       osc.start();
       osc.stop(ctx.currentTime + 0.06);
@@ -114,7 +131,7 @@ class BrickTetrisAudioService {
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(this.destination(ctx));
 
       osc.start();
       osc.stop(ctx.currentTime + 0.05);
@@ -147,7 +164,7 @@ class BrickTetrisAudioService {
 
       osc1.connect(gain);
       osc2.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(this.destination(ctx));
 
       osc1.start(now);
       osc2.start(now + 0.03);
@@ -177,7 +194,7 @@ class BrickTetrisAudioService {
         gain.gain.exponentialRampToValueAtTime(0.001, start + 0.1);
 
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(this.destination(ctx));
 
         osc.start(start);
         osc.stop(start + 0.1);
@@ -206,7 +223,7 @@ class BrickTetrisAudioService {
         gain.gain.exponentialRampToValueAtTime(0.001, start + 0.15);
 
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(this.destination(ctx));
 
         osc.start(start);
         osc.stop(start + 0.15);
@@ -235,7 +252,7 @@ class BrickTetrisAudioService {
         gain.gain.exponentialRampToValueAtTime(0.001, start + 0.12);
 
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(this.destination(ctx));
 
         osc.start(start);
         osc.stop(start + 0.12);
@@ -262,7 +279,7 @@ class BrickTetrisAudioService {
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.015);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(this.destination(ctx));
 
       osc.start();
       osc.stop(ctx.currentTime + 0.015);

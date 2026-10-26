@@ -329,6 +329,13 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     isPersonalData: false,
   },
   {
+    key: "bhalyam_brick_tetris_save_v1",
+    label: "Brick Blocks records and saved run",
+    description: "Device-local scores and dates, separate solo-mode records, one resumable untimed board, daily challenge date, keyboard bindings, sound volume and visual-effects settings. Existing Classic and Pentix records stay in the same save.",
+    purpose: "progress",
+    isPersonalData: false,
+  },
+  {
     key: "bhalyam.scorecards.outbox",
     label: "Scores waiting to reach your account",
     description:

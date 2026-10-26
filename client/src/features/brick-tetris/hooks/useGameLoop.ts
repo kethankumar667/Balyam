@@ -11,7 +11,7 @@ export function useGameLoop(
   useEffect(() => {
     // Auto-pause when tab is hidden
     const handleVisibilityChange = () => {
-      if (document.hidden && status === "playing") {
+      if (document.hidden && (status === "playing" || status === "line-clearing")) {
         dispatch({ type: "PAUSE_TOGGLE" });
       }
     };
@@ -21,7 +21,7 @@ export function useGameLoop(
   }, [status, dispatch]);
 
   useEffect(() => {
-    if (status !== "playing" && status !== "line-clearing") {
+    if (status !== "playing" && status !== "line-clearing" && status !== "paused") {
       lastTimeRef.current = null;
       if (rafIdRef.current) {
         cancelAnimationFrame(rafIdRef.current);
@@ -35,7 +35,7 @@ export function useGameLoop(
         lastTimeRef.current = timestamp;
       }
 
-      const deltaMs = Math.min(100, timestamp - lastTimeRef.current);
+      const deltaMs = Math.max(0, timestamp - lastTimeRef.current);
       lastTimeRef.current = timestamp;
 
       dispatch({ type: "TICK", payload: { deltaMs } });
@@ -50,7 +50,6 @@ export function useGameLoop(
         cancelAnimationFrame(rafIdRef.current);
         rafIdRef.current = null;
       }
-      lastTimeRef.current = null;
     };
   }, [status, dispatch]);
 }

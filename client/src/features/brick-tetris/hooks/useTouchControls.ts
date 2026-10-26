@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
 import type { GameAction, GameState } from "../types";
-import { tetrisAudio } from "../services/audioService";
 
 export function useTouchControls(
   state: GameState,
   dispatch: React.Dispatch<GameAction>,
   containerRef: React.RefObject<HTMLDivElement>,
+  layoutKey?: string,
 ) {
   const startXRef = useRef<number | null>(null);
   const startYRef = useRef<number | null>(null);
@@ -39,6 +39,7 @@ export function useTouchControls(
 
     const handleTouchMove = (e: TouchEvent) => {
       if (state.status !== "playing" || startXRef.current === null || startYRef.current === null) return;
+      e.preventDefault();
       const touch = e.touches[0];
       const deltaX = touch.clientX - (lastXRef.current ?? startXRef.current);
       const deltaY = touch.clientY - startYRef.current;
@@ -48,10 +49,8 @@ export function useTouchControls(
         didMoveXRef.current = true;
         if (deltaX < 0) {
           dispatch({ type: "MOVE_LEFT" });
-          tetrisAudio.playMove();
         } else {
           dispatch({ type: "MOVE_RIGHT" });
-          tetrisAudio.playMove();
         }
         lastXRef.current = touch.clientX;
       }
@@ -73,11 +72,9 @@ export function useTouchControls(
       // Tap-to-rotate: Only if NO horizontal movement happened, minimal displacement, and quick tap (< 300ms)
       if (!didMoveXRef.current && Math.abs(totalDeltaX) < 12 && Math.abs(totalDeltaY) < 12 && elapsed < 300) {
         dispatch({ type: "ROTATE_CW" });
-        tetrisAudio.playRotate();
       } else if (totalDeltaY < -50 && Math.abs(totalDeltaX) < 40) {
         // Quick swipe up -> Hard drop
         dispatch({ type: "HARD_DROP" });
-        tetrisAudio.playHardDrop();
       }
 
       startXRef.current = null;
@@ -87,13 +84,20 @@ export function useTouchControls(
     };
 
     el.addEventListener("touchstart", handleTouchStart, { passive: true });
-    el.addEventListener("touchmove", handleTouchMove, { passive: true });
+    el.addEventListener("touchmove", handleTouchMove, { passive: false });
     el.addEventListener("touchend", handleTouchEnd, { passive: true });
+    const cancel = () => {
+      startXRef.current = null;
+      startYRef.current = null;
+      dispatch({ type: "SOFT_DROP_END" });
+    };
+    el.addEventListener("touchcancel", cancel);
 
     return () => {
       el.removeEventListener("touchstart", handleTouchStart);
       el.removeEventListener("touchmove", handleTouchMove);
       el.removeEventListener("touchend", handleTouchEnd);
+      el.removeEventListener("touchcancel", cancel);
     };
-  }, [state.status, dispatch, containerRef]);
+  }, [state.status, dispatch, containerRef, layoutKey]);
 }

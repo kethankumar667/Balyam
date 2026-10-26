@@ -1,6 +1,6 @@
 import type { BrickTetrisSaveData, GameMode, HighScoreEntry } from "../types";
 
-const STORAGE_KEY = "bhalyam_brick_tetris_save_v1";
+export const STORAGE_KEY = "bhalyam_brick_tetris_save_v1";
 
 const DEFAULT_SAVE_DATA: BrickTetrisSaveData = {
   highScores: [],
@@ -17,6 +17,7 @@ export function loadTetrisData(): BrickTetrisSaveData {
     if (!raw) return DEFAULT_SAVE_DATA;
     const parsed = JSON.parse(raw);
     return {
+      arcade: parsed.arcade,
       highScores: Array.isArray(parsed.highScores) ? parsed.highScores : [],
       totalMatches: typeof parsed.totalMatches === "number" ? parsed.totalMatches : 0,
       totalLinesCleared: typeof parsed.totalLinesCleared === "number" ? parsed.totalLinesCleared : 0,

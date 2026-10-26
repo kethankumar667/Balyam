@@ -27,6 +27,23 @@ After the whole match ends, close the scorecard and choose **View all tables** o
 table to inspect everyone's final grid, including marked numbers. An accepted Bingo claim
 ends the match; boards are never revealed just because a player can claim.
 
+**Brick Blocks Color Arcade** (`/brickblocks`) is a local solo falling-block game, separate from
+Block Blast and Brick Breakout. Its six modes are Marathon, Pentix (five-cell shapes), 40-line
+Sprint, two-minute Score Attack, Free Play with adjustable fall speed, and Daily Circuit
+(40 lines, a deterministic UTC-date seed, replayable with no global ranking). Mobile has a
+thumb control deck and board gestures; desktop adds persistent hold, next-shape and stats rails.
+The mobile arena budgets its board height around the HUD and 44px-or-larger controls.
+Short landscape viewports (480–1023px wide, up to 600px tall) place the board beside
+the HUD and controls. Secondary help and privacy content stays scrollable below gameplay;
+dialogs remain independently scrollable rather than clipping their actions.
+Keyboard bindings, sound volume, haptics, landing guide and reduced-motion-aware clear effects
+are configurable. Sprint/Daily clocks and the Attack countdown continue during pauses, including
+time spent in a hidden tab; a hidden tab pauses piece movement. Untimed modes save one resumable
+run every five seconds and on page hide, under the existing `bhalyam_brick_tetris_save_v1` key.
+Classic/Pentix device bests remain compatible with My Records; new-mode records are device-local
+and do not grant coins, XP or ranked results. Essential-only privacy keeps new progress in
+memory for the visit instead of writing it to local storage.
+
 The Samethalu and Telugu Cinema quizzes and Bounce are gone — engines,
 boards, question banks, catalog entries, slugs, icons and wiring have all
 been deleted, along with the "Upcoming" filter that only ever held them.

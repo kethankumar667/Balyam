@@ -1,4 +1,5 @@
 export type GameMode = "CLASSIC" | "PENTIX";
+export type Challenge = "marathon" | "pentix" | "sprint" | "attack" | "practice" | "daily";
 
 export type GameStatus =
   | "boot"
@@ -13,8 +14,9 @@ export type GameStatus =
   | "high-scores";
 
 export type CellValue = 0 | 1;
-export type BoardMatrix = CellValue[][];
-export type ReadonlyBoardMatrix = readonly (readonly CellValue[])[];
+export type BoardCell = CellValue | PieceType;
+export type BoardMatrix = BoardCell[][];
+export type ReadonlyBoardMatrix = readonly (readonly BoardCell[])[];
 
 export interface Position {
   x: number;
@@ -76,6 +78,7 @@ export interface HighScoreEntry {
 }
 
 export interface BrickTetrisSaveData {
+  arcade?: unknown;
   highScores: HighScoreEntry[];
   totalMatches: number;
   totalLinesCleared: number;
@@ -85,6 +88,13 @@ export interface BrickTetrisSaveData {
 }
 
 export interface GameState {
+  challenge: Challenge;
+  elapsedMs: number;
+  piecesPlaced: number;
+  outcome: "complete" | "top-out" | null;
+  pausedFrom: "playing" | "line-clearing";
+  practiceSpeed: number;
+  dailyDate: string | null;
   status: GameStatus;
   mode: GameMode;
   board: BoardMatrix;
@@ -122,7 +132,8 @@ export type GameAction =
   | { type: "ROTATE_CCW" }
   | { type: "HOLD_PIECE" }
   | { type: "PAUSE_TOGGLE" }
-  | { type: "START_GAME"; payload?: { mode?: GameMode } }
+  | { type: "START_GAME"; payload?: { mode?: GameMode; challenge?: Challenge; seed?: number; practiceSpeed?: number; dailyDate?: string } }
+  | { type: "RESTORE_GAME"; payload: GameState }
   | { type: "RESTART_GAME" }
   | { type: "NAVIGATE_MENU"; payload: { direction: "UP" | "DOWN" } }
   | { type: "SELECT_MENU_ITEM" }

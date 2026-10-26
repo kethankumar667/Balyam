@@ -488,9 +488,9 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
   {
     slug: "brickblocks",
     tags: ["retro", "solo"],
-    theme: "Classic & Pentix 🧱",
+    theme: "Color Arcade",
     badge: "🧱 Brick Blocks",
-    nostalgiaQuote: "4/6 to move, 2 to rotate, Space to hard drop!",
+    nostalgiaQuote: "Small blocks. Big possibilities.",
     title: "Brick Blocks",
     playerRange: "1 Player",
     duration: "3–15 min",
@@ -498,7 +498,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     paperBorder: "rgba(79, 70, 229, 0.55)",
     btnGradient: { from: "#4F46E5", to: "#3730A3", shadow: "#1E1B4B" },
     blurb:
-      "Authentic 9999-in-1 Brick Game falling blocks puzzle. 10x20 LCD matrix, Classic 7-tetrominoes & 12-pentomino Pentix modes, SRS wall kicks, ghost piece, and retro buzzer nostalgia.",
+      "Colorful falling-block arcade with Marathon, Pentix, 40-line Sprint, two-minute Score Attack, Free Play and a daily seeded challenge. Hold, landing guide, remappable controls and device-local records.",
     accent: { from: "#6366F1", to: "#312E81" },
   },
   {

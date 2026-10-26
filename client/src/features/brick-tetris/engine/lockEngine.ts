@@ -16,7 +16,7 @@ export function lockPieceIntoBoard(board: BoardMatrix, piece: ActivePiece): Boar
         const boardY = piece.position.y + r;
 
         if (boardY >= 0 && boardY < BOARD_HEIGHT && boardX >= 0 && boardX < BOARD_WIDTH) {
-          newBoard[boardY][boardX] = 1;
+          newBoard[boardY][boardX] = piece.type;
         }
       }
     }

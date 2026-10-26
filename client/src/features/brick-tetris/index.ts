@@ -1,4 +1,4 @@
-export { BrickTetrisGame, default } from "./BrickTetrisGame";
+export { default as BrickTetrisGame, default } from "./BrickTetrisGame";
 export * from "./types";
 export * from "./engine/gameReducer";
 export * from "./services/storageService";

@@ -1,185 +1,192 @@
-import React, { useReducer, useRef, useEffect } from "react";
-import { gameReducer, createInitialState } from "./engine/gameReducer";
+import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from "react";
+import { Link } from "react-router-dom";
+import { ArrowLeft, HelpCircle, Moon, Sun, Pause, Play, Settings2, Eye, EyeOff } from "lucide-react";
+import { createInitialState, gameReducer } from "./engine/gameReducer";
 import { useGameLoop } from "./hooks/useGameLoop";
 import { useKeyboardControls } from "./hooks/useKeyboardControls";
 import { useTouchControls } from "./hooks/useTouchControls";
-import { loadTetrisData } from "./services/storageService";
 import { tetrisAudio } from "./services/audioService";
-import { MatrixGrid } from "./components/MatrixGrid";
-import { HeaderHud } from "./components/HeaderHud";
-import { HoldPieceBox } from "./components/HoldPieceBox";
-import { NextPieceBox } from "./components/NextPieceBox";
-import { Keypad } from "./components/Keypad";
-import { ConsoleFrame } from "./components/ConsoleFrame";
-import { BootScreen } from "./screens/BootScreen";
-import { MenuScreen } from "./screens/MenuScreen";
-import { PausedOverlay } from "./screens/PausedOverlay";
-import { GameOverScreen } from "./screens/GameOverScreen";
-import { HighScoresScreen } from "./screens/HighScoresScreen";
-import { InstructionsScreen } from "./screens/InstructionsScreen";
-import { Volume2, VolumeX, Eye, EyeOff, RotateCcw, Home } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { loadTetrisData } from "./services/storageService";
+import type { Challenge, GameAction } from "./types";
+import { readArcade, writeArcade, recordRun, retainRecords, DEFAULT_BINDINGS, type ArcadeSave, type Control } from "./arcade/storage";
+import { dailySeed, isTimed, modeTitle, BLOCK_COLORS } from "./arcade/rules";
+import { ColorBoard, ControlDeck, MiniPiece, buttonClass, primaryClass } from "./arcade/Board";
+import { DesktopArena, MobileArena } from "./arcade/Layouts";
+import { ModeMenu, RunResults, RunStats, SettingsDialog } from "./arcade/Screens";
+import { useViewport } from "../../lib/useViewport";
+import { useTheme } from "../../lib/useTheme";
+import { useHaptics } from "../../hooks/useHaptics";
+import Modal from "../../components/Modal";
+import { readConsent, subscribeConsent } from "../../lib/privacy/consent";
 
-export const BrickTetrisGame: React.FC = () => {
-  const navigate = useNavigate();
-  const savedData = loadTetrisData();
-  const [state, dispatch] = useReducer(
-    gameReducer,
-    savedData.bestClassicScore,
-    (bestScore) => createInitialState(bestScore, "CLASSIC"),
-  );
-
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Core Game Hooks
-  useGameLoop(state.status, dispatch);
-  useKeyboardControls(state, dispatch);
-  useTouchControls(state, dispatch, containerRef);
-
-  useEffect(() => {
-    tetrisAudio.setMuted(!state.settings.soundEnabled);
-  }, [state.settings.soundEnabled]);
-
-  return (
-    <div className="min-h-screen bg-[#070B14] text-white flex flex-col items-center justify-between p-3 sm:p-6 select-none font-sans">
-      {/* Top Navigation Bar */}
-      <header className="w-full max-w-4xl flex items-center justify-between py-2 px-3 sm:px-4 bg-[#141B2D]/80 backdrop-blur border border-[#232D48] rounded-2xl mb-4">
-        <button
-          onClick={() => navigate("/")}
-          className="flex items-center gap-2 min-h-[44px] text-xs font-mono font-bold text-zinc-300 hover:text-white transition-colors"
-        >
-          <Home className="w-4 h-4 text-emerald-400" />
-          <span>LOBBY</span>
-        </button>
-
-        <div className="flex items-center gap-2">
-          <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-mono font-black tracking-wider">
-            BRICK BLOCKS ({state.mode})
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => dispatch({ type: "TOGGLE_GHOST" })}
-            title="Toggle Ghost Piece"
-            aria-label="Toggle ghost piece"
-            className="flex h-11 w-11 shrink-0 items-center justify-center bg-[#1A233A] hover:bg-[#232F4E] text-zinc-300 hover:text-white rounded-lg border border-[#2E3C62] transition-colors"
-          >
-            {state.settings.ghostPieceEnabled ? (
-              <Eye className="w-4 h-4 text-emerald-400" />
-            ) : (
-              <EyeOff className="w-4 h-4 text-zinc-500" />
-            )}
-          </button>
-
-          <button
-            onClick={() => dispatch({ type: "TOGGLE_SOUND" })}
-            title="Toggle Audio"
-            aria-label="Toggle audio"
-            className="flex h-11 w-11 shrink-0 items-center justify-center bg-[#1A233A] hover:bg-[#232F4E] text-zinc-300 hover:text-white rounded-lg border border-[#2E3C62] transition-colors"
-          >
-            {state.settings.soundEnabled ? (
-              <Volume2 className="w-4 h-4 text-amber-400" />
-            ) : (
-              <VolumeX className="w-4 h-4 text-zinc-500" />
-            )}
-          </button>
-
-          <button
-            onClick={() => dispatch({ type: "RESTART_GAME" })}
-            title="Restart Match"
-            aria-label="Restart match"
-            className="flex h-11 w-11 shrink-0 items-center justify-center bg-[#1A233A] hover:bg-[#232F4E] text-zinc-300 hover:text-white rounded-lg border border-[#2E3C62] transition-colors"
-          >
-            <RotateCcw className="w-4 h-4 text-blue-400" />
-          </button>
-        </div>
-      </header>
-
-      {/* Main Responsive Arena */}
-      <main className="w-full max-w-4xl flex-1 flex flex-col lg:flex-row items-center justify-center gap-6">
-        {/* Left Side Panel (Desktop only): Hold Piece & Game Stats */}
-        <aside className="hidden lg:flex flex-col gap-4 w-[200px]">
-          <HoldPieceBox heldPiece={state.heldPiece} canHold={state.canHold} />
-
-          <div className="flex flex-col gap-2 p-3 bg-[#141B2D] border border-[#232D48] rounded-xl font-mono text-xs">
-            <span className="text-[10px] text-zinc-400 font-bold uppercase border-b border-[#232D48] pb-1">
-              CONTROLS GUIDE
-            </span>
-            <div className="flex justify-between text-zinc-300">
-              <span>MOVE:</span>
-              <span className="font-bold text-amber-300">4 / 6 / A / D</span>
-            </div>
-            <div className="flex justify-between text-zinc-300">
-              <span>ROTATE:</span>
-              <span className="font-bold text-emerald-300">2 / W / UP</span>
-            </div>
-            <div className="flex justify-between text-zinc-300">
-              <span>HARD DROP:</span>
-              <span className="font-bold text-blue-300">SPACE</span>
-            </div>
-            <div className="flex justify-between text-zinc-300">
-              <span>HOLD:</span>
-              <span className="font-bold text-purple-300">0 / C / SHIFT</span>
-            </div>
-          </div>
-        </aside>
-
-        {/* Center: Handheld Game Console */}
-        <div ref={containerRef} className="w-full max-w-[380px] sm:max-w-[420px]">
-          <ConsoleFrame>
-            {/* Top HUD */}
-            <HeaderHud state={state} />
-
-            {/* Matrix Board Display Area */}
-            <div className="relative w-full my-2 flex justify-center">
-              <div className="w-[180px] sm:w-[200px]">
-                <MatrixGrid state={state} />
-              </div>
-
-              {/* Overlays */}
-              {state.status === "boot" && <BootScreen dispatch={dispatch} />}
-              {state.status === "menu" && <MenuScreen state={state} dispatch={dispatch} />}
-              {state.status === "paused" && <PausedOverlay dispatch={dispatch} />}
-              {state.status === "game-over" && <GameOverScreen state={state} dispatch={dispatch} />}
-              {state.status === "high-scores" && <HighScoresScreen dispatch={dispatch} />}
-              {state.status === "instructions" && <InstructionsScreen dispatch={dispatch} />}
-            </div>
-
-            {/* Tactile Keypad */}
-            <Keypad state={state} dispatch={dispatch} />
-          </ConsoleFrame>
-        </div>
-
-        {/* Right Side Panel (Desktop only): Next Queue & Match Records */}
-        <aside className="hidden lg:flex flex-col gap-4 w-[200px]">
-          <NextPieceBox nextQueue={state.nextQueue} />
-
-          <div className="flex flex-col gap-2 p-3 bg-[#141B2D] border border-[#232D48] rounded-xl font-mono text-xs">
-            <span className="text-[10px] text-zinc-400 font-bold uppercase border-b border-[#232D48] pb-1">
-              CURRENT SESSION
-            </span>
-            <div className="flex justify-between text-zinc-300">
-              <span>SCORE:</span>
-              <span className="font-bold text-amber-300">{state.score}</span>
-            </div>
-            <div className="flex justify-between text-zinc-300">
-              <span>LINES:</span>
-              <span className="font-bold text-emerald-300">{state.linesCleared}</span>
-            </div>
-            <div className="flex justify-between text-zinc-300">
-              <span>LEVEL:</span>
-              <span className="font-bold text-blue-300">{state.level}</span>
-            </div>
-            <div className="flex justify-between text-zinc-300">
-              <span>MODE:</span>
-              <span className="font-bold text-purple-300">{state.mode}</span>
-            </div>
-          </div>
-        </aside>
-      </main>
-    </div>
-  );
+const canSave = () => readConsent()?.choice !== "essential-only";
+const LANDSCAPE_QUERY = "(min-width: 480px) and (max-width: 1023px) and (max-height: 600px)";
+const compactLandscape = () => typeof window !== "undefined" && Boolean(window.matchMedia?.(LANDSCAPE_QUERY).matches);
+const subscribeLandscape = (onChange: () => void) => {
+  const query = window.matchMedia?.(LANDSCAPE_QUERY);
+  query?.addEventListener("change", onChange);
+  return () => query?.removeEventListener("change", onChange);
 };
 
-export default BrickTetrisGame;
+const fallbackSave = (): ArcadeSave => ({ version: 1, records: [], run: null, bindings: { ...DEFAULT_BINDINGS }, sound: true, volume: 0.5, effects: true });
+function loadSave() {
+  try { return { data: readArcade(), error: "" }; }
+  catch (error) { return { data: fallbackSave(), error: `Saved data could not be read: ${error instanceof Error ? error.message : "Storage unavailable"}` }; }
+}
+
+export default function BrickTetrisGame() {
+  const [loaded] = useState(loadSave);
+  const [data, setData] = useState(loaded.data);
+  const [error, setError] = useState(loaded.error);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
+  const [bindingError, setBindingError] = useState("");
+  const [speed, setSpeed] = useState(1000);
+  const [legacy] = useState(loadTetrisData);
+  const storageAllowed = useSyncExternalStore(subscribeConsent, canSave, () => false);
+  const [state, dispatch] = useReducer(gameReducer, undefined, () => ({ ...createInitialState(legacy.bestClassicScore), status: "menu" as const }));
+  const [theme, toggleTheme] = useTheme();
+  const viewport = useViewport();
+  const landscape = useSyncExternalStore(subscribeLandscape, compactLandscape, () => false);
+  const mobileLayout = viewport === "mobile" || landscape;
+  const haptics = useHaptics();
+  const boardRef = useRef<HTMLDivElement>(null);
+  const latest = useRef({ state, data });
+  latest.current = { state, data };
+  const recorded = useRef(false);
+
+  const persist = useCallback((next: ArcadeSave) => {
+    setData(next);
+    if (loaded.error || !canSave()) return;
+    try { writeArcade(next); setError(""); }
+    catch (cause) { setError(`Progress could not be saved on this device. ${cause instanceof Error ? cause.message : "Storage unavailable"}`); }
+  }, [loaded.error]);
+
+  const act = useCallback((action: GameAction) => {
+    if (action.type !== "PAUSE_TOGGLE" && latest.current.state.status !== "playing") return;
+    dispatch(action);
+    if (action.type === "HARD_DROP") { tetrisAudio.playHardDrop(); haptics.subtle(); }
+    else if (action.type === "ROTATE_CW" || action.type === "ROTATE_CCW") tetrisAudio.playRotate();
+    else if (action.type === "HOLD_PIECE") tetrisAudio.playHold();
+  }, [haptics]);
+
+  useGameLoop(state.status, dispatch);
+  useKeyboardControls(state, act, data.bindings);
+  useTouchControls(state, act, boardRef, landscape ? "landscape" : viewport);
+
+  useEffect(() => { tetrisAudio.setMuted(!data.sound); tetrisAudio.setVolume(data.volume); }, [data.sound, data.volume]);
+  useEffect(() => {
+    if (state.status === "line-clearing") {
+      tetrisAudio.playLineClear();
+      haptics.subtle();
+    }
+    if (state.status === "game-over" && !recorded.current) {
+      recorded.current = true;
+      tetrisAudio.playGameOver();
+      const current = latest.current;
+      const record = recordRun(current.state);
+      persist({ ...current.data, run: null, records: retainRecords([record, ...current.data.records]) });
+    }
+  }, [state.status, haptics, persist]);
+
+  useEffect(() => {
+    const save = () => {
+      const { state: run, data: saved } = latest.current;
+      if (!isTimed(run.challenge) && ["playing", "line-clearing", "paused"].includes(run.status)) {
+        persist({ ...saved, run: { ...run, status: "paused", pausedFrom: run.status === "line-clearing" ? "line-clearing" : run.status === "paused" ? run.pausedFrom : "playing" } });
+      }
+    };
+    const timer = window.setInterval(save, 5000);
+    window.addEventListener("pagehide", save);
+    return () => { clearInterval(timer); window.removeEventListener("pagehide", save); };
+  }, [persist]);
+
+  const start = (mode: Challenge) => {
+    recorded.current = false;
+    const date = new Date().toISOString().slice(0, 10);
+    dispatch({ type: "START_GAME", payload: { challenge: mode, practiceSpeed: speed, seed: mode === "daily" ? dailySeed(date) : undefined, dailyDate: mode === "daily" ? date : undefined } });
+    persist({ ...data, run: null });
+  };
+  const pause = () => dispatch({ type: "PAUSE_TOGGLE" });
+  const openPanel = (which: "settings" | "help") => {
+    if (state.status === "playing" || state.status === "line-clearing") pause();
+    if (which === "settings") setSettingsOpen(true); else setHelpOpen(true);
+  };
+  const menu = () => {
+    if (!isTimed(state.challenge) && ["playing", "line-clearing", "paused"].includes(state.status)) persist({ ...data, run: state });
+    dispatch({ type: "BACK_TO_MENU" });
+    setExitOpen(false);
+  };
+  const bind = (control: Control, code: string) => {
+    if (!/^(Arrow(Left|Right|Up|Down)|Key[A-Z]|Digit[0-9]|Space|Escape|ShiftLeft|ShiftRight)$/.test(code)) {
+      setBindingError("Choose a letter, number, arrow, Shift, Space or Escape."); return;
+    }
+    if (Object.entries(data.bindings).some(([other, key]) => other !== control && key === code)) {
+      setBindingError("That key is already assigned. Choose a different key."); return;
+    }
+    setBindingError("");
+    persist({ ...data, bindings: { ...data.bindings, [control]: code } });
+  };
+  const inRun = ["playing", "line-clearing", "paused"].includes(state.status);
+  const hold = <div className={`flex min-w-0 items-center justify-between gap-2 rounded-2xl border border-rim bg-surface-1 p-2 ${mobileLayout ? "min-h-12 shrink" : "min-h-16 flex-col items-start rounded-3xl p-5"}`}>
+    <div><h2 className="text-[10px] font-bold uppercase tracking-widest text-ink-mid">Hold</h2>{!mobileLayout && <p className="mt-1 text-xs text-ink-mid">One swap per shape</p>}</div><MiniPiece type={state.heldPiece} small={mobileLayout} />
+  </div>;
+  const next = <div className={`flex min-w-0 items-center gap-2 rounded-2xl border border-rim bg-surface-1 p-2 ${mobileLayout ? "min-h-12" : "min-h-16 flex-col items-start rounded-3xl p-5"}`}>
+    <h2 className="text-[10px] font-bold uppercase tracking-widest text-ink-mid">Next</h2>
+    <div className={`flex min-w-0 gap-1 ${mobileLayout ? "" : "flex-col gap-6"}`}>{state.nextQueue.slice(0, mobileLayout ? 3 : 4).map((type, i) => <MiniPiece key={i} type={type} small={mobileLayout} />)}</div>
+  </div>;
+  const arenaProps = {
+    board: <ColorBoard state={state} effects={data.effects} fitHeight={mobileLayout} />, hold, next,
+    stats: <RunStats state={state} compact={mobileLayout} />,
+    controls: <ControlDeck dispatch={act} canHold={state.canHold && state.status === "playing"} />,
+    boardRef,
+  };
+
+  return <div className="min-h-[100svh] bg-surface-0 text-ink-hi selection:bg-violet-300/30">
+    <div className="flex h-1.5" aria-hidden="true">{Object.values(BLOCK_COLORS).slice(0, 7).map(color => <span key={color} className="flex-1" style={{ background: color }} />)}</div>
+    <header className="mx-auto mb-4 flex w-full max-w-6xl flex-wrap items-center justify-between gap-1 px-3 py-3 sm:px-8">
+      <div className="flex items-center gap-1 sm:gap-4">
+        {inRun ? <button type="button" className={`${buttonClass} min-w-11 !px-2`} aria-label="Choose mode" onClick={() => { if (state.status !== "paused") pause(); setExitOpen(true); }}><ArrowLeft size={18} /></button>
+          : <Link to="/" className={`${buttonClass} min-w-11 !px-2`} aria-label="Back to BHALYAM"><ArrowLeft size={18} /></Link>}
+        <div><p className="font-[Fredoka] text-base font-semibold leading-none sm:text-2xl">Brick Blocks<span className="text-violet-500">.</span></p><p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-ink-mid">{inRun ? modeTitle(state.challenge) : "Color Arcade"}</p></div>
+      </div>
+      <nav aria-label="Game settings" className="flex gap-1">
+        {inRun && <button type="button" className={`${buttonClass} min-w-11 !px-2`} aria-label={state.status === "paused" ? "Resume game" : "Pause game"} onClick={pause}>{state.status === "paused" ? <Play size={18} /> : <Pause size={18} />}</button>}
+        <button type="button" className={`${buttonClass} min-w-11 !px-2`} aria-label="Toggle light and dark theme" onClick={toggleTheme}>{theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}</button>
+        <button type="button" className={`${buttonClass} min-w-11 hidden !px-2 sm:flex`} aria-label="How to play" onClick={() => openPanel("help")}><HelpCircle size={18} /></button>
+        <button type="button" className={`${buttonClass} min-w-11 !px-2`} aria-label="Open settings" onClick={() => openPanel("settings")}><Settings2 size={18} /></button>
+      </nav>
+    </header>
+    {error && <div role="alert" className="mx-auto mb-4 max-w-3xl rounded-xl border border-danger/40 bg-danger/10 p-3 text-sm text-ink-hi">{error}{loaded.error && <p>Saving is disabled to protect your existing data. Reload after resolving the storage problem.</p>}</div>}
+    {!storageAllowed && !inRun && <p role="status" className="mx-auto mb-4 max-w-3xl px-4 text-center text-xs text-ink-mid">Privacy is set to essential only. New records, settings and saved runs last only for this visit.</p>}
+    {state.status === "menu" && <ModeMenu onStart={start} saved={data.run !== null} onResume={() => { if (data.run) { recorded.current = false; dispatch({ type: "RESTORE_GAME", payload: data.run }); } }} records={data.records} legacyBest={legacy.bestClassicScore} legacyPentix={legacy.bestPentixScore} speed={speed} setSpeed={setSpeed} />}
+    {inRun && <>
+      {mobileLayout ? <MobileArena {...arenaProps} landscape={landscape} /> : <DesktopArena {...arenaProps} />}
+      <p className="mx-auto mb-3 max-w-md px-3 text-center text-[11px] text-ink-mid">Tap board to rotate · drag to move · swipe up to drop</p>
+      {!storageAllowed && <p className="mx-auto mb-4 max-w-md px-4 text-center text-xs text-ink-mid">Essential-only privacy: progress lasts for this visit.</p>}
+      <div className="mx-auto flex max-w-md flex-wrap items-center justify-center gap-3 pb-5">
+        <button type="button" className={`${buttonClass} text-xs`} onClick={() => dispatch({ type: "TOGGLE_GHOST" })} aria-pressed={state.settings.ghostPieceEnabled}>{state.settings.ghostPieceEnabled ? <Eye size={16} /> : <EyeOff size={16} />}Landing guide</button>
+        <button type="button" className={`${buttonClass} text-xs`} onClick={() => openPanel("help")}><HelpCircle size={16} />How to play</button>
+      </div>
+      {state.status === "paused" && <div className="mx-auto mb-6 flex max-w-md flex-col gap-2 px-3">
+        <button type="button" className={primaryClass} onClick={pause}><Play size={18} />Resume game</button>
+        <p className="text-center text-xs text-ink-mid">{isTimed(state.challenge) ? "This mode's clock keeps running while paused." : storageAllowed ? "Your run saves on this device every 5 seconds." : "Saving is off in your privacy settings."}</p>
+      </div>}
+    </>}
+    {state.status === "game-over" && <RunResults state={state} onAgain={() => start(state.challenge)} onMenu={menu} />}
+    <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} data={data} onChange={persist} haptics={haptics.enabled} toggleHaptics={haptics.toggle} bindingError={bindingError} onBind={bind} />
+    <Modal open={helpOpen} onClose={() => setHelpOpen(false)} mobileSheet ariaLabel="How to play Brick Blocks" panelClassName="max-w-lg">
+      <div className="rounded-3xl bg-surface-1 p-6 text-ink-hi"><h2 className="font-[Fredoka] text-3xl">A little room to think.</h2>
+        <ol className="my-5 list-decimal space-y-3 pl-5 text-sm text-ink-mid"><li>Move and rotate falling shapes to fill a complete row. Full rows disappear.</li><li>Use the dashed landing guide before a hard drop. Hold keeps a shape for later, once per placement.</li><li>Clear several rows together and on consecutive placements for bigger scores.</li><li>On touch screens, tap the board to rotate, drag sideways to move, swipe down to soften the fall or swipe up to drop.</li><li>Use the on-screen buttons or remap your keyboard in Settings. Colors are supported by each shape's distinct geometry.</li></ol>
+        <p className="mb-4 text-xs text-ink-mid">Sprint and Daily Circuit target 40 lines. Score Attack lasts two minutes. Timed clocks continue during pauses. Free Play has a fixed fall speed and no time limit.</p>
+        <button type="button" className={`${primaryClass} w-full`} onClick={() => setHelpOpen(false)}>Got it</button>
+      </div>
+    </Modal>
+    <Modal open={exitOpen} onClose={() => setExitOpen(false)} mobileSheet ariaLabel="Leave this run?" panelClassName="max-w-sm">
+      <div className="rounded-3xl bg-surface-1 p-6 text-ink-hi"><h2 className="font-[Fredoka] text-2xl">Choose another rhythm?</h2><p className="my-4 text-sm text-ink-mid">{isTimed(state.challenge) ? "This timed run will end without a record." : storageAllowed ? "Your current run will be saved on this device." : "Your current run will remain available for this visit only."}</p>
+        <div className="flex flex-col gap-2"><button type="button" className={buttonClass} onClick={() => setExitOpen(false)}>Stay here</button><button type="button" className={primaryClass} onClick={menu}>Choose mode</button></div>
+      </div>
+    </Modal>
+  </div>;
+}

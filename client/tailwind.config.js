@@ -89,6 +89,7 @@ export default {
           lo:   "var(--text-lo)",
           mute: "var(--text-mute)",
         },
+        rim: "var(--rim-soft)",
         player: {
           1: "var(--color-player-1)",
           2: "var(--color-player-2)",

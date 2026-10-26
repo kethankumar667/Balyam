@@ -25,6 +25,18 @@
 
 ## 2. Standardized Component Library
 
+### Brick Blocks Color Arcade
+
+The `/brickblocks` solo game uses the app's `surface.*`, `ink.*` and `rim` tokens for
+light/dark shells; `rim` maps to the existing `--rim-soft` hairline. Its playfield stays
+midnight navy in both themes to keep colorful blocks and dashed ghost outlines legible.
+Blocks retain their shape identity after placement and use cyan, blue, orange, gold,
+lime, violet and coral beveled faces. Fredoka carries headings; existing body and
+monospace faces carry instructions and numeric HUDs. A seven-color rail is the signature,
+not ambient motion. Mobile and desktop layout shells share the board, engine, control
+deck and stats. Settings/help/exit prompts use the shared focus-trapped `Modal`; tap
+targets are at least 44px. Clear particles are optional and respect reduced motion.
+
 ### Player avatars and equipped decoration
 
 Use `SeatAvatar` with the owner's room-seat `playerId` in games, or persistent
