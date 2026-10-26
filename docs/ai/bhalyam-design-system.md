@@ -59,6 +59,16 @@ readable text, XP progress and the solid gold action do not depend on a tier's
 art color. The shared `Modal` retains its backdrop, focus trap and dismissal.
 Reward amounts, XP and navigation continue to use the existing level-up model.
 
+### Personal scorecards
+
+Both Chrono deck layouts use opaque `surface.0/1/2` and `ink.hi/mid` tokens
+in Light, with explicit dark variants for their slate panels. Foils use pale
+violet or amber/cyan gradients in Light, not dark glass over a light page.
+Rank colors live in the client-side `scorecardTheme` palette; ranking rules
+remain shared and unchanged. Radar grids, labels, numerals and the share pass
+also follow the document theme. Saturated action gradients retain white text
+and use darker cyan/blue stops for contrast in either theme.
+
 ### Profile command center
 
 The `/profile` overview keeps the shared profile header and section navigation.

@@ -73,11 +73,11 @@ export default function HoloPassShareModal({
       aria-modal="true"
       aria-labelledby="holo-pass-title"
     >
-      <div className="relative w-full max-w-sm rounded-3xl bg-slate-950 border border-cyan-500/40 shadow-[0_0_50px_rgba(6,182,212,0.25)] p-6 text-center overflow-hidden">
+      <div className="relative w-full max-w-sm max-h-[calc(100dvh-2rem)] rounded-3xl bg-surface-0 dark:bg-slate-950 border border-cyan-500/40 shadow-[0_0_50px_rgba(6,182,212,0.25)] p-6 pt-16 text-center overflow-y-auto">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none cursor-pointer"
+          className="absolute top-3 right-3 z-10 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full text-ink-mid dark:text-slate-400 hover:text-ink-hi dark:hover:text-white hover:bg-surface-2 dark:hover:bg-slate-800/60 flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none cursor-pointer"
           aria-label="Close dialog"
         >
           <X className="w-5 h-5" />
@@ -86,7 +86,7 @@ export default function HoloPassShareModal({
         {/* Holo-Pass Card Content */}
         <div
           ref={cardRef}
-          className="relative p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-950 to-cyan-950/40 border border-cyan-500/50 shadow-inner overflow-hidden mb-5 text-left"
+          className="relative p-5 rounded-2xl bg-gradient-to-br from-stone-50 dark:from-slate-900 via-surface-1 dark:via-slate-950 to-cyan-50 dark:to-cyan-950/40 border border-cyan-500/50 shadow-inner overflow-hidden mb-5 text-left"
         >
           {/* Futuristic Scanline lines */}
           <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_50%,rgba(6,182,212,0.04)_51%)] bg-[length:100%_4px] pointer-events-none" />
@@ -95,11 +95,11 @@ export default function HoloPassShareModal({
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
-              <span className="text-[10px] font-mono font-bold tracking-widest text-cyan-400 uppercase">
+              <span className="text-[10px] font-mono font-bold tracking-widest text-cyan-800 dark:text-cyan-400 uppercase">
                 BHALYAM CHRONO-PASS
               </span>
             </div>
-            <div className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-[10px] font-mono font-bold border border-cyan-500/30">
+            <div className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-800 dark:text-cyan-300 text-[10px] font-mono font-bold border border-cyan-500/30">
               VERIFIED RECORD
             </div>
           </div>
@@ -108,34 +108,34 @@ export default function HoloPassShareModal({
           <div className="flex items-center gap-3 mb-4">
             <SeatAvatar avatar={avatar} aura={avatarAura} name={playerName} className="w-12 h-12 border-2 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)]" textClassName="text-lg" />
             <div>
-              <div className="text-base font-extrabold text-white leading-tight">{playerName}</div>
-              <div className="text-xs text-slate-400 font-mono">{gameConfig.displayName}</div>
+              <div className="text-base font-extrabold text-ink-hi dark:text-white leading-tight">{playerName}</div>
+              <div className="text-xs text-ink-mid dark:text-slate-400 font-mono">{gameConfig.displayName}</div>
             </div>
           </div>
 
           {/* Record Display */}
-          <div className="p-3.5 rounded-xl bg-black/60 border border-slate-800 mb-3">
-            <div className="text-[10px] text-cyan-400 font-mono font-semibold uppercase tracking-wider mb-0.5">
+          <div className="p-3.5 rounded-xl bg-surface-0 dark:bg-black/60 border border-stone-300 dark:border-slate-800 mb-3">
+            <div className="text-[10px] text-cyan-800 dark:text-cyan-400 font-mono font-semibold uppercase tracking-wider mb-0.5">
               {scorecard.modeDisplayName}
             </div>
-            <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-white to-cyan-200 font-mono tracking-tight">
+            <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-800 dark:from-cyan-300 via-slate-900 dark:via-white to-cyan-800 dark:to-cyan-200 font-mono tracking-tight">
               {scorecard.bestScore}
             </div>
           </div>
 
           {/* Verification Hash & QR Placeholder */}
-          <div className="flex items-center justify-between text-[9px] font-mono text-slate-500 pt-1 border-t border-slate-800">
+          <div className="flex items-center justify-between text-[9px] font-mono text-ink-mid dark:text-slate-400 pt-1 border-t border-stone-300 dark:border-slate-800">
             <span>HASH: {scorecard.bestScoreMatchId.slice(0, 14)}...</span>
-            <span className="flex items-center gap-1 text-cyan-500/80">
+            <span className="flex items-center gap-1 text-cyan-800 dark:text-cyan-500/80">
               <QrCode className="w-3 h-3" /> SCAN TO CHALLENGE
             </span>
           </div>
         </div>
 
-        <h3 id="holo-pass-title" className="text-lg font-bold text-white mb-1">
+        <h3 id="holo-pass-title" className="text-lg font-bold text-ink-hi dark:text-white mb-1">
           Challenge Your Friends
         </h3>
-        <p className="text-xs text-slate-400 mb-5">
+        <p className="text-xs text-ink-mid dark:text-slate-400 mb-5">
           Share your holographic scorecard to let rivals race against your ghost record.
         </p>
 
@@ -143,7 +143,7 @@ export default function HoloPassShareModal({
         <div className="flex flex-col gap-2.5">
           <button
             onClick={handleNativeShare}
-            className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-sm font-bold shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none min-h-[44px]"
+            className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-700 to-blue-700 hover:from-cyan-800 hover:to-blue-800 text-white text-sm font-bold shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none min-h-[44px]"
           >
             <Share2 className="w-4 h-4" />
             <span>Share Holo-Pass</span>
@@ -152,16 +152,16 @@ export default function HoloPassShareModal({
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={handleWhatsAppShare}
-              className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 text-xs font-semibold border border-emerald-500/40 transition-all min-h-[44px]"
+              className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-800 dark:text-emerald-400 text-xs font-semibold border border-emerald-500/40 transition-all min-h-[44px]"
             >
               <span>WhatsApp</span>
             </button>
 
             <button
               onClick={handleCopyLink}
-              className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition-all min-h-[44px]"
+              className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-surface-2 dark:bg-slate-800 hover:bg-surface-2 dark:hover:bg-slate-700 text-ink-mid dark:text-slate-300 text-xs font-semibold border border-stone-300 dark:border-slate-700 transition-all min-h-[44px]"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-800 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copied ? "Copied Link!" : "Copy Link"}</span>
             </button>
           </div>

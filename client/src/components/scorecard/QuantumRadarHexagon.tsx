@@ -77,7 +77,7 @@ export default function QuantumRadarHexagon({
             key={idx}
             points={points}
             fill="none"
-            stroke={idx === rings.length - 1 ? "rgba(6, 182, 212, 0.4)" : "rgba(255, 255, 255, 0.08)"}
+            className={idx === rings.length - 1 ? "stroke-cyan-700 dark:stroke-cyan-500/40" : "stroke-slate-500 dark:stroke-slate-400"}
             strokeWidth={idx === rings.length - 1 ? 1.5 : 1}
             strokeDasharray={idx === rings.length - 1 ? "none" : "2,3"}
           />
@@ -95,7 +95,7 @@ export default function QuantumRadarHexagon({
               y1={center}
               x2={x2}
               y2={y2}
-              stroke="rgba(255, 255, 255, 0.12)"
+              className="stroke-slate-500 dark:stroke-slate-400"
               strokeWidth="1"
             />
           );
@@ -105,10 +105,9 @@ export default function QuantumRadarHexagon({
         <polygon
           points={polygonPoints}
           fill="url(#cyberRadarGradient)"
-          stroke="#06b6d4"
+          className="stroke-cyan-700 dark:stroke-cyan-400 transition-all duration-500 ease-out motion-reduce:transition-none"
           strokeWidth="2"
           filter="url(#glowGpu)"
-          className="transition-all duration-500 ease-out"
         />
 
         {/* Vertex point dots */}
@@ -141,17 +140,17 @@ export default function QuantumRadarHexagon({
               y={ly}
               textAnchor="middle"
               dominantBaseline="middle"
-              className="fill-cyan-400/80 font-mono text-[9px] font-bold tracking-wider"
+              className="fill-cyan-800 dark:fill-cyan-400 font-mono text-[9px] font-bold tracking-wider"
             >
               {axis.label}
-              <tspan x={lx} dy="10" className="fill-white font-mono text-[10px] font-extrabold">
+              <tspan x={lx} dy="10" className="fill-ink-hi dark:fill-white font-mono text-[10px] font-extrabold">
                 {val}
               </tspan>
             </text>
           );
         })}
       </svg>
-      <span className="text-[10px] font-mono tracking-widest text-cyan-500/70 mt-3 uppercase">
+      <span className="text-[10px] font-mono tracking-widest text-cyan-800 dark:text-cyan-400 mt-3 uppercase">
         Quantum Performance Matrix
       </span>
     </div>

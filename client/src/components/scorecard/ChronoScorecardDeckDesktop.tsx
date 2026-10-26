@@ -27,6 +27,7 @@ import {
   getSignatureFeatsForGame,
 } from "@shared/profile/MetricRegistry";
 import { formatGameMetricValue, calculateTrendMomentum } from "../../lib/metricFormatters";
+import { SCORECARD_RANK_CLASSES } from "./scorecardTheme";
 import QuantumRadarHexagon from "./QuantumRadarHexagon";
 import HoloPassShareModal from "./HoloPassShareModal";
 import { launchLinkProps } from "../../lib/gameLaunch";
@@ -181,22 +182,22 @@ export default function ChronoScorecardDeckDesktop({
   return (
     <div className={`w-full max-w-7xl mx-auto flex flex-col gap-6 select-none ${className}`}>
       {/* Top Bar: Total PBs Beaten & Header */}
-      <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-950/80 border border-slate-800 backdrop-blur-md">
+      <div className="flex items-center justify-between p-4 rounded-2xl bg-surface-0 dark:bg-slate-950/80 border border-stone-300 dark:border-slate-800 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-800 dark:text-amber-400">
             <Trophy className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-extrabold text-white">Chrono-Scorecard Matrix</h2>
-            <p className="text-xs text-slate-400">Personal best records, skill grading, and nostalgia feats</p>
+            <h2 className="text-base font-extrabold text-ink-hi dark:text-white">Chrono-Scorecard Matrix</h2>
+            <p className="text-xs text-ink-mid dark:text-slate-400">Personal best records, skill grading, and nostalgia feats</p>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-mono text-xs">
-            <Flame className="w-4 h-4 text-cyan-400 fill-cyan-400" />
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-800 dark:text-cyan-300 font-mono text-xs">
+            <Flame className="w-4 h-4 text-cyan-800 dark:text-cyan-400 fill-cyan-400" />
             <span>Records Shattered:</span>
-            <span className="font-extrabold text-white text-sm">{archive.totalPersonalBestsBeaten}</span>
+            <span className="font-extrabold text-ink-hi dark:text-white text-sm">{archive.totalPersonalBestsBeaten}</span>
           </div>
         </div>
       </div>
@@ -204,9 +205,9 @@ export default function ChronoScorecardDeckDesktop({
       {/* Main 3-Column Layout */}
       <div className="grid grid-cols-12 gap-6 items-start">
         {/* Left Column: Game List & Filtering (3 Cols) */}
-        <div className="col-span-3 flex flex-col gap-2.5 p-3 rounded-2xl bg-slate-950/60 border border-slate-800/80 max-h-[720px] overflow-hidden">
+        <div className="col-span-3 flex flex-col gap-2.5 p-3 rounded-2xl bg-surface-0 dark:bg-slate-950/60 border border-stone-300 dark:border-slate-800/80 max-h-[720px] overflow-hidden">
           {/* Category Filter Pills */}
-          <div className="flex flex-wrap gap-1 p-1 bg-slate-900/60 rounded-xl border border-slate-800">
+          <div className="flex flex-wrap gap-1 p-1 bg-surface-1 dark:bg-slate-900/60 rounded-xl border border-stone-300 dark:border-slate-800">
             {(
               [
                 { id: "all", label: "All" },
@@ -222,7 +223,7 @@ export default function ChronoScorecardDeckDesktop({
                 className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
                   activeCategory === cat.id
                     ? "bg-cyan-500 text-slate-950 shadow-xs"
-                    : "text-slate-400 hover:text-white"
+                    : "text-ink-mid dark:text-slate-400 hover:text-ink-hi dark:hover:text-white"
                 }`}
               >
                 {cat.label}
@@ -232,13 +233,13 @@ export default function ChronoScorecardDeckDesktop({
 
           {/* Search Bar */}
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-ink-mid dark:text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search games..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-cyan-400"
+              className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-surface-1 dark:bg-slate-900 border border-stone-300 dark:border-slate-800 text-xs text-ink-hi dark:text-white placeholder-ink-mid dark:placeholder-slate-400 focus:outline-hidden focus:border-cyan-400"
             />
           </div>
 
@@ -262,14 +263,14 @@ export default function ChronoScorecardDeckDesktop({
                   }}
                   className={`flex items-center justify-between p-2.5 rounded-xl text-xs font-semibold border transition-all text-left ${
                     isSelected
-                      ? "bg-gradient-to-r from-cyan-600/30 to-blue-600/20 border-cyan-400 text-white shadow-[0_0_15px_rgba(6,182,212,0.25)]"
-                      : "bg-slate-900/40 border-slate-800/60 text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+                      ? "bg-gradient-to-r from-cyan-600/30 to-blue-600/20 border-cyan-400 text-ink-hi dark:text-white shadow-[0_0_15px_rgba(6,182,212,0.25)]"
+                      : "bg-surface-1 dark:bg-slate-900/40 border-stone-300 dark:border-slate-800/60 text-ink-mid dark:text-slate-400 hover:text-ink-hi dark:hover:text-slate-200 hover:bg-surface-1 dark:hover:bg-slate-900"
                   }`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <span
                       className={`w-2 h-2 rounded-full shrink-0 ${
-                        hasRecord ? "bg-cyan-400 shadow-[0_0_6px_#06b6d4]" : "bg-slate-700"
+                        hasRecord ? "bg-cyan-400 shadow-[0_0_6px_#06b6d4]" : "bg-surface-2 dark:bg-slate-700"
                       }`}
                     />
                     <span className="truncate">{cfg.displayName}</span>
@@ -277,7 +278,7 @@ export default function ChronoScorecardDeckDesktop({
 
                   <div className="flex items-center gap-1.5 shrink-0">
                     {hasRecord && (
-                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
+                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-surface-2 dark:bg-slate-800 text-ink-mid dark:text-slate-300">
                         {modesCount} {modesCount === 1 ? "m" : "m"}
                       </span>
                     )}
@@ -291,8 +292,8 @@ export default function ChronoScorecardDeckDesktop({
                           togglePin(gameSlug, e as unknown as React.MouseEvent);
                         }
                       }}
-                      className={`p-1 rounded-md transition-colors hover:bg-slate-800 cursor-pointer ${
-                        isPinned ? "text-amber-400" : "text-slate-600 hover:text-slate-400"
+                      className={`p-1 rounded-md transition-colors hover:bg-surface-2 dark:hover:bg-slate-800 cursor-pointer ${
+                        isPinned ? "text-amber-800 dark:text-amber-400" : "text-ink-mid dark:text-slate-400 hover:text-ink-mid dark:hover:text-slate-400"
                       }`}
                       title={isPinned ? "Unpin from favorites" : "Pin to top of list"}
                       aria-label={isPinned ? `Unpin ${cfg.displayName}` : `Pin ${cfg.displayName}`}
@@ -309,7 +310,7 @@ export default function ChronoScorecardDeckDesktop({
         {/* Middle Column: 3D Holographic Parallax Card & Modes (5 Cols) */}
         <div className="col-span-5 flex flex-col gap-4">
           {/* Mode Selector Chips */}
-          <div className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-slate-950/80 border border-slate-800">
+          <div className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-surface-0 dark:bg-slate-950/80 border border-stone-300 dark:border-slate-800">
             {gameConfig.modes.map((mode) => {
               const isSelected = selectedModeId === mode.modeId;
               const hasModeRecord = gameScorecard?.modes[mode.modeId] != null;
@@ -324,11 +325,11 @@ export default function ChronoScorecardDeckDesktop({
                   className={`flex items-center gap-2 py-2 px-3.5 rounded-xl text-xs font-bold transition-all ${
                     isSelected
                       ? "bg-cyan-500 text-slate-950 shadow-[0_0_15px_rgba(6,182,212,0.4)]"
-                      : "text-slate-400 hover:text-white hover:bg-slate-900"
+                      : "text-ink-mid dark:text-slate-400 hover:text-ink-hi dark:hover:text-white hover:bg-surface-1 dark:hover:bg-slate-900"
                   }`}
                 >
                   <span>{mode.displayName}</span>
-                  {hasModeRecord && <Trophy className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />}
+                  {hasModeRecord && <Trophy className="w-3.5 h-3.5 text-amber-800 dark:text-amber-500 fill-amber-500" />}
                 </button>
               );
             })}
@@ -351,10 +352,10 @@ export default function ChronoScorecardDeckDesktop({
                 }}
                 className={`relative p-6 rounded-3xl border backdrop-blur-xl shadow-2xl transition-colors ${
                   modeScorecard.foilTier === "obsidian_vanguard"
-                    ? "bg-gradient-to-br from-purple-950/80 via-slate-950 to-black border-purple-500/60 shadow-[0_0_40px_rgba(168,85,247,0.3)]"
+                    ? "bg-gradient-to-br from-purple-50 dark:from-purple-950/80 via-surface-1 dark:via-slate-950 to-slate-50 dark:to-black border-purple-500/60 shadow-[0_0_40px_rgba(168,85,247,0.3)]"
                     : modeScorecard.foilTier === "prismatic_holo"
-                    ? "bg-gradient-to-br from-amber-950/50 via-slate-950 to-cyan-950/50 border-amber-500/50 shadow-[0_0_35px_rgba(245,158,11,0.25)]"
-                    : "bg-slate-900/90 border-cyan-500/40 shadow-[0_0_30px_rgba(6,182,212,0.2)]"
+                    ? "bg-gradient-to-br from-amber-50 dark:from-amber-950/50 via-surface-1 dark:via-slate-950 to-cyan-50 dark:to-cyan-950/50 border-amber-500/50 shadow-[0_0_35px_rgba(245,158,11,0.25)]"
+                    : "bg-surface-1 dark:bg-slate-900/90 border-cyan-500/40 shadow-[0_0_30px_rgba(6,182,212,0.2)]"
                 }`}
               >
                 {/* ── CARD FRONT ── */}
@@ -366,23 +367,23 @@ export default function ChronoScorecardDeckDesktop({
                   <div className="flex items-center justify-between mb-5">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono uppercase tracking-widest text-cyan-400 font-bold">
+                        <span className="text-[10px] font-mono uppercase tracking-widest text-cyan-800 dark:text-cyan-400 font-bold">
                           {gameConfig.displayName}
                         </span>
                         {/* Polarity Chip */}
-                        <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-slate-950/80 border border-slate-700 text-slate-300">
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-surface-0 dark:bg-slate-950/80 border border-stone-300 dark:border-slate-700 text-ink-mid dark:text-slate-300">
                           {modeDef.scoringDirection === "LOWER_IS_BETTER"
                             ? "⚡ Lowest Turns Priority"
                             : "🎯 Highest Score Priority"}
                         </span>
                       </div>
-                      <h3 className="text-xl font-black text-white mt-0.5">{modeScorecard.modeDisplayName}</h3>
+                      <h3 className="text-xl font-black text-ink-hi dark:text-white mt-0.5">{modeScorecard.modeDisplayName}</h3>
                     </div>
 
                     {/* Performance Rank Badge */}
                     <div className="flex items-center gap-2">
                       <div
-                        className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-mono font-bold ${rankInfo.badgeBg} ${rankInfo.badgeBorder} ${rankInfo.badgeText}`}
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-mono font-bold ${SCORECARD_RANK_CLASSES[rankInfo.tier]}`}
                         title={rankInfo.description}
                       >
                         <Award className="w-3.5 h-3.5" />
@@ -392,15 +393,15 @@ export default function ChronoScorecardDeckDesktop({
                   </div>
 
                   {/* Hero Score Showcase */}
-                  <div className="p-5 mb-5 rounded-2xl bg-black/70 border border-slate-800/80 flex items-center justify-between shadow-inner">
+                  <div className="p-5 mb-5 rounded-2xl bg-surface-0 dark:bg-black/70 border border-stone-300 dark:border-slate-800/80 flex items-center justify-between shadow-inner">
                     <div>
                       <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">
+                        <span className="text-[10px] font-mono text-ink-mid dark:text-slate-400 uppercase tracking-widest">
                           {gameSchema.primaryRankMetric.label}
                         </span>
-                        <span className="text-[10px] text-amber-400 font-mono">({rankInfo.label})</span>
+                        <span className="text-[10px] text-amber-800 dark:text-amber-400 font-mono">({rankInfo.label})</span>
                       </div>
-                      <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-200 to-cyan-400 font-mono tracking-tight">
+                      <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 dark:from-white via-cyan-800 dark:via-cyan-200 to-cyan-800 dark:to-cyan-400 font-mono tracking-tight">
                         {formatGameMetricValue(modeScorecard.bestScore, gameSchema.primaryRankMetric.format)}
                       </div>
                     </div>
@@ -408,16 +409,16 @@ export default function ChronoScorecardDeckDesktop({
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setIsFlipped(true)}
-                        className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 font-semibold text-xs transition-all cursor-pointer"
+                        className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-surface-2 dark:bg-slate-800 hover:bg-surface-2 dark:hover:bg-slate-750 text-ink-hi dark:text-slate-200 border border-stone-300 dark:border-slate-700 font-semibold text-xs transition-all cursor-pointer"
                         title="Flip card to inspect match dossier & signature feats"
                       >
-                        <RotateCw className="w-3.5 h-3.5 text-cyan-400" />
+                        <RotateCw className="w-3.5 h-3.5 text-cyan-800 dark:text-cyan-400" />
                         <span>Dossier</span>
                       </button>
 
                       <button
                         onClick={() => setSharingScorecard(true)}
-                        className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 transition-all font-semibold text-xs cursor-pointer shadow-[0_0_12px_rgba(6,182,212,0.2)]"
+                        className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-800 dark:text-cyan-300 border border-cyan-500/40 transition-all font-semibold text-xs cursor-pointer shadow-[0_0_12px_rgba(6,182,212,0.2)]"
                       >
                         <Share2 className="w-3.5 h-3.5" />
                         <span>Holo-Pass</span>
@@ -426,17 +427,17 @@ export default function ChronoScorecardDeckDesktop({
                   </div>
 
                   {/* Next Milestone Target & Beat PB CTA */}
-                  <div className="p-3.5 mb-5 rounded-xl bg-slate-950/70 border border-cyan-500/25 flex flex-col gap-2">
+                  <div className="p-3.5 mb-5 rounded-xl bg-surface-0 dark:bg-slate-950/70 border border-cyan-500/25 flex flex-col gap-2">
                     <div className="flex items-center justify-between text-xs font-mono">
                       <div className="flex items-center gap-1.5">
-                        <Flame className="w-3.5 h-3.5 text-amber-400" />
-                        <span className="text-white font-bold">{milestone.title}</span>
+                        <Flame className="w-3.5 h-3.5 text-amber-800 dark:text-amber-400" />
+                        <span className="text-ink-hi dark:text-white font-bold">{milestone.title}</span>
                       </div>
-                      <span className="text-cyan-400 font-semibold text-[11px]">{milestone.remainingText}</span>
+                      <span className="text-cyan-800 dark:text-cyan-400 font-semibold text-[11px]">{milestone.remainingText}</span>
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                    <div className="w-full h-2 bg-surface-1 dark:bg-slate-900 rounded-full overflow-hidden border border-stone-300 dark:border-slate-800">
                       <div
                         className="h-full bg-gradient-to-r from-cyan-500 to-amber-400 rounded-full transition-all duration-500"
                         style={{ width: `${milestone.progressPercent}%` }}
@@ -444,8 +445,8 @@ export default function ChronoScorecardDeckDesktop({
                     </div>
 
                     <div className="flex items-center justify-between pt-1">
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        Progress: <strong className="text-slate-200">{milestone.progressPercent}%</strong> (+{milestone.rewardXp} XP Reward)
+                      <span className="text-[10px] text-ink-mid dark:text-slate-400 font-mono">
+                        Progress: <strong className="text-ink-hi dark:text-slate-200">{milestone.progressPercent}%</strong> (+{milestone.rewardXp} XP Reward)
                       </span>
 
                       <Link
@@ -460,15 +461,15 @@ export default function ChronoScorecardDeckDesktop({
 
                   {/* Stat Cards */}
                   <div className="grid grid-cols-3 gap-3 mb-5 font-mono text-center">
-                    <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                      <span className="block text-[10px] text-slate-500 uppercase">Matches Played</span>
-                      <span className="text-base font-bold text-white">{modeScorecard.timesPlayed}</span>
+                    <div className="p-3 rounded-xl bg-surface-0 dark:bg-slate-950/70 border border-stone-300 dark:border-slate-800">
+                      <span className="block text-[10px] text-ink-mid dark:text-slate-400 uppercase">Matches Played</span>
+                      <span className="text-base font-bold text-ink-hi dark:text-white">{modeScorecard.timesPlayed}</span>
                     </div>
-                    <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                      <span className="block text-[10px] text-slate-500 uppercase truncate" title={gameSchema.secondaryMetrics[0]?.label || "Secondary Metric"}>
+                    <div className="p-3 rounded-xl bg-surface-0 dark:bg-slate-950/70 border border-stone-300 dark:border-slate-800">
+                      <span className="block text-[10px] text-ink-mid dark:text-slate-400 uppercase truncate" title={gameSchema.secondaryMetrics[0]?.label || "Secondary Metric"}>
                         {gameSchema.secondaryMetrics[0]?.shortLabel || "Avg Score"}
                       </span>
-                      <span className="text-base font-bold text-white">
+                      <span className="text-base font-bold text-ink-hi dark:text-white">
                         {gameSchema.secondaryMetrics[0]
                           ? formatGameMetricValue(
                               modeScorecard.secondaryMetrics[gameSchema.secondaryMetrics[0].key] ?? (modeScorecard.timesPlayed > 0 ? "-" : 0),
@@ -477,11 +478,11 @@ export default function ChronoScorecardDeckDesktop({
                           : modeScorecard.averageScore}
                       </span>
                     </div>
-                    <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                      <span className="block text-[10px] text-slate-500 uppercase truncate" title={gameSchema.secondaryMetrics[1]?.label || "Last Score"}>
+                    <div className="p-3 rounded-xl bg-surface-0 dark:bg-slate-950/70 border border-stone-300 dark:border-slate-800">
+                      <span className="block text-[10px] text-ink-mid dark:text-slate-400 uppercase truncate" title={gameSchema.secondaryMetrics[1]?.label || "Last Score"}>
                         {gameSchema.secondaryMetrics[1]?.shortLabel || "Last Score"}
                       </span>
-                      <span className="text-base font-bold text-cyan-400">
+                      <span className="text-base font-bold text-cyan-800 dark:text-cyan-400">
                         {gameSchema.secondaryMetrics[1]
                           ? formatGameMetricValue(
                               modeScorecard.secondaryMetrics[gameSchema.secondaryMetrics[1].key] ?? (modeScorecard.recentScores[0] ?? "-"),
@@ -494,7 +495,7 @@ export default function ChronoScorecardDeckDesktop({
 
                   {/* Secondary Metrics pills */}
                   {Object.keys(modeScorecard.secondaryMetrics).length > 0 && (
-                    <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-800/80">
+                    <div className="flex flex-wrap gap-2 pt-3 border-t border-stone-300 dark:border-slate-800/80">
                       {Object.entries(modeScorecard.secondaryMetrics).map(([key, val]) => {
                         const fieldDef = gameSchema.secondaryMetrics.find((f) => f.key === key);
                         const label = fieldDef?.label ?? key;
@@ -502,10 +503,10 @@ export default function ChronoScorecardDeckDesktop({
                         return (
                           <div
                             key={key}
-                            className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-[11px] font-mono text-slate-300"
+                            className="px-2.5 py-1 rounded-lg bg-surface-0 dark:bg-slate-950 border border-stone-300 dark:border-slate-800 text-[11px] font-mono text-ink-mid dark:text-slate-300"
                           >
-                            <span className="text-slate-500 capitalize">{label}: </span>
-                            <span className="font-bold text-white">{formattedVal}</span>
+                            <span className="text-ink-mid dark:text-slate-400 capitalize">{label}: </span>
+                            <span className="font-bold text-ink-hi dark:text-white">{formattedVal}</span>
                           </div>
                         );
                       })}
@@ -518,17 +519,17 @@ export default function ChronoScorecardDeckDesktop({
                   style={{ transform: "rotateY(180deg)" }}
                   className={!isFlipped ? "hidden" : "block text-left font-mono"}
                 >
-                  <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+                  <div className="flex items-center justify-between pb-3 mb-4 border-b border-stone-300 dark:border-slate-800">
                     <div>
-                      <span className="text-[10px] text-cyan-400 uppercase tracking-widest font-bold">
+                      <span className="text-[10px] text-cyan-800 dark:text-cyan-400 uppercase tracking-widest font-bold">
                         Record Dossier
                       </span>
-                      <h4 className="text-base font-black text-white">{gameConfig.displayName} Record Log</h4>
+                      <h4 className="text-base font-black text-ink-hi dark:text-white">{gameConfig.displayName} Record Log</h4>
                     </div>
 
                     <button
                       onClick={() => setIsFlipped(false)}
-                      className="flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-semibold cursor-pointer"
+                      className="flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-800 dark:text-cyan-300 border border-cyan-500/40 text-xs font-semibold cursor-pointer"
                     >
                       <RotateCw className="w-3.5 h-3.5" />
                       <span>Back to Card</span>
@@ -537,11 +538,11 @@ export default function ChronoScorecardDeckDesktop({
 
                   {/* Metadata Chips */}
                   <div className="grid grid-cols-2 gap-2 mb-4 text-xs">
-                    <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-slate-400" />
+                    <div className="p-2.5 rounded-xl bg-surface-0 dark:bg-slate-950 border border-stone-300 dark:border-slate-800 flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-ink-mid dark:text-slate-400" />
                       <div>
-                        <span className="block text-[9px] text-slate-500 uppercase">Achieved On</span>
-                        <span className="text-slate-200 font-bold">
+                        <span className="block text-[9px] text-ink-mid dark:text-slate-400 uppercase">Achieved On</span>
+                        <span className="text-ink-hi dark:text-slate-200 font-bold">
                           {modeScorecard.bestScoreAchievedAt
                             ? new Date(modeScorecard.bestScoreAchievedAt).toLocaleDateString()
                             : "Official Match"}
@@ -549,11 +550,11 @@ export default function ChronoScorecardDeckDesktop({
                       </div>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                    <div className="p-2.5 rounded-xl bg-surface-0 dark:bg-slate-950 border border-stone-300 dark:border-slate-800 flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-cyan-800 dark:text-cyan-400" />
                       <div>
-                        <span className="block text-[9px] text-slate-500 uppercase">Context</span>
-                        <span className="text-slate-200 font-bold">
+                        <span className="block text-[9px] text-ink-mid dark:text-slate-400 uppercase">Context</span>
+                        <span className="text-ink-hi dark:text-slate-200 font-bold">
                           {modeScorecard.bestContext.replace("_", " ")}
                         </span>
                       </div>
@@ -562,7 +563,7 @@ export default function ChronoScorecardDeckDesktop({
 
                   {/* Signature Feat Badges */}
                   <div className="mb-4">
-                    <span className="block text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-2">
+                    <span className="block text-[10px] text-ink-mid dark:text-slate-400 uppercase tracking-widest font-bold mb-2">
                       Signature Feat Badges
                     </span>
                     <div className="flex flex-col gap-2">
@@ -571,14 +572,14 @@ export default function ChronoScorecardDeckDesktop({
                           key={feat.id}
                           className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 ${
                             feat.isUnlocked
-                              ? "bg-slate-950/80 border-amber-500/40 text-amber-200 shadow-[0_0_10px_rgba(245,158,11,0.15)]"
-                              : "bg-slate-950/40 border-slate-800/80 text-slate-500"
+                              ? "bg-surface-0 dark:bg-slate-950/80 border-amber-500/40 text-amber-800 dark:text-amber-200 shadow-[0_0_10px_rgba(245,158,11,0.15)]"
+                              : "bg-surface-0 dark:bg-slate-950/40 border-stone-300 dark:border-slate-800/80 text-ink-mid dark:text-slate-400"
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div
                               className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                                feat.isUnlocked ? "bg-amber-500/20 text-amber-400" : "bg-slate-900 text-slate-600"
+                                feat.isUnlocked ? "bg-amber-500/20 text-amber-800 dark:text-amber-400" : "bg-surface-1 dark:bg-slate-900 text-ink-mid dark:text-slate-400"
                               }`}
                             >
                               {feat.icon === "Flame" ? (
@@ -594,16 +595,16 @@ export default function ChronoScorecardDeckDesktop({
                               )}
                             </div>
                             <div className="min-w-0">
-                              <span className="block text-xs font-bold text-white truncate">{feat.name}</span>
-                              <span className="block text-[10px] text-slate-400 truncate">{feat.description}</span>
+                              <span className="block text-xs font-bold text-ink-hi dark:text-white truncate">{feat.name}</span>
+                              <span className="block text-[10px] text-ink-mid dark:text-slate-400 truncate">{feat.description}</span>
                             </div>
                           </div>
 
                           <span
                             className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 uppercase ${
                               feat.isUnlocked
-                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                                : "bg-slate-900 text-slate-500 border border-slate-800"
+                                ? "bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40"
+                                : "bg-surface-1 dark:bg-slate-900 text-ink-mid dark:text-slate-400 border border-stone-300 dark:border-slate-800"
                             }`}
                           >
                             {feat.isUnlocked ? "Unlocked" : "Locked"}
@@ -616,12 +617,12 @@ export default function ChronoScorecardDeckDesktop({
               </div>
             </div>
           ) : (
-            <div className="p-12 rounded-3xl bg-slate-950 border border-slate-800 text-center">
-              <div className="mx-auto w-16 h-16 mb-4 rounded-2xl bg-slate-900 flex items-center justify-center text-slate-600">
+            <div className="p-12 rounded-3xl bg-surface-0 dark:bg-slate-950 border border-stone-300 dark:border-slate-800 text-center">
+              <div className="mx-auto w-16 h-16 mb-4 rounded-2xl bg-surface-1 dark:bg-slate-900 flex items-center justify-center text-ink-mid dark:text-slate-400">
                 <Trophy className="w-8 h-8" />
               </div>
-              <h4 className="text-base font-bold text-white mb-1">No Record Recorded</h4>
-              <p className="text-xs text-slate-400 max-w-xs mx-auto mb-4">
+              <h4 className="text-base font-bold text-ink-hi dark:text-white mb-1">No Record Recorded</h4>
+              <p className="text-xs text-ink-mid dark:text-slate-400 max-w-xs mx-auto mb-4">
                 Play {gameConfig.displayName} ({modeDef.displayName}) to establish your all-time personal best record.
               </p>
               <Link
@@ -640,37 +641,37 @@ export default function ChronoScorecardDeckDesktop({
           {modeScorecard ? (
             <>
               {/* Archetype Persona Card */}
-              <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 flex flex-col gap-1.5">
+              <div className="p-4 rounded-2xl bg-surface-0 dark:bg-slate-950/80 border border-stone-300 dark:border-slate-800 flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-bold">
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-ink-mid dark:text-slate-400 font-bold">
                     Gamer Persona
                   </span>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-cyan-500/10 text-cyan-800 dark:text-cyan-300 border border-cyan-500/30">
                     Trait: {archetype.dominantTrait}
                   </span>
                 </div>
-                <h4 className="text-sm font-black text-white">{archetype.title}</h4>
-                <p className="text-xs text-slate-400 leading-snug">{archetype.motto}</p>
+                <h4 className="text-sm font-black text-ink-hi dark:text-white">{archetype.title}</h4>
+                <p className="text-xs text-ink-mid dark:text-slate-400 leading-snug">{archetype.motto}</p>
               </div>
 
               {/* Radar Card */}
-              <div className="p-5 rounded-3xl bg-slate-950/80 border border-cyan-500/30 backdrop-blur-md flex flex-col items-center shadow-xl">
+              <div className="p-5 rounded-3xl bg-surface-0 dark:bg-slate-950/80 border border-cyan-500/30 backdrop-blur-md flex flex-col items-center shadow-xl">
                 <QuantumRadarHexagon radar={modeScorecard.radar} size={220} />
               </div>
 
               {/* Recent Runs Sparkline & Momentum Breakdown */}
-              <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 font-mono">
+              <div className="p-4 rounded-2xl bg-surface-0 dark:bg-slate-950/80 border border-stone-300 dark:border-slate-800 font-mono">
                 <div className="flex items-center justify-between mb-3 text-xs">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px]">
+                    <span className="text-ink-mid dark:text-slate-400 font-bold uppercase tracking-wider text-[11px]">
                       Recent Trajectory
                     </span>
                   </div>
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                       trendMomentum.isPositiveTrend
-                        ? "bg-emerald-950/60 border-emerald-500/40 text-emerald-300"
-                        : "bg-amber-950/60 border-amber-500/40 text-amber-300"
+                        ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500/40 text-emerald-800 dark:text-emerald-300"
+                        : "bg-amber-50 dark:bg-amber-950/60 border-amber-500/40 text-amber-800 dark:text-amber-300"
                     }`}
                   >
                     {trendMomentum.label}
@@ -683,11 +684,11 @@ export default function ChronoScorecardDeckDesktop({
                       key={i}
                       className={`flex-1 p-2 rounded-xl border text-center ${
                         score === modeScorecard.bestScore
-                          ? "bg-amber-500/15 border-amber-500/40 text-amber-300 font-extrabold"
-                          : "bg-slate-900 border-slate-800 text-slate-300"
+                          ? "bg-amber-500/15 border-amber-500/40 text-amber-800 dark:text-amber-300 font-extrabold"
+                          : "bg-surface-1 dark:bg-slate-900 border-stone-300 dark:border-slate-800 text-ink-mid dark:text-slate-300"
                       }`}
                     >
-                      <span className="block text-[8px] text-slate-500">#{i + 1}</span>
+                      <span className="block text-[8px] text-ink-mid dark:text-slate-400">#{i + 1}</span>
                       <span className="text-xs font-bold">{score}</span>
                     </div>
                   ))}
@@ -695,7 +696,7 @@ export default function ChronoScorecardDeckDesktop({
               </div>
             </>
           ) : (
-            <div className="p-8 rounded-2xl bg-slate-950/60 border border-slate-800 text-center text-slate-500 text-xs">
+            <div className="p-8 rounded-2xl bg-surface-0 dark:bg-slate-950/60 border border-stone-300 dark:border-slate-800 text-center text-ink-mid dark:text-slate-400 text-xs">
               Radar telemetry activates once you establish your first match score.
             </div>
           )}
