@@ -35,6 +35,19 @@ const slugsIn = (name: string) =>
   within(screen.getByRole("region", { name })).getAllByRole("article").map((card) => card.getAttribute("data-game"));
 
 describe("Home's featured and popular games", () => {
+  it("omits Trending and keeps the unselected filter bar keyboard-accessible", () => {
+    renderHome();
+
+    expect(screen.queryByRole("radio", { name: "Trending" })).toBeNull();
+    const filters = within(screen.getByRole("radiogroup", { name: "Filter games" })).getAllByRole("radio");
+    expect(filters[0]).toHaveAccessibleName(/Favourites/);
+    expect(filters[0]).toHaveAttribute("tabindex", "0");
+    expect(filters.every(filter => filter.getAttribute("aria-checked") === "false")).toBe(true);
+    fireEvent.keyDown(filters[0], { key: "ArrowRight" });
+    expect(filters[1]).toHaveAttribute("aria-checked", "true");
+    expect(filters[1]).toHaveFocus();
+  });
+
   it("shows two featured and four popular games, and no list of matches, when nothing is filtered", () => {
     renderHome();
 

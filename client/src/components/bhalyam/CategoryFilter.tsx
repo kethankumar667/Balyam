@@ -26,7 +26,7 @@ import { useFavourites } from "../../hooks/useFavourites";
  * `radiogroup` / `radio`, not `tablist` and not a row of `aria-pressed`
  * buttons. Tabs promise panels that do not exist here. Toggle buttons
  * promise independent on/off states. A radio group is the one that says
- * "exactly one of these is chosen", and it brings the keyboard contract
+ * "at most one of these is chosen", and it brings the keyboard contract
  * users already expect: one tab stop for the group, arrows to move within
  * it, Home/End to jump to the ends.
  *
@@ -149,7 +149,6 @@ export default function CategoryFilter({
   const favCount = favourites.length;
 
   const segments: Segment[] = [
-    { id: "all", label: "Trending" },
     {
       id: "favourites",
       label: favCount > 0 ? `Favourites (${favCount})` : "Favourites",
@@ -280,7 +279,7 @@ export default function CategoryFilter({
                 /* Roving tabindex: the group is one tab stop, arrows move
                    inside it. Without this, tabbing through the page would
                    stop six times on one control. */
-                tabIndex={active ? 0 : -1}
+                tabIndex={i === activeIndex ? 0 : -1}
                 onClick={() => {
                   if (!active) play(AUDIO.UI_TOGGLE);
                   onChange({ category: seg.id });
