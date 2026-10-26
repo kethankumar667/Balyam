@@ -1,14 +1,80 @@
 # Staging release verification: economy, accounts and guests
 
-Everything in this release was verified on a throwaway local Postgres and in unit tests. None of it has met
-a real Supabase project. This is the checklist for doing that on **staging**, in order, so each step says what
-you should see before you go on. Do not run any of it against production.
+This checklist began with local Postgres and unit-test verification of an earlier release. That is not
+evidence for the current commit or for a hosted Supabase project. Collect current evidence using the gate
+below, then perform the authorized **staging** checks in order. Do not run any of it against production.
 
 What this covers: migrations `20261021` to `20261026`, the sign-up to carry-over journey, the abuse limits, and
 the privacy checks. Time needed: about 90 minutes, most of it the real journey.
 
 Related: `staging-environment.md` (how staging is set up), `supabase.md` (project, auth and email),
 `reward-gateway.md` (the rules behind the rewards), `deployment-rollback.md`.
+
+## Release evidence gate (run before sign-off)
+
+`npm run release:check` and `npm run enterprise:check` now use one fail-closed
+policy. Both return exit code 1 when required evidence is unavailable or fails.
+The enterprise command is a compatibility report, not a second certification
+that can override a blocked release. A successful result is **EVIDENCE CHECKS
+PASSED**, not automatic production certification: full CI, deployed player
+journeys, monitoring and a rollback rehearsal still require release-owner sign-off.
+The checker executes typechecks and source/configuration audits; it does not
+execute the full unit suites or substitute source scans for rendered tests.
+
+Required reports:
+
+| Domain | File | Regenerate |
+|---|---|---|
+| Restart durability | `docs/remediation/persistence-verification.json` | `npm run verify:durability` |
+| Schema | `docs/remediation/persistence-schema-verification.json` | `npm run verify:schema` |
+| Rendered accessibility | `ACCESSIBILITY_REPORT.json` | Build client, then `npm run check:a11y-rendered` |
+| Mobile layout, including a live room | `MOBILE_LAYOUT_REPORT.json` | Build client, run a local server, then `npm run check:mobile-layout -- --server=<port>` |
+| Multiplayer | `MULTIPLAYER-RESILIENCE-REPORT.json` | Build server, then `npm run check:multiplayer` |
+| Soak | `SOAK-TEST-REPORT.json` | Build server, then `npm run check:soak` |
+| Browsers | `BROWSER-COMPATIBILITY-REPORT.json` | Build client/server, then `npm run check:browser` |
+| Hosted Supabase | `docs/remediation/supabase-cloud-verification.json` | Authorized staging verification; there is no automated cloud receipt producer |
+
+Every report requires an `evidence` object emitted by the verifier:
+`schemaVersion: 1`, full `gitCommit`, `sourceClean: true`, `environment`,
+`startedAt`, and `completedAt`. Timestamps are UTC ISO strings. The evidence must
+start and finish within the last seven days, must not be future-dated, and must
+refer to the current commit with no uncommitted source changes. Local verifiers
+stamp `environment: "local"` and recheck source cleanliness on completion.
+Commit the implementation through the normal review process before collecting
+release proof; never hand-edit a receipt to turn it green.
+
+Missing, malformed, legacy or mismatched receipts are **UNVERIFIED**, not PASS.
+Failed/skipped/empty checks and inconsistent or absent measurement counters
+block approval. Existing Markdown reports are for reading only, never machine
+proof. The real nested rendered-report counters are checked, including keyboard
+findings; a mobile run without the room screen cannot establish room readiness.
+
+Known scope limits deliberately remain blockers:
+
+- The existing 15-cycle soak runner is a short stress test. Its JSON does not
+  qualify as an extended soak unless it records at least 3,600 seconds of real
+  elapsed workload, with events/rooms/sockets and no recorded leak or duplicates.
+  The runner still needs an actual hour-long workload implementation.
+- The legacy browser runner checks broad UI-shell selectors. Those are not
+  proof of six completed journeys. Browser receipts require Chromium, Edge,
+  Firefox and WebKit (`safari`), each with explicit successful `identity`,
+  `roomCreation`, `roomJoin`, `chat`, `modal` and `gameArena` checks. The old
+  shell-only fields are intentionally rejected; real interactions must replace
+  them, not be renamed.
+- Local multiplayer scenarios are not physical-device or deployed-network proof.
+  Review their scope and complete the manual staging journeys separately.
+
+For hosted evidence, explicitly set `RELEASE_STAGING_SUPABASE_URL` to the HTTPS
+origin of the authorized staging project before invoking the gate. The receipt
+must use `environment: "staging"`, name that exact endpoint, include every current
+SQL migration as applied, have `status: "VERIFIED"`, and record successful,
+non-skipped `cloud-auth`, `cloud-rls` and `cloud-postgrest` checks with evidence
+from the actual staging run. Do not add passwords, tokens or service keys to it.
+Old cloud receipts lacking commit provenance or current migration coverage do
+not establish readiness. The gate itself makes no cloud calls.
+
+CI publishes the readiness report even when the consolidated gate fails. Do
+not bypass that failure to label a release production-ready.
 
 ## 0. Before you start
 
@@ -106,7 +172,9 @@ select count(*) as guests_before from public.player_identities where kind = 'gue
 Now do one deliberate thing: create a solo or bot room.
 
 - [ ] Now one `/api/auth/guest` request appears, and `bhalyam.guest.id` and `.token` are set.
-- [ ] A new guest row exists and the wallet chip shows 2,000.
+- [ ] A new guest row exists and the initial wallet shows 100 coins when the first-game rule is enabled.
+      The separate 2,000-coin guest welcome is available only after the guest has spent coins on a match
+      and explicitly claims it. Do not treat the welcome as an immediate provisioning grant.
 
 ## 4. The sign-up to carry-over journey
 

@@ -42,6 +42,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { captureEvidence, completeEvidence } from "../../../scripts/quality-gates/releaseEvidence.mjs";
 import { INTERACTIVE_SELECTOR, measureControls, measureOverflow, measureRendered } from "./probes.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -317,6 +318,7 @@ async function inspect(page, viewport, route) {
 }
 
 async function main() {
+  const evidence = captureEvidence(ROOT);
   const { server, port } = await serveDist();
   const base = `http://127.0.0.1:${port}`;
 
@@ -391,6 +393,7 @@ async function main() {
 
   const bySeverity = (s) => findings.filter((f) => f.severity === s);
   const report = {
+    evidence: completeEvidence(evidence, ROOT),
     generatedAt: new Date().toISOString(),
     engine: "chromium (playwright)",
     scope:

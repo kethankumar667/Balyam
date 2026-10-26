@@ -67,6 +67,8 @@
   ```bash
   npm run typecheck       # 0 errors
   npm test                # 100% passing test files
-  npm run release:check   # Score: 100 / 100 — Decision: GO
-  npm run enterprise:check# Score: 100 / 100 — Decision: CERTIFIED_FOR_PRODUCTION
+  npm run release:check    # exit 0: EVIDENCE CHECKS PASSED (not automatic production certification)
+  npm run enterprise:check # same fail-closed evidence policy; release-owner sign-off still required
   ```
+- Missing, stale, malformed, wrong-commit or wrong-environment evidence blocks release approval.
+  See `docs/runbooks/staging-release-verification.md` for receipt requirements and remaining manual release checks.

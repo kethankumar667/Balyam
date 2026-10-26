@@ -35,6 +35,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { startPostgrestShim } from "./postgrestShim.mjs";
+import { captureEvidence, completeEvidence } from "../quality-gates/releaseEvidence.mjs";
 
 const { Client } = pkg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -150,6 +151,7 @@ async function api(pathname, init = {}) {
 const RUN = crypto.randomBytes(4).toString("hex");
 
 async function main() {
+  const evidence = captureEvidence(ROOT);
   console.log(`\nPersistence durability verification — run ${RUN}\n`);
 
   fs.rmSync(DATA_DIR, { recursive: true, force: true });
@@ -345,6 +347,7 @@ async function main() {
   }
 
   const receipt = {
+    evidence: completeEvidence(evidence, ROOT),
     verifiedAt: new Date().toISOString(),
     run: RUN,
     project: "local://embedded-postgres-17 + postgrest-shim",

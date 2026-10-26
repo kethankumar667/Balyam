@@ -1,100 +1,166 @@
 {
-  "timestamp": "2026-10-13T06:35:20.778Z",
-  "gitCommit": "ea9da3de",
-  "governanceVersion": "3.0.0-phase4b-capped",
+  "timestamp": "2026-10-26T19:41:43.281Z",
+  "gitCommit": "c4544913d95042c93f3ed78b2aa45d21a2b493b9",
   "certificationState": "INTERNAL TESTING READY",
-  "stateCapped": false,
-  "stateCappingReason": null,
-  "domainEvaluations": {
+  "releaseApproved": false,
+  "stateCapped": true,
+  "stateCappingReason": "Hosted staging verification is missing or invalid; public release is not approved.",
+  "domains": {
     "typeSafety": {
+      "status": "PASS",
       "passed": true,
-      "error": null
+      "message": "Client and server typechecks passed in this run."
     },
-    "testQuality": {
-      "totalFiles": 565,
+    "testIntegrity": {
+      "status": "PASS",
       "passed": true,
-      "violations": [],
-      "status": "PASS"
+      "message": "722 test files scanned; 0 forbidden directives. This is not test execution."
     },
-    "security": {
+    "accessibilitySource": {
+      "status": "PASS",
       "passed": true,
-      "hmacActive": true,
-      "sanitizersActive": true
-    },
-    "persistence": {
-      "passed": true,
-      "store": "supabase-postgres",
-      "verifiedAt": "2026-09-23T15:06:56.939Z",
-      "passedChecks": 0,
-      "totalChecks": 17,
-      "ageDays": 20
-    },
-    "accessibility": {
-      "passed": true,
-      "staticFilesScanned": 745,
-      "staticViolations": 0,
-      "renderedRoutesAudited": 22,
-      "renderedViolations": 0,
-      "contrastDefects": 0,
-      "keyboardTrapsVerified": true,
-      "status": "PASS"
-    },
-    "responsiveMatrix": {
-      "passed": true,
-      "criticalDefects": 0,
-      "viewportsAudited": 11
+      "message": "0 source-scan findings; not a rendered accessibility verdict."
     },
     "bundleBudgets": {
+      "status": "PASS",
       "passed": true,
-      "totalAssets": 318,
-      "violations": 0,
-      "status": "PASS"
+      "message": "349 built assets inspected; 0 budget findings."
     },
     "dependencyGovernance": {
+      "status": "PASS",
       "passed": true,
-      "criticalCount": 0,
-      "status": "PASS"
+      "message": "0 dependency configuration issues; not a vulnerability scan."
     },
-    "criticalJourneys": {
-      "allPassed": false,
-      "totalSuites": 6,
-      "passedSuites": 5,
-      "failedCount": 1,
-      "missingSuites": [
-        "gameLifecycleJourney.test.tsx"
-      ]
+    "persistence": {
+      "status": "UNVERIFIED",
+      "passed": false,
+      "message": "Missing versioned evidence provenance; regenerate the report."
     },
-    "multiplayerResilience": {
-      "passed": true,
-      "scenariosVerified": 8,
-      "failedScenarios": []
+    "schema": {
+      "status": "UNVERIFIED",
+      "passed": false,
+      "message": "Missing versioned evidence provenance; regenerate the report."
     },
-    "operationalReadiness": {
-      "passed": true,
-      "hasHealth": true,
-      "hasMetrics": false,
-      "hasStructuredLogs": true,
-      "reason": null
+    "accessibility": {
+      "status": "UNVERIFIED",
+      "passed": false,
+      "message": "Missing versioned evidence provenance; regenerate the report."
     },
-    "supabaseTargetPlatform": {
-      "passed": true,
-      "status": "VERIFIED",
-      "verifiedAt": "2026-09-26T18:18:00.000Z",
-      "endpoint": "https://bhalyam-staging.supabase.co"
+    "mobile": {
+      "status": "UNVERIFIED",
+      "passed": false,
+      "message": "Missing versioned evidence provenance; regenerate the report."
+    },
+    "multiplayer": {
+      "status": "UNVERIFIED",
+      "passed": false,
+      "message": "MULTIPLAYER-RESILIENCE-REPORT.json: Missing evidence. Regenerate using the documented verifier."
+    },
+    "soakTesting": {
+      "status": "UNVERIFIED",
+      "passed": false,
+      "message": "SOAK-TEST-REPORT.json: Missing evidence. Regenerate using the documented verifier."
+    },
+    "browserCompatibility": {
+      "status": "UNVERIFIED",
+      "passed": false,
+      "message": "BROWSER-COMPATIBILITY-REPORT.json: Missing evidence. Regenerate using the documented verifier."
+    },
+    "supabaseCloud": {
+      "status": "UNVERIFIED",
+      "passed": false,
+      "message": "Missing versioned evidence provenance; regenerate the report."
     }
   },
-  "criticalUserJourneys": {
-    "allPassed": false,
-    "totalSuites": 6,
-    "passedSuites": 5,
-    "failedCount": 1,
-    "missingSuites": [
-      "gameLifecycleJourney.test.tsx"
-    ]
+  "blockers": [
+    "persistence: Missing versioned evidence provenance; regenerate the report.",
+    "schema: Missing versioned evidence provenance; regenerate the report.",
+    "accessibility: Missing versioned evidence provenance; regenerate the report.",
+    "mobile: Missing versioned evidence provenance; regenerate the report.",
+    "multiplayer: MULTIPLAYER-RESILIENCE-REPORT.json: Missing evidence. Regenerate using the documented verifier.",
+    "soak: SOAK-TEST-REPORT.json: Missing evidence. Regenerate using the documented verifier.",
+    "browserCompatibility: BROWSER-COMPATIBILITY-REPORT.json: Missing evidence. Regenerate using the documented verifier.",
+    "supabaseCloud: Missing versioned evidence provenance; regenerate the report."
+  ],
+  "advisories": [],
+  "scope": "Evidence gate only. Full CI, deployed player journeys, operational monitoring and rollback rehearsal still require release-owner sign-off.",
+  "domainEvaluations": {
+    "typeSafety": {
+      "status": "PASS",
+      "passed": true,
+      "message": "Client and server typechecks passed in this run."
+    },
+    "testIntegrity": {
+      "status": "PASS",
+      "passed": true,
+      "message": "722 test files scanned; 0 forbidden directives. This is not test execution."
+    },
+    "accessibilitySource": {
+      "status": "PASS",
+      "passed": true,
+      "message": "0 source-scan findings; not a rendered accessibility verdict."
+    },
+    "bundleBudgets": {
+      "status": "PASS",
+      "passed": true,
+      "message": "349 built assets inspected; 0 budget findings."
+    },
+    "dependencyGovernance": {
+      "status": "PASS",
+      "passed": true,
+      "message": "0 dependency configuration issues; not a vulnerability scan."
+    },
+    "persistence": {
+      "status": "UNVERIFIED",
+      "passed": false,
+      "message": "Missing versioned evidence provenance; regenerate the report."
+    },
+    "schema": {
+      "status": "UNVERIFIED",
+      "passed": false,
+      "message": "Missing versioned evidence provenance; regenerate the report."
+    },
+    "accessibility": {
+      "status": "UNVERIFIED",
+      "passed": false,
+      "message": "Missing versioned evidence provenance; regenerate the report."
+    },
+    "mobile": {
+      "status": "UNVERIFIED",
+      "passed": false,
+      "message": "Missing versioned evidence provenance; regenerate the report."
+    },
+    "multiplayer": {
+      "status": "UNVERIFIED",
+      "passed": false,
+      "message": "MULTIPLAYER-RESILIENCE-REPORT.json: Missing evidence. Regenerate using the documented verifier."
+    },
+    "soakTesting": {
+      "status": "UNVERIFIED",
+      "passed": false,
+      "message": "SOAK-TEST-REPORT.json: Missing evidence. Regenerate using the documented verifier."
+    },
+    "browserCompatibility": {
+      "status": "UNVERIFIED",
+      "passed": false,
+      "message": "BROWSER-COMPATIBILITY-REPORT.json: Missing evidence. Regenerate using the documented verifier."
+    },
+    "supabaseCloud": {
+      "status": "UNVERIFIED",
+      "passed": false,
+      "message": "Missing versioned evidence provenance; regenerate the report."
+    }
   },
   "blockingDefects": [
-    "Critical user journey tests failed: 1 failed flows"
+    "persistence: Missing versioned evidence provenance; regenerate the report.",
+    "schema: Missing versioned evidence provenance; regenerate the report.",
+    "accessibility: Missing versioned evidence provenance; regenerate the report.",
+    "mobile: Missing versioned evidence provenance; regenerate the report.",
+    "multiplayer: MULTIPLAYER-RESILIENCE-REPORT.json: Missing evidence. Regenerate using the documented verifier.",
+    "soak: SOAK-TEST-REPORT.json: Missing evidence. Regenerate using the documented verifier.",
+    "browserCompatibility: BROWSER-COMPATIBILITY-REPORT.json: Missing evidence. Regenerate using the documented verifier.",
+    "supabaseCloud: Missing versioned evidence provenance; regenerate the report."
   ],
   "advisoryWarnings": [],
-  "executionTimeMs": 192170
+  "executionTimeMs": 182842
 }

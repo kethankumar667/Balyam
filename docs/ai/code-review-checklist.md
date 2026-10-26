@@ -47,5 +47,5 @@
 ## 7. Testing & Quality Gates Verification
 - [ ] `npm run typecheck` passes with **0 errors**.
 - [ ] `npm test` passes 100% of unit and integration tests.
-- [ ] `npm run release:check` yields **100 / 100 — Decision: GO**.
-- [ ] `npm run enterprise:check` yields **100 / 100 — Decision: CERTIFIED_FOR_PRODUCTION**.
+- [ ] `npm run release:check` exits 0 with **EVIDENCE CHECKS PASSED**, using fresh evidence for the release commit. Missing evidence blocks; see `docs/runbooks/staging-release-verification.md`.
+- [ ] `npm run enterprise:check` agrees with the release gate. Neither command replaces full CI, deployed player journeys, or release-owner sign-off.

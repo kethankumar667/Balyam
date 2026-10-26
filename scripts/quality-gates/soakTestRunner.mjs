@@ -16,6 +16,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import { captureEvidence, completeEvidence } from "./releaseEvidence.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,6 +36,7 @@ const PORT = 4056;
 const SERVER_URL = `http://127.0.0.1:${PORT}`;
 
 async function runSoakTest() {
+  const evidence = captureEvidence(ROOT_DIR);
   console.log("==========================================================");
   console.log("⏳ BHALYAM LONG-DURATION MULTIPLAYER SOAK TEST (PHASE 2I)");
   console.log("==========================================================\n");
@@ -208,6 +210,8 @@ async function runSoakTest() {
   }
 
   const reportPath = path.join(ROOT_DIR, "SOAK-TEST-REPORT.md");
+  fs.writeFileSync(path.join(ROOT_DIR, "SOAK-TEST-REPORT.json"),
+    JSON.stringify({ ...results, evidence: completeEvidence(evidence, ROOT_DIR) }, null, 2) + "\n");
   generateSoakMarkdownReport(results, reportPath);
   console.log(`📄 Saved Soak Test Report to: ${reportPath}`);
 

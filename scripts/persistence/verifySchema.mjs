@@ -43,6 +43,7 @@ import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { captureEvidence, completeEvidence } from "../quality-gates/releaseEvidence.mjs";
 
 const { Client } = pkg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -83,6 +84,7 @@ end $$;
 `;
 
 async function main() {
+  const evidence = captureEvidence(ROOT);
   console.log("\nPersistence schema verification — real PostgreSQL\n");
 
   fs.rmSync(DATA_DIR, { recursive: true, force: true });
@@ -484,6 +486,7 @@ async function main() {
   }
 
   const receipt = {
+    evidence: completeEvidence(evidence, ROOT),
     verifiedAt: new Date().toISOString(),
     engine: version.split(",")[0],
     scope: "SCHEMA verification against a real PostgreSQL. Does NOT cover the PostgREST transport or application restart durability.",

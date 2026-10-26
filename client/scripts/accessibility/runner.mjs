@@ -43,6 +43,7 @@ import http from "node:http";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
+import { captureEvidence, completeEvidence } from "../../../scripts/quality-gates/releaseEvidence.mjs";
 
 const require = createRequire(import.meta.url);
 const AXE_PATH = require.resolve("axe-core/axe.min.js");
@@ -196,6 +197,7 @@ async function tabThrough(page, route, theme, max = 20) {
 }
 
 async function main() {
+  const evidence = captureEvidence(ROOT);
   const { server, port } = await serveDist();
   const base = `http://127.0.0.1:${port}`;
   const browser = await chromium.launch({ headless: true });
@@ -256,6 +258,7 @@ async function main() {
 
   const bySeverity = (list, impact) => list.filter((v) => v.impact === impact).length;
   const report = {
+    evidence: completeEvidence(evidence, ROOT),
     generatedAt: new Date().toISOString(),
     engine: "axe-core in chromium (playwright)",
     standard: "WCAG 2.1 A + AA (wcag2a, wcag2aa, wcag21a, wcag21aa)",
@@ -299,7 +302,8 @@ async function main() {
   const blocking =
     report.counts.accessibility.critical +
     report.counts.accessibility.serious +
-    report.counts.contrast.total;
+    report.counts.contrast.total +
+    report.counts.keyboard;
   process.exit(blocking > 0 ? 1 : 0);
 }
 

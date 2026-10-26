@@ -18,6 +18,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import { captureEvidence, completeEvidence } from "./releaseEvidence.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,6 +38,7 @@ const PORT = 4055;
 const SERVER_URL = `http://127.0.0.1:${PORT}`;
 
 async function runMultiplayerResilienceSuite() {
+  const evidence = captureEvidence(ROOT_DIR);
   console.log("==========================================================");
   console.log("🎮 BHALYAM MULTIPLAYER RESILIENCE & CLOSED BETA SUITE");
   console.log("==========================================================\n");
@@ -357,6 +359,8 @@ async function runMultiplayerResilienceSuite() {
   console.log("==========================================================\n");
 
   const reportPath = path.join(ROOT_DIR, "MULTIPLAYER-RESILIENCE-REPORT.md");
+  fs.writeFileSync(path.join(ROOT_DIR, "MULTIPLAYER-RESILIENCE-REPORT.json"),
+    JSON.stringify({ ...results, evidence: completeEvidence(evidence, ROOT_DIR) }, null, 2) + "\n");
   generateMarkdownReport(results, reportPath);
   console.log(`📄 Saved Multiplayer Resilience Report to: ${reportPath}`);
 

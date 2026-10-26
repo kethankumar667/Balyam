@@ -24,6 +24,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import { captureEvidence, completeEvidence } from "./releaseEvidence.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,6 +46,7 @@ const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`;
 const FRONTEND_URL = `http://127.0.0.1:${FRONTEND_PORT}`;
 
 async function runBrowserCompatibilityAudit() {
+  const evidence = captureEvidence(ROOT_DIR);
   console.log("==========================================================");
   console.log("🌐 BHALYAM MULTI-BROWSER COMPATIBILITY AUDIT (PHASE 2J)");
   console.log("==========================================================\n");
@@ -213,6 +215,8 @@ async function runBrowserCompatibilityAudit() {
   }
 
   const reportPath = path.join(ROOT_DIR, "BROWSER-COMPATIBILITY-REPORT.md");
+  fs.writeFileSync(path.join(ROOT_DIR, "BROWSER-COMPATIBILITY-REPORT.json"),
+    JSON.stringify({ browsers: matrix, evidence: completeEvidence(evidence, ROOT_DIR) }, null, 2) + "\n");
   generateBrowserMarkdownReport(matrix, reportPath);
   console.log(`📄 Saved Browser Compatibility Report to: ${reportPath}`);
 
