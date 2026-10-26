@@ -59,6 +59,17 @@ describe("Home's featured and popular games", () => {
     expect(slugsIn("Featured games")).toHaveLength(2);
     expect(slugsIn("Popular games")).toHaveLength(4);
     expect(screen.getByRole("heading", { name: "Matching games" })).toBeInTheDocument();
+    expect(slugsIn("Matching games")).toHaveLength(4);
+  });
+
+  it("caps matching favourites at four while keeping the full-list link", () => {
+    BHALYAM_GAMES.slice(0, 6).forEach(game => FavouritesManager.toggleFavourite(game.slug));
+    renderHome();
+    fireEvent.click(screen.getByRole("radio", { name: /Favourites/i }));
+
+    expect(slugsIn("Matching games")).toHaveLength(4);
+    expect(screen.getByText("Showing 4 of 6 games.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View all favourites" })).toHaveAttribute("href", "/games?c=favourites");
   });
 
   it("keeps both rows when a category is chosen, and lists that category beneath", () => {

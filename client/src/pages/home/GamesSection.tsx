@@ -10,12 +10,12 @@ import { gamesForWay, type PlayWay } from "./playWay";
 
 export { default as GameTile, GameArtwork as GameTileArt } from "../../components/games/GameCard";
 
-const HOME_TILE_CAP = 6;
+const HOME_TILE_CAP = 4;
 
 /**
  * Home always opens with today's two featured and four popular games (see `GameCardGrid`'s `curated` layout). A
  * category filter or a "way to play" never replaces them: it adds a "Matching games" list underneath, so the page
- * looks the same on every visit and the filter still has somewhere to show its results.
+ * looks the same on every visit and the filter still has somewhere to show up to four results.
  */
 export function GamesSection({
   onSelect, way = null, onClearWay,
@@ -28,7 +28,7 @@ export function GamesSection({
   const { favourites } = useFavourites();
   const everyGame = filterGames({ category: "all" }, false);
   const matches = gamesForWay(filterGames(filter, false), way);
-  const shown = filter.category === "favourites" ? matches : matches.slice(0, HOME_TILE_CAP);
+  const shown = matches.slice(0, HOME_TILE_CAP);
   const narrowed = filter.category !== "all";
   const filtered = narrowed || way !== null;
 
@@ -80,7 +80,7 @@ export function GamesSection({
           ) : (
             <GameCardGrid
               games={matches}
-              limit={filter.category === "favourites" ? undefined : HOME_TILE_CAP}
+              limit={HOME_TILE_CAP}
               onSelect={onSelect}
               showFeatured={false}
             />
