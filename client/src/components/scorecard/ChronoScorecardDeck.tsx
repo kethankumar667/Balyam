@@ -1,41 +1,8 @@
-import React from "react";
 import { useViewport } from "../../lib/useViewport";
-import type { PlayerScorecardArchive } from "@shared/profile/Scorecard";
-import ChronoScorecardDeckMobile from "./ChronoScorecardDeckMobile";
-import ChronoScorecardDeckDesktop from "./ChronoScorecardDeckDesktop";
+import ScorecardDashboard from "./ScorecardDashboard";
+import type { ScorecardDeckProps } from "./scorecardDashboardModel";
 
-interface ChronoScorecardDeckProps {
-  archive: PlayerScorecardArchive;
-  playerName: string;
-  avatar?: string;
-  className?: string;
-}
-
-export default function ChronoScorecardDeck({
-  archive,
-  playerName,
-  avatar,
-  className = "",
-}: ChronoScorecardDeckProps) {
+export default function ChronoScorecardDeck(props: ScorecardDeckProps) {
   const viewport = useViewport();
-
-  if (viewport === "mobile") {
-    return (
-      <ChronoScorecardDeckMobile
-        archive={archive}
-        playerName={playerName}
-        avatar={avatar}
-        className={className}
-      />
-    );
-  }
-
-  return (
-    <ChronoScorecardDeckDesktop
-      archive={archive}
-      playerName={playerName}
-      avatar={avatar}
-      className={className}
-    />
-  );
+  return <ScorecardDashboard {...props} layout={viewport} />;
 }

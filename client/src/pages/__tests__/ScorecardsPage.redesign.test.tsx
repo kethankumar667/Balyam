@@ -79,9 +79,10 @@ describe("ScorecardsPage redesign", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("heading", { name: "Personal best lab" })).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Chrono scorecards" })).toBeDefined();
     expect(screen.getByRole("group", { name: "Tracked games" }).textContent).toContain("1");
     expect(screen.getByRole("group", { name: "Records broken" }).textContent).toContain("6");
+    expect(screen.getByRole("group", { name: "Mode coverage" }).textContent).toContain("0%");
     expect(screen.getByText("Scorecard deck")).toBeDefined();
   });
 });

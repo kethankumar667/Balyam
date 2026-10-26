@@ -61,13 +61,27 @@ Reward amounts, XP and navigation continue to use the existing level-up model.
 
 ### Personal scorecards
 
-Both Chrono deck layouts use opaque `surface.0/1/2` and `ink.hi/mid` tokens
-in Light, with explicit dark variants for their slate panels. Foils use pale
-violet or amber/cyan gradients in Light, not dark glass over a light page.
-Rank colors live in the client-side `scorecardTheme` palette; ranking rules
-remain shared and unchanged. Radar grids, labels, numerals and the share pass
-also follow the document theme. Saturated action gradients retain white text
-and use darker cyan/blue stops for contrast in either theme.
+The Chrono dashboard uses a scoped `.chrono-scorecards` / `score.*` palette:
+ivory/white with deep cyan ink in Light, navy panels with cyan/gold in Dark.
+Four summary tiles lead into a game navigator, mode-card grid, illustrated
+personal-best card, radar, history and recent battles. Desktop has four main
+columns; tablet uses two, while the mobile shell stacks panels and scrolls
+the game selector horizontally. Both shells share data, controls and local
+selection state, which survives breakpoint changes. Pins keep their existing
+storage key and show a status message if storage cannot be read or written.
+
+Rank colors remain in the client-side `scorecardTheme` palette; ranking rules
+are unchanged. Current mode coverage excludes historical-only formats, while
+those archived records remain selectable. History plots only the retained
+five recent scores, oldest to newest, never fabricated 10/30/all-time data.
+Recent battles use actual profile results/dates and show their independent
+loading/error states, not guessed per-match scores, modes or XP. A personal
+best is not labelled "New best" without a new-best event, and play actions
+start a fresh game rather than claiming to resume a save. Record details and
+sharing use the shared `Modal` for portal layering, keyboard focus and Escape.
+The share card describes a saved personal best, not a verified signature,
+scannable QR or playable ghost. A failed clipboard write shows a selectable
+link and an explicit error instead of reporting success.
 
 ### Profile command center
 

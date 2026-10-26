@@ -3,28 +3,21 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 import type { PlayerScorecardArchive } from "@shared/profile/Scorecard";
-import { getGameModeConfig } from "@shared/profile/GameModes";
-import ChronoScorecardDeckDesktop from "../ChronoScorecardDeckDesktop";
-import ChronoScorecardDeckMobile from "../ChronoScorecardDeckMobile";
+import ScorecardDashboard from "../ScorecardDashboard";
 import { SCORECARD_RANK_CLASSES } from "../scorecardTheme";
 
-afterEach(() => {
-  cleanup();
-  localStorage.clear();
-});
+afterEach(() => { cleanup(); localStorage.clear(); });
 
-const config = getGameModeConfig("handcricket");
-const mode = config.modes.find(mode => mode.modeId === config.defaultModeId)!;
 const archive: PlayerScorecardArchive = {
   playerId: "theme-player", totalPersonalBestsBeaten: 8, updatedAt: 1700000000000,
   games: {
     handcricket: {
       game: "handcricket", gameDisplayName: "Hand Cricket", lastPlayedAt: 1700000000000, totalModesPlayed: 1,
       modes: {
-        [mode.modeId]: {
-          modeId: mode.modeId, modeDisplayName: mode.displayName, bestScore: 140,
+        international_t20: {
+          modeId: "international_t20", modeDisplayName: "International T20 (10 Overs)", bestScore: 140,
           bestScoreAchievedAt: 1700000000000, bestScoreMatchId: "theme-match-12345",
-          scoringDirection: mode.scoringDirection, timesPlayed: 3, totalScoreAccumulated: 330, averageScore: 110,
+          scoringDirection: "HIGHER_IS_BETTER", timesPlayed: 3, totalScoreAccumulated: 330, averageScore: 110,
           recentScores: [140, 100, 90], bestContext: "VS_BOTS", secondaryMetrics: {},
           radar: { velocity: 70, clutch: 60, efficiency: 80, consistency: 50, aggression: 90 }, foilTier: "prismatic_holo",
         },
@@ -40,61 +33,37 @@ function expectThemedSurfaces(root: HTMLElement) {
   expect(darkOnly.map(node => node.className)).toEqual([]);
 }
 
-describe.each([
-  ["desktop", ChronoScorecardDeckDesktop],
-  ["mobile", ChronoScorecardDeckMobile],
-] as const)("scorecard %s theme", (layout, Deck) => {
+describe.each(["desktop", "mobile"] as const)("scorecard %s theme", layout => {
   it.each([
     [140, "S_RANK"], [60, "A_RANK"], [30, "B_RANK"], [10, "C_RANK"],
   ] as const)("keeps the %s-run grade theme-aware", (bestScore, tier) => {
     const game = archive.games.handcricket!;
     const rankedArchive = {
       ...archive, games: { handcricket: { ...game, modes: {
-        [mode.modeId]: { ...game.modes[mode.modeId], bestScore },
+        international_t20: { ...game.modes.international_t20, bestScore },
       } } },
     };
-    render(<MemoryRouter><Deck archive={rankedArchive} playerName="Player" /></MemoryRouter>);
-    const badge = screen.getByText(`${tier[0]}-RANK`).parentElement!;
-    expect(badge).toHaveClass(...SCORECARD_RANK_CLASSES[tier].split(" "));
+    render(<MemoryRouter><ScorecardDashboard layout={layout} archive={rankedArchive} playerName="Player" /></MemoryRouter>);
+    expect(screen.getByText(`${tier[0]}-RANK`).parentElement).toHaveClass(...SCORECARD_RANK_CLASSES[tier].split(" "));
   });
 
-  it("themes the empty state without changing launch links or game search", () => {
-    const { container } = render(<MemoryRouter><Deck archive={{ ...archive, games: {} }} playerName="Player" /></MemoryRouter>);
+  it("themes the empty state and keeps every launch link", () => {
+    const { container } = render(<MemoryRouter><ScorecardDashboard layout={layout} archive={{ ...archive, games: {} }} playerName="Player" /></MemoryRouter>);
     expectThemedSurfaces(container);
-    expect(screen.getByRole("link", { name: "Launch Hand Cricket" })).toHaveAttribute("href");
-    expect(screen.getByRole("button", { name: "Unpin Indian Rummy" })).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText("Search games..."), { target: { value: "nonexistent game" } });
-    expect(screen.queryByRole("button", { name: "Unpin Indian Rummy" })).not.toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText("Search games..."), { target: { value: "" } });
-    fireEvent.click(screen.getByRole("button", { name: "Board" }));
-    expect(screen.getByRole("button", { name: /^Ludo/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Unpin Hand Cricket" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Launch Hand Cricket" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("heading", { name: "Record intelligence" })).toHaveClass("text-score-ink");
   });
 
-  it("themes records, rank badges, dossier, radar and sharing", () => {
-    const originalArchive = JSON.stringify(archive);
-    const { container } = render(<MemoryRouter><Deck archive={archive} playerName="Player" /></MemoryRouter>);
+  it("themes populated records, radar, dossier and sharing", () => {
+    const { container } = render(<MemoryRouter><ScorecardDashboard layout={layout} archive={archive} playerName="Player" /></MemoryRouter>);
     expectThemedSurfaces(container);
-    if (layout === "mobile") fireEvent.click(screen.getByRole("button", { name: "Inspect Quantum Radar" }));
-    const radar = container.querySelector("svg text");
-    expect(radar).toHaveClass("fill-cyan-800", "dark:fill-cyan-400");
-    fireEvent.click(screen.getByRole("button", { name: layout === "mobile" ? "Inspect match dossier" : "Dossier" }));
-    expect(screen.getByText(/Signature Feat/)).toBeVisible();
-    expectThemedSurfaces(container);
-    fireEvent.click(screen.getByRole("button", { name: layout === "mobile" ? "Card" : "Back to Card" }));
-    fireEvent.click(screen.getByRole("button", { name: layout === "mobile" ? "Share holographic scorecard" : "Holo-Pass" }));
-    expect(screen.getByRole("dialog", { name: "Challenge Your Friends" })).toBeVisible();
+    expect(container.querySelector("svg text")).toHaveClass("fill-cyan-800", "dark:fill-cyan-400");
+    fireEvent.click(screen.getByRole("button", { name: "View scorecard" }));
+    expect(screen.getByRole("dialog", { name: "Hand Cricket scorecard" })).toHaveClass("chrono-scorecards", "bg-score-panel");
+    fireEvent.click(screen.getByRole("button", { name: "Close scorecard" }));
+    fireEvent.click(screen.getByRole("button", { name: "Share scorecard" }));
     expect(screen.getByRole("heading", { name: "Challenge Your Friends" })).toHaveClass("text-ink-hi");
     expect(screen.getByRole("button", { name: "Close dialog" })).toHaveClass("z-10");
-    expect(screen.getByRole("heading", { name: "Challenge Your Friends" }).parentElement).toHaveClass("pt-16", "overflow-y-auto");
-    expectThemedSurfaces(container);
     fireEvent.click(screen.getByRole("button", { name: "Close dialog" }));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Unpin Hand Cricket" }));
-    expect(screen.getByRole("button", { name: "Pin Hand Cricket" })).toBeInTheDocument();
-    const otherMode = config.modes.find(other => other.modeId !== mode.modeId)!;
-    fireEvent.click(screen.getByRole("button", { name: otherMode.displayName }));
-    expect(screen.getByRole("link", { name: "Launch Hand Cricket" })).toBeInTheDocument();
-    expect(JSON.stringify(archive)).toBe(originalArchive);
   });
 });

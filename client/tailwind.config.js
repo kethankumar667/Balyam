@@ -5,6 +5,19 @@ export default {
   theme: {
     extend: {
       colors: {
+        score: {
+          canvas: "var(--score-canvas)",
+          panel: "var(--score-panel)",
+          inset: "var(--score-inset)",
+          active: "var(--score-active)",
+          ink: "var(--score-ink)",
+          soft: "var(--score-soft)",
+          edge: "var(--score-edge)",
+          grid: "var(--score-grid)",
+          cyan: "var(--score-cyan)",
+          gold: "var(--score-gold)",
+          "on-cyan": "var(--score-on-cyan)",
+        },
         journey: {
           canvas: "rgb(var(--journey-canvas) / <alpha-value>)",
           chip: "rgb(var(--journey-chip) / <alpha-value>)",

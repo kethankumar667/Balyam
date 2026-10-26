@@ -571,6 +571,43 @@ body, #root, .bhalyam-paper {
   color: #3f2a1d;
 }
 
+.chrono-scorecards {
+  --score-canvas: #fffdf7;
+  --score-panel: #ffffff;
+  --score-inset: #f0f7fa;
+  --score-active: #e1f5fa;
+  --score-ink: #18384a;
+  --score-soft: #456477;
+  --score-edge: #a4bdc9;
+  --score-grid: #b6ced8;
+  --score-cyan: #006b80;
+  --score-gold: #885506;
+  --score-on-cyan: #ffffff;
+  --score-art-glow: #f9d99055;
+  --score-art-ring: #d6b97812;
+  --surface-0: var(--score-canvas);
+  --surface-1: var(--score-panel);
+  --surface-2: var(--score-inset);
+  --text-hi: var(--score-ink);
+  --text-mid: var(--score-soft);
+}
+
+:root[data-theme="dark"] .chrono-scorecards {
+  --score-canvas: #061a2d;
+  --score-panel: #092238;
+  --score-inset: #0b2b43;
+  --score-active: #103b50;
+  --score-ink: #edf8ff;
+  --score-soft: #afcddd;
+  --score-edge: #3f718c;
+  --score-grid: #42667c;
+  --score-cyan: #25d8ee;
+  --score-gold: #f5c767;
+  --score-on-cyan: #062235;
+  --score-art-glow: #da983b2b;
+  --score-art-ring: #55bfdd09;
+}
+
 .profile-command {
   --surface-0: #fff9ed;
   --surface-1: #fffdf7;

@@ -1,10 +1,11 @@
-import React, { useState, useRef } from "react";
-import { Trophy, Zap, Share2, Copy, Check, X, QrCode } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Share2, Copy, Check, X } from "lucide-react";
 import type { ModeScorecard, AllGameSlug } from "@shared/profile/Scorecard";
 import { getGameModeConfig } from "@shared/profile/GameModes";
 import { gameLaunch } from "../../lib/gameLaunch";
 import { useResolvedCosmetics } from "../../lib/cosmeticsResolver";
 import SeatAvatar from "../profile/SeatAvatar";
+import Modal from "../Modal";
 
 interface HoloPassShareModalProps {
   game: AllGameSlug;
@@ -22,8 +23,11 @@ export default function HoloPassShareModal({
   onClose,
 }: HoloPassShareModalProps) {
   const [copied, setCopied] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
   const { avatarAura } = useResolvedCosmetics();
-  const cardRef = useRef<HTMLDivElement>(null);
+  const copyTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => () => clearTimeout(copyTimer.current), []);
 
   const gameConfig = getGameModeConfig(game);
   // A link someone else opens must land on a page that exists. A browser-only game has its own page;
@@ -34,25 +38,32 @@ export default function HoloPassShareModal({
   const challengeUrl = `${window.location.origin}${landingPath}?challengeMode=${encodeURIComponent(scorecard.modeId)}&targetScore=${scorecard.bestScore}`;
 
   const handleCopyLink = async () => {
+    setShareError(null);
+    setCopied(false);
+    clearTimeout(copyTimer.current);
     try {
       await navigator.clipboard.writeText(challengeUrl);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback
+      copyTimer.current = setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.warn("Scorecard share link could not be copied:", error);
+      setShareError("The link could not be copied. Select the link below to copy it manually.");
     }
   };
 
   const handleNativeShare = async () => {
+    setShareError(null);
     if (navigator.share) {
       try {
         await navigator.share({
           title: `BHALYAM Record: ${playerName} at ${gameConfig.displayName}`,
-          text: `I just crushed the personal record in ${gameConfig.displayName} (${scorecard.modeDisplayName}) with a score of ${scorecard.bestScore}! Can you beat my ghost?`,
+          text: `My personal best in ${gameConfig.displayName} (${scorecard.modeDisplayName}) is ${scorecard.bestScore}. Can you beat it?`,
           url: challengeUrl,
         });
-      } catch {
-        // Dismissed share sheet
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") return;
+        console.warn("Scorecard sharing could not be opened:", error);
+        setShareError("Sharing could not be opened. Try Copy Link or WhatsApp.");
       }
     } else {
       handleCopyLink();
@@ -61,19 +72,14 @@ export default function HoloPassShareModal({
 
   const handleWhatsAppShare = () => {
     const text = encodeURIComponent(
-      `🔥 I set a new Personal Best of ${scorecard.bestScore} in ${gameConfig.displayName} (${scorecard.modeDisplayName}) on BHALYAM!\n\nCan you beat my record? Play here: ${challengeUrl}`
+      `My personal best in ${gameConfig.displayName} (${scorecard.modeDisplayName}) on BHALYAM is ${scorecard.bestScore}.\n\nCan you beat it? Play here: ${challengeUrl}`
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, "_blank");
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn select-none"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="holo-pass-title"
-    >
-      <div className="relative w-full max-w-sm max-h-[calc(100dvh-2rem)] rounded-3xl bg-surface-0 dark:bg-slate-950 border border-cyan-500/40 shadow-[0_0_50px_rgba(6,182,212,0.25)] p-6 pt-16 text-center overflow-y-auto">
+    <Modal open onClose={onClose} ariaLabelledBy="holo-pass-title"
+      panelClassName="relative w-full max-w-sm max-h-[calc(100dvh-2rem)] rounded-3xl bg-surface-0 dark:bg-slate-950 border border-cyan-500/40 shadow-[0_0_50px_rgba(6,182,212,0.25)] p-6 pt-16 font-sans text-center overflow-y-auto">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -85,7 +91,6 @@ export default function HoloPassShareModal({
 
         {/* Holo-Pass Card Content */}
         <div
-          ref={cardRef}
           className="relative p-5 rounded-2xl bg-gradient-to-br from-stone-50 dark:from-slate-900 via-surface-1 dark:via-slate-950 to-cyan-50 dark:to-cyan-950/40 border border-cyan-500/50 shadow-inner overflow-hidden mb-5 text-left"
         >
           {/* Futuristic Scanline lines */}
@@ -94,13 +99,13 @@ export default function HoloPassShareModal({
           {/* Header row */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
+              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping motion-reduce:animate-none" />
               <span className="text-[10px] font-mono font-bold tracking-widest text-cyan-800 dark:text-cyan-400 uppercase">
                 BHALYAM CHRONO-PASS
               </span>
             </div>
             <div className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-800 dark:text-cyan-300 text-[10px] font-mono font-bold border border-cyan-500/30">
-              VERIFIED RECORD
+              PERSONAL BEST
             </div>
           </div>
 
@@ -123,12 +128,9 @@ export default function HoloPassShareModal({
             </div>
           </div>
 
-          {/* Verification Hash & QR Placeholder */}
+          {/* Saved match reference */}
           <div className="flex items-center justify-between text-[9px] font-mono text-ink-mid dark:text-slate-400 pt-1 border-t border-stone-300 dark:border-slate-800">
-            <span>HASH: {scorecard.bestScoreMatchId.slice(0, 14)}...</span>
-            <span className="flex items-center gap-1 text-cyan-800 dark:text-cyan-500/80">
-              <QrCode className="w-3 h-3" /> SCAN TO CHALLENGE
-            </span>
+            <span>MATCH: {scorecard.bestScoreMatchId.slice(0, 14)}{scorecard.bestScoreMatchId.length > 14 ? "..." : ""}</span>
           </div>
         </div>
 
@@ -136,8 +138,13 @@ export default function HoloPassShareModal({
           Challenge Your Friends
         </h3>
         <p className="text-xs text-ink-mid dark:text-slate-400 mb-5">
-          Share your holographic scorecard to let rivals race against your ghost record.
+          Share your saved personal best and invite friends to beat it.
         </p>
+        {shareError ? <div className="mb-4 text-left">
+          <p role="alert" className="text-xs text-rose-800 dark:text-rose-300">{shareError}</p>
+          <input readOnly aria-label="Scorecard share link" value={challengeUrl} onFocus={event => event.target.select()}
+            className="mt-2 min-h-11 w-full rounded-lg border border-stone-300 bg-surface-1 px-3 text-xs text-ink-hi dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
+        </div> : null}
 
         {/* Share actions */}
         <div className="flex flex-col gap-2.5">
@@ -166,7 +173,6 @@ export default function HoloPassShareModal({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
