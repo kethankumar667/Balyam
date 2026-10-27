@@ -208,4 +208,60 @@ describe("shared Ludo choice model", () => {
     second.unmount();
     act(() => vi.advanceTimersByTime(10_000));
   });
+
+  it("marks displayed shared cells once with their total count and removes split stacks", () => {
+    const initial = props();
+    initial.state = {
+      ...initial.state, playerColors: { self: "red", b: "green" }, playerArms: { self: "red", b: "green" },
+      tokens: {
+        self: initial.state.tokens.self.map(token => token.id === "red-0" || token.id === "red-2"
+          ? { ...token, state: "track", trackPos: 10 } : token),
+        b: [{ id: "green-0", color: "green", state: "track", trackPos: 10 }],
+      },
+    };
+    const { result, rerender } = renderHook(useLudoBoard, { initialProps: initial });
+    expect(result.current.stackMarkers).toHaveLength(1);
+    expect(result.current.stackMarkers[0]).toMatchObject({ count: 3, key: "t:10" });
+    expect(Number.isFinite(result.current.stackMarkers[0].left)).toBe(true);
+    const split = {
+      ...initial.state,
+      tokens: Object.fromEntries(Object.entries(initial.state.tokens).map(([id, list]) => [
+        id, list.map((token, index) => token.state === "track" ? { ...token, trackPos: id === "b" ? 11 : 12 + index } : token),
+      ])),
+    };
+    rerender({ ...initial, state: split });
+    expect(result.current.stackMarkers).toHaveLength(0);
+    expect(socket.emit).not.toHaveBeenCalled();
+  });
+
+  it("leaves 2–4-player boards without stack markers", () => {
+    const initial = props();
+    initial.state = {
+      ...initial.state, playerOrder: ["self", "b", "c", "d"],
+      tokens: { self: initial.state.tokens.self.map(token => ({ ...token, state: "track", trackPos: 10 })) },
+    };
+    const { result } = renderHook(useLudoBoard, { initialProps: initial });
+    expect(result.current.stackMarkers).toEqual([]);
+  });
+
+  it("counts animated displayed stacks and removes a rejected optimistic move's temporary stack", () => {
+    vi.useFakeTimers();
+    preferences.reducedMotion = false;
+    const initial = props();
+    initial.state = {
+      ...initial.state, diceValue: 3,
+      tokens: { self: initial.state.tokens.self.map((token, i) => ({
+        ...token, state: "track", trackPos: i === 0 ? 10 : i === 2 ? 11 : 20 + i,
+      })) },
+    };
+    const { result } = renderHook(useLudoBoard, { initialProps: initial });
+    expect(result.current.stackMarkers).toEqual([]);
+    act(() => result.current.move("red-0"));
+    expect(result.current.stackMarkers).toEqual([expect.objectContaining({ key: "t:11", count: 2 })]);
+    const errorHandler = socket.on.mock.calls.find(([event]) => event === "game:error")?.[1];
+    act(() => errorHandler("Move refused"));
+    expect(result.current.stackMarkers).toEqual([]);
+    act(() => vi.advanceTimersByTime(2_000));
+    expect(result.current.stackMarkers).toEqual([]);
+  });
 });

@@ -99,4 +99,42 @@ describe("large Ludo token choices", () => {
     expect(screen.queryByRole("button", { name: "Move token 1" })).toBeNull();
     expect(screen.getByRole("button", { name: "Move token 3" })).toBeTruthy();
   });
+
+  it("explains mixed-player stacks with own pawn numbers and the total count", () => {
+    show({
+      tokens: {
+        self: tokens.map(token => token.id === "purple-0" || token.id === "purple-2"
+          ? { ...token, state: "track", trackPos: 10 } : token),
+        b: [{ id: "red-0", color: "red", state: "track", trackPos: 10 }],
+      },
+      playerColors: { self: "purple", b: "red" },
+    });
+    for (const number of [1, 3]) {
+      const button = screen.getByRole("button", { name: `Move token ${number}` });
+      expect(button.textContent).toContain("Stack 3");
+      const description = document.getElementById(button.getAttribute("aria-describedby") ?? "");
+      expect(description?.textContent).toBe("3 tokens on this square. Your tokens: 1, 3.");
+    }
+  });
+
+  it("removes stack hints when tokens separate and never counts yard or home slots", () => {
+    const shared = tokens.map(token => token.id !== "purple-3" ? { ...token, state: "track" as const, trackPos: 10 } : token);
+    const { rerender, model } = show({ tokens: { self: shared } });
+    expect(screen.getAllByText("Stack 3")).toHaveLength(2);
+    rerender(<LudoTokenChoices state={state} m={model} isOnline />);
+    expect(screen.queryByText("Stack 3")).toBeNull();
+    expect(screen.getByRole("button", { name: "Move token 1" }).getAttribute("aria-describedby")).toBeNull();
+  });
+
+  it("does not combine different players' home lanes with the same step number", () => {
+    show({
+      tokens: {
+        self: [{ ...tokens[0], state: "stretch", stretchPos: 2 }],
+        b: [{ id: "red-0", color: "red", state: "stretch", stretchPos: 2 }],
+      },
+      playerArms: { self: "green", b: "purple" },
+      playerColors: { self: "purple", b: "red" },
+    });
+    expect(screen.queryByText(/Stack/)).toBeNull();
+  });
 });

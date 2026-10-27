@@ -33,6 +33,7 @@ import {
   PLAYER_COLORS_ORDER,
 } from "./board-layout";
 import { cellToPct, fanSlot, type LudoHoverPreview } from "./ludo-board-shared";
+import { indexTokenStacks, stackKeyOf } from "./ludoStacks";
 import { useLudoActions } from "./useLudoActions";
 
 /**
@@ -65,16 +66,6 @@ export type LudoFeedItem = {
 };
 export type LudoCaptureFace = { id: string; left: number; top: number };
 export type LudoHomeBurst = { id: string; left: number; top: number; color: LudoColor };
-/** Identity of the cell a token occupies, for stack detection. Track cells are
- *  global (any player can share one); stretch cells belong to a single colour.
- *  Yard/home return null — those slots are indexed per token and never
- *  collide. */
-function stackKeyOf(token: LudoToken, color: LudoColor): string | null {
-  if (token.state === "track" && token.trackPos != null) return `t:${token.trackPos}`;
-  if (token.state === "stretch" && token.stretchPos != null) return `s:${color}:${token.stretchPos}`;
-  return null;
-}
-
 /** Screen angle (clockwise from up, matching print-board's `P()`) of each
  *  cross-board yard quadrant: red top-left, green top-right, yellow
  *  bottom-right, blue bottom-left. Only these four ever appear on a 2-4 player
@@ -164,6 +155,7 @@ export interface LudoBoardModel {
   cutFlash: number | null;
   unlockBurst: Record<string, number>;
   allTokens: { pid: string; token: LudoToken }[];
+  stackMarkers: { key: string; count: number; left: number; top: number }[];
   playerCount: number;
   usePolygon: boolean;
   activeColors: LudoColor[];
@@ -1040,20 +1032,8 @@ export function useLudoBoard({
   // Which tokens share each cell, so they can be fanned out instead of drawn
   // on top of one another. Only track and stretch cells can be shared — yard
   // and home slots are indexed per token, so they never collide.
-  const stacks = useMemo(() => {
-    const byCell = new Map<string, string[]>();
-    for (const { pid, token } of allTokens) {
-      const key = stackKeyOf(token, armOf(pid));
-      if (!key) continue;
-      const list = byCell.get(key);
-      if (list) list.push(token.id);
-      else byCell.set(key, [token.id]);
-    }
-    // Stable slot assignment — without sorting, tokens would swap places
-    // whenever playerOrder iteration produced a different arrival order.
-    for (const list of byCell.values()) list.sort();
-    return byCell;
-  }, [allTokens, state.playerColors]);
+  const stacks = useMemo(() => indexTokenStacks(allTokens, { ...state.playerColors, ...state.playerArms }),
+    [allTokens, state.playerColors, state.playerArms]);
 
   /** Fan data for a token, in CELL units (caller scales to its board). */
   function fanFor(token: LudoToken, color: LudoColor) {
@@ -1311,6 +1291,17 @@ export function useLudoBoard({
     return { left: p.left + fan.dx * u, top: p.top + fan.dy * u, scale: fan.scale };
   }
 
+  const stackMarkers: LudoBoardModel["stackMarkers"] = [];
+  if (polygonGeo) {
+    for (const { pid, token } of allTokens) {
+      const key = stackKeyOf(token, armOf(pid));
+      const group = key ? stacks.get(key) : undefined;
+      if (!key || !group || group.length < 2 || group[0] !== token.id) continue;
+      const center = posFromState(token, armOf(pid));
+      if (center) stackMarkers.push({ key, count: group.length, ...center });
+    }
+  }
+
   return {
     selfId,
     myTurn,
@@ -1369,6 +1360,7 @@ export function useLudoBoard({
     cutFlash,
     unlockBurst,
     allTokens,
+    stackMarkers,
     playerCount,
     usePolygon,
     activeColors,

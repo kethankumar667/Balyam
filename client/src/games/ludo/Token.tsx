@@ -118,7 +118,7 @@ export function Token({
         background: "transparent",
         border: "none",
         padding: 0,
-        zIndex: movable ? 30 : 10,
+        zIndex: highlighted ? 40 : movable ? 30 : 10,
         borderRadius: highlighted ? "50%" : undefined,
         boxShadow: highlighted ? "0 0 0 3px #fff, 0 0 0 6px #0f172a" : undefined,
         filter: movable

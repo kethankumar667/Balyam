@@ -1590,6 +1590,13 @@ function LudoBoardScene({ m, state, players, readOnly, inLens }: {
             />
           );
         })}
+        {m.stackMarkers.map(marker => (
+          <span key={marker.key} aria-hidden="true" data-ludo-stack-count={marker.count}
+            className="pointer-events-none absolute z-[35] flex h-4 min-w-4 items-center justify-center rounded-full border border-white bg-slate-950 px-0.5 text-[10px] font-black leading-none text-white"
+            style={{ left: `${marker.left}%`, top: `${marker.top}%`, transform: `translate(-50%, -50%) rotate(${-m.boardRotation}deg) translate(65%, 85%)` }}>
+            ×{marker.count}
+          </span>
+        ))}
       </div>
       {/* Capture sad-faces (briefly visible at the victim's last position) */}
       {!inLens && m.captureFaces.map((cf) => (

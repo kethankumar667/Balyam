@@ -264,6 +264,25 @@ or when the server lists none. This is input presentation, not a second source
 of move rules; the server remains authoritative, and 2–4-seat layouts retain
 their existing token controls.
 
+### Ludo stacked tokens
+
+On 5–8-seat boards, a small non-interactive `×count` marker identifies squares
+shared by two or more displayed pawns. Track squares are global; home lanes
+are grouped by physical arm, never cosmetic paint. Separate yard and finished
+slots are not stacks. The existing stable fan offsets and pawn sizes remain
+unchanged. Counts follow the displayed animation snapshot, rotate with the
+board and stay upright; the view-only magnifier renders the same markers.
+
+The existing numbered move choices show **Stack N** for an authoritative
+shared square. Their screen-reader descriptions state the total count and
+the owner's pawn numbers, including own pawns the server did not list as legal
+choices. These descriptions do not add moves. Hover/focus still identifies
+one pawn, raised above its neighbours, and uses the existing destination
+preview. Inspection, pending-input and recovery guards are unchanged.
+Markers never intercept taps or add focus stops; the choice row stays 44px
+tall on mobile and underneath the desktop dice. 2–4-seat boards retain their
+existing fan and controls without new markers.
+
 ### Ludo turns and interrupted actions
 
 Every seat count shares `LudoTurnStatus`: a wrapping status beside the mobile
