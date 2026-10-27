@@ -73,6 +73,13 @@ New runs do not automatically submit account scores, create identities or grant 
 Essential-only consent keeps new records in tab memory; unreadable saves are not overwritten,
 and saving failures are shown explicitly. Unfinished runs are not resumable after reload.
 
+Arcade Racing validates proposed traffic against the whole visible/approaching
+car field, not just the new wave. A route must remain collision-free using the
+actual car pixels, adjacent-lane moves, a 300 ms reaction allowance and 200 ms
+between steering taps, evaluated at the fastest Nitro speed. Unsafe waves wait
+for a later tick; scoring, car collision shapes and steering controls are unchanged.
+This guarantees a feasible route at spawn time, not immunity after a missed turn.
+
 The Samethalu and Telugu Cinema quizzes and Bounce are gone — engines,
 boards, question banks, catalog entries, slugs, icons and wiring have all
 been deleted, along with the "Upcoming" filter that only ever held them.

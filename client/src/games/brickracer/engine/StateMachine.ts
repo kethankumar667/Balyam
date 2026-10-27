@@ -107,7 +107,7 @@ export class StateMachine {
     this.distanceMeters += this.player.isBoosting ? 30 : 15;
 
     // 5. Try spawn next wave
-    this.enemyManager.trySpawnWave(this.level);
+    this.enemyManager.trySpawnWave(this.level, this.player.lane);
 
     // 6. Check Collision
     if (CollisionEngine.checkCollision(this.player, this.enemyManager)) {
