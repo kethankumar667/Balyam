@@ -36,7 +36,7 @@ export default function BrainVitaBoardMobile({ onExit }: BrainVitaBoardProps) {
   const marbles = marbleCount(state.board);
 
   return (
-    <BrainVitaSkinContext.Provider value={SKINS[game.skin]}>
+    <BrainVitaSkinContext.Provider value={game.tokens}>
       <div className="relative flex h-dvh-safe max-h-dvh-safe w-full flex-col overflow-hidden font-sans text-amber-50 short-land:grid short-land:grid-cols-[minmax(0,30%)_minmax(0,1fr)] short-land:grid-rows-[auto_1fr_auto]">
         <BrainVitaScene />
         <div role="status" aria-live="polite" className="sr-only">
@@ -83,7 +83,7 @@ export default function BrainVitaBoardMobile({ onExit }: BrainVitaBoardProps) {
 
         <footer className="relative z-20 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-1 short-land:col-start-1 short-land:row-start-3 short-land:px-2 short-land:pb-1">
           {game.hintNote && (
-            <p className="mx-auto mb-1.5 w-fit max-w-full rounded-full px-3 py-1 text-center text-xs font-semibold text-amber-100" style={{ background: SKINS[game.skin].plankBackground, border: SKINS[game.skin].plankBorder }}>
+            <p className="mx-auto mb-1.5 w-fit max-w-full rounded-full px-3 py-1 text-center text-xs font-semibold text-amber-100" style={{ background: game.tokens.plankBackground, border: game.tokens.plankBorder }}>
               {game.hintNote}
             </p>
           )}
@@ -104,6 +104,7 @@ export default function BrainVitaBoardMobile({ onExit }: BrainVitaBoardProps) {
           onSelectSkin={game.selectSkin}
           order={game.themeOrder}
           isAllOpen={game.isAllOpen}
+          slate={game.slate}
         />
 
         <BrainVitaResultModal

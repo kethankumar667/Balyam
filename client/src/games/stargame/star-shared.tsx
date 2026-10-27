@@ -40,22 +40,22 @@ import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReacti
  */
 export const PAPER = {
   // surfaces — deep indigo, lit from the table outward
-  page: "#0A0F20",
-  cream: "#151C34",
-  creamDeep: "#0D1428",
-  paper: "#1E2745",
-  kraft: "#2A3358",
+  page: "var(--star-page, #0A0F20)",
+  cream: "var(--star-cream, #151C34)",
+  creamDeep: "var(--star-creamDeep, #0D1428)",
+  paper: "var(--star-paper, #1E2745)",
+  kraft: "var(--star-kraft, #2A3358)",
   // text
-  ink: "#ECF2FF",
+  ink: "var(--star-ink, #ECF2FF)",
   brown: "#FFD166",
   woodDark: "#00000055",
-  pencil: "#93A2C7",
+  pencil: "var(--star-pencil, #93A2C7)",
   // the table itself — warm wood, the one warm mass in a cool room
   desk: "#6B4423",
   deskDeep: "#3E2513",
   deskEdge: "#241408",
   // accents
-  rim: "#2E3A63",
+  rim: "var(--star-rim, #2E3A63)",
   gold: "#FFC53D",
   goldDeep: "#E0951C",
   terracotta: "#F0803C",
@@ -125,7 +125,8 @@ export function StarRoomBackdrop() {
             // technically present and visually absent — no point shipping art
             // nobody can see. This is the most it can carry before the side
             // rails start fighting it for attention.
-            opacity: 0.72,
+            // The School Slate sets `--star-room-opacity: 0`: its own wall is the room.
+            opacity: "var(--star-room-opacity, 0.72)",
           }}
         />
       </picture>
@@ -134,10 +135,10 @@ export function StarRoomBackdrop() {
       <div
         className="absolute inset-0"
         style={{
-          background: [
+          background: `var(--star-scrim, ${[
             `radial-gradient(58% 50% at 50% 46%, rgba(10,15,32,0.04), rgba(6,9,20,0.72) 82%)`,
             `linear-gradient(180deg, rgba(8,12,28,0.34) 0%, rgba(5,8,18,0.12) 45%, rgba(3,5,12,0.72) 100%)`,
-          ].join(", "),
+          ].join(", ")})`,
         }}
       />
     </div>
@@ -202,7 +203,7 @@ export function RoundProgress({ round, total }: { round: number; total: number }
               className="h-1.5 rounded-full transition-all"
               style={{
                 width: now ? 26 : 16,
-                background: now ? PAPER.gold : done ? "#6E7BB5" : "#2A3358",
+                background: now ? PAPER.gold : done ? "var(--star-dim, #6E7BB5)" : "var(--star-kraft, #2A3358)",
                 boxShadow: now ? `0 0 10px ${PAPER.gold}AA` : undefined,
               }}
             />
@@ -251,7 +252,7 @@ export function GameFlowPanel({ phase }: { phase: StarPhase }) {
             <span
               className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-black tabular-nums"
               style={{
-                background: now ? PAPER.gold : done ? "#3A4570" : "transparent",
+                background: now ? PAPER.gold : done ? "var(--star-line, #3A4570)" : "transparent",
                 border: now || done ? "none" : `1px solid ${PAPER.rim}`,
                 color: now ? "#2A2115" : done ? PAPER.ink : PAPER.pencil,
               }}
@@ -334,13 +335,16 @@ export function GrainOverlay({ vignette = true }: { vignette?: boolean }) {
  * page itself has to be the one thing that isn't: cream panels on a cream page
  * gave the screen no figure/ground at all.
  */
-export const PAGE_BG = [
+const PAGE_BG_DEFAULT = [
   // warm pool where the table sits — the room's only light source
   `radial-gradient(58% 46% at 50% 44%, rgba(255,178,84,0.16), transparent 72%)`,
   // cool rim light from above, so the top edge doesn't read as flat black
   `radial-gradient(120% 70% at 50% -12%, rgba(96,128,255,0.14), transparent 62%)`,
   `linear-gradient(180deg, #101838 0%, ${PAPER.page} 52%, #05080F 100%)`,
 ].join(", ");
+
+/** The page behind both shells. `--star-page-bg` is set only by the School Slate (`starSlate.ts`). */
+export const PAGE_BG = `var(--star-page-bg, ${PAGE_BG_DEFAULT})`;
 
 /** Stable, value-derived tiny rotation so chits feel hand-stacked, not aligned. */
 function tilt(seed: string): number {

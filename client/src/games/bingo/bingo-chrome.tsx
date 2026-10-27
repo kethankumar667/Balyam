@@ -1,8 +1,9 @@
-import { Crown, LogOut, Moon, Sun } from "lucide-react";
+import { Crown, LogOut, Moon, Palette, Sun } from "lucide-react";
 import type { BingoLetter, BingoPlayerPublic, Player } from "@shared/types";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 import type { BingoSkin } from "./bingoSkin";
+import type { BingoLook } from "./bingoLook";
 
 /**
  * The frame around a Bingo table: backdrop, title card, theme switch, turn banner and the players. The 5x5 grid and the claim / mark controls stay in `bingo-shared.tsx`; the two board shells assemble both.
@@ -33,11 +34,7 @@ const SPECKS: readonly Speck[] = [
   { left: "91%", top: "88%", size: 18, kind: "star", tone: 0 },
 ];
 
-const SPECK_TONES_LIGHT = ["#F2B84B", "#E8745A", "#5AA9E6"] as const;
-const SPECK_TONES_DARK = ["#FFD84D", "#E9A23B", "#C98B3C"] as const;
-
-function BingoSpecks({ isDark }: { isDark: boolean }) {
-  const tones = isDark ? SPECK_TONES_DARK : SPECK_TONES_LIGHT;
+function BingoSpecks({ tones, opacity }: { tones: BingoSkin["specks"]; opacity: number }) {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0">
       {SPECKS.map((speck, index) => (
@@ -47,7 +44,7 @@ function BingoSpecks({ isDark }: { isDark: boolean }) {
           width={speck.size}
           height={speck.size}
           className="absolute max-w-none"
-          style={{ left: speck.left, top: speck.top, opacity: isDark ? 0.45 : 0.6 }}
+          style={{ left: speck.left, top: speck.top, opacity }}
         >
           {speck.kind === "star" ? (
             <path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.8-6.3 3.8 1.7-7L2 9.2l7.1-.6z" fill={tones[speck.tone]} />
@@ -62,8 +59,8 @@ function BingoSpecks({ isDark }: { isDark: boolean }) {
 
 export function BingoBackdrop({ skin, className = "", children }: { skin: BingoSkin; className?: string; children: React.ReactNode }) {
   return (
-    <div className={`relative isolate flex min-h-screen select-none flex-col transition-colors duration-300 ${skin.page} ${className}`}>
-      <BingoSpecks isDark={skin.isDark} />
+    <div style={skin.pageStyle} className={`relative isolate flex min-h-screen select-none flex-col transition-colors duration-300 ${skin.page} ${className}`}>
+      <BingoSpecks tones={skin.specks} opacity={skin.speckOpacity} />
       <div className="relative z-10 flex flex-1 flex-col">{children}</div>
     </div>
   );
@@ -124,9 +121,15 @@ export function BingoTitleCard({
   );
 }
 
-export function BingoThemeSwitch({ skin, onToggle }: { skin: BingoSkin; onToggle: () => void }) {
-  const Icon = skin.isDark ? Sun : Moon;
-  const label = skin.isDark ? "Switch to light theme" : "Switch to dark theme";
+const SWITCH_TARGET: Record<BingoLook, { Icon: typeof Sun; label: string }> = {
+  light: { Icon: Sun, label: "Switch to light theme" },
+  dark: { Icon: Moon, label: "Switch to dark theme" },
+  slate: { Icon: Palette, label: "Switch to School Slate theme" },
+};
+
+/** One button, one step: it shows the look a press moves to, not the look the table is in. */
+export function BingoThemeSwitch({ skin, next, onToggle }: { skin: BingoSkin; next: BingoLook; onToggle: () => void }) {
+  const { Icon, label } = SWITCH_TARGET[next];
   return (
     <button
       type="button"
@@ -236,7 +239,7 @@ function OnlineDot({ skin, isConnected }: { skin: BingoSkin; isConnected: boolea
     <span
       role="img"
       aria-label={isConnected ? "Online" : "Away"}
-      className={`absolute bottom-0.5 right-0.5 z-20 h-3.5 w-3.5 rounded-full border-2 ${isConnected ? "bg-[#22C55E]" : "bg-[#9CA3AF]"} ${skin.isDark ? "border-[#2D1B10]" : "border-[#FFF9E8]"}`}
+      className={`absolute bottom-0.5 right-0.5 z-20 h-3.5 w-3.5 rounded-full border-2 ${isConnected ? "bg-[#22C55E]" : "bg-[#9CA3AF]"} ${skin.dotBorder}`}
     />
   );
 }

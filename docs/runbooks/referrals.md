@@ -10,7 +10,7 @@ Local pass-and-play seats and bot-only matches cannot qualify.
 
 Three distinct qualified accounts grant the whole Nostalgia Pack once:
 Golden Reunion avatar aura, Gang Leader podium title, and School Slate
-Rummy material. There are no referral coins or XP. Existing cosmetic ownership
+table material (Rummy, Ludo, Goli Jump, Bingo, Star Game and Sudoku). There are no referral coins or XP. Existing cosmetic ownership
 is preserved; ownership is never fabricated by the client.
 
 Admin Pass (including Super Admin) can equip all three items without qualifying
@@ -18,8 +18,11 @@ referrals, using **Equip pack · Admin Pass** on the Journey Social Quest card.
 It remains available while invitation progress is loading or unavailable.
 The button uses the existing server-verified cosmetic equip permission; it
 neither grants earned entitlements nor changes referral counts or wallet balance.
-Ordinary members still need the earned pack. School Slate remains confined to
-classic Rummy; a host-selected non-classic world takes priority for admins too.
+Ordinary members still need the earned pack. Equipping the pack equips School
+Slate in all six games (one equipped slot per game, `shared/referrals.ts`
+`packEquipTargets`); each game's own theme control turns it off again. In Rummy
+and Ludo it is confined to the classic world: a host-selected non-classic world
+takes priority for admins too.
 
 `referral_sync` reads durable `match_summaries`/`match_participants`. Qualification
 and all entitlements commit together under the inviter's row lock. Sync happens
@@ -70,8 +73,11 @@ The browser notice version is 5; review the updated privacy notice before releas
   with one source reference, no wallet/XP change.
 - Remove a catalogue item in staging: the entire grant and qualification update
   must roll back, and the UI must show a retryable failure.
-- Equip the pack; check the aura/title and both Rummy layouts. Switch to a
-  non-classic host world: it must override School Slate. Card artwork is unchanged.
+- Equip the pack; check the aura/title and both layouts of Rummy, Ludo, Goli Jump,
+  Bingo, Star Game and Sudoku. In Rummy and Ludo, switch to a non-classic host
+  world: it must override School Slate. Card artwork and seat colours are unchanged.
+  Turn it off from each game's own theme control (Sudoku/Bingo: the theme button;
+  Goli Jump: World; Star Game: the palette in the header; Rummy/Ludo: the host's picker).
 - With a server-recognised Super Admin and zero referrals, equip all three through
   Admin Pass, including when referral sync is unavailable. Confirm the wallet and
   earned ownership are unchanged. An ordinary unearned member must still be refused.

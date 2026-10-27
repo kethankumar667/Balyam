@@ -166,7 +166,8 @@ describe("the host's control for the table's world, during a match", () => {
     render(<TableWorldControl game="ludo" variant="row" />);
     fireEvent.click(screen.getByRole("button", { name: /table world/i }));
     const group = within(screen.getByRole("radiogroup", { name: /world/i }));
-    expect(group.getAllByRole("radio")).toHaveLength(artWorldsFor("ludo").length);
+    // Every world Ludo draws, plus the School Slate row that sits under Classic (locked here: this host has not earned it).
+    expect(group.getAllByRole("radio")).toHaveLength(artWorldsFor("ludo").length + 1);
     const isOpen = (name: string) => group.getByRole("radio", { name: new RegExp(name) }).getAttribute("aria-disabled") !== "true";
     expect(isOpen(WORLD_META.classic.name)).toBe(true);
     expect(isOpen(WORLD_META.neon.name)).toBe(true);

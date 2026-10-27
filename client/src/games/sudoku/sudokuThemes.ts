@@ -6,10 +6,15 @@
  * 3. Retro Arcade 1984 (80s Coin-Op Synthwave Cabinet)
  */
 
+import type { CSSProperties } from "react";
+import { SLATE_BOARD_BACKGROUND, SLATE_BOARD_SHADOW, SLATE_ROOM_BACKGROUND } from "../../lib/schoolSlateMaterial";
+
 export type SudokuThemeId =
   | "chronicle"
   | "cyber"
   | "arcade"
+  /** The earned School Slate: drawn only while the account has it equipped for Sudoku (see `sudokuSlate.ts`). */
+  | "slate"
   // Legacy aliases for backward compatibility
   | "paper"
   | "obsidian"
@@ -36,6 +41,9 @@ export interface SudokuTheme {
   soundProfile: SudokuSoundProfile;
   /** Primary page background */
   bg: string;
+  /** Paint a class cannot say (the slate's doodles): laid over `bg` on the page and over `boardFrame` on the board. */
+  bgStyle?: CSSProperties;
+  boardStyle?: CSSProperties;
   /** Inner matrix card background */
   boardBg: string;
   /** Board framing outer shell */
@@ -72,6 +80,8 @@ export interface SudokuTheme {
   /** Accent glow color (hex/rgba) */
   accentGlow: string;
   accentText: string;
+  /** The text colour of the small accents on the screen chrome (timer, board number, header icons) on a dark page. */
+  accentChrome: string;
   badgeBg: string;
 }
 
@@ -108,6 +118,7 @@ const CHRONICLE_THEME: SudokuTheme = {
   keypadCompletedText: "text-stone-400",
   accentGlow: "rgba(30, 64, 175, 0.3)",
   accentText: "text-[#1E40AF]",
+  accentChrome: "text-cyan-400",
   badgeBg: "bg-[#FFFDF9] border border-stone-400 text-slate-800 shadow-xs font-serif",
 };
 
@@ -144,6 +155,7 @@ const CYBER_THEME: SudokuTheme = {
   keypadCompletedText: "text-cyan-800/40",
   accentGlow: "rgba(6, 182, 212, 0.4)",
   accentText: "text-cyan-400",
+  accentChrome: "text-cyan-400",
   badgeBg: "bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 font-mono",
 };
 
@@ -180,13 +192,59 @@ const ARCADE_THEME: SudokuTheme = {
   keypadCompletedText: "text-purple-800/40",
   accentGlow: "rgba(217, 70, 239, 0.4)",
   accentText: "text-fuchsia-400",
+  accentChrome: "text-cyan-400",
   badgeBg: "bg-purple-950/80 border border-fuchsia-500/50 text-yellow-300",
+};
+
+/**
+ * A classroom blackboard in a teak frame: chalk-white clues, chalk-yellow entries, the doodles faint under the grid.
+ * Every ink here clears 4.5:1 on the board's green (#1f372b to #3a5f4c); the entries and the clues differ in colour
+ * AND in weight/slant, so neither is told apart by colour alone.
+ */
+const SLATE_THEME: SudokuTheme = {
+  id: "slate",
+  name: "School Slate",
+  tagline: "A blackboard in a teak frame, chalk dust and the ghost of old doodles",
+  masthead: {
+    title: "SCHOOL SLATE",
+    subtitle: "CHALK · ERASER · TEAK",
+    style: "border-b-2 border-[#c4955a]/60 pb-1 mb-1 text-[#f2d675] font-serif font-black tracking-widest",
+  },
+  fontFamily: "font-sans",
+  soundProfile: "marimba",
+  bg: "bg-[#15271e]",
+  bgStyle: { background: SLATE_ROOM_BACKGROUND },
+  boardBg: "bg-[#2a4638]/95",
+  boardFrame: "border-2 border-[#9a6a38] ring-1 ring-[#c4955a]/30",
+  boardStyle: { background: SLATE_BOARD_BACKGROUND, boxShadow: SLATE_BOARD_SHADOW },
+  majorBorder: "border-[#eef2e6]/70",
+  minorBorder: "border-[#eef2e6]/20",
+  givenText: "text-[#f4f7ee] font-black",
+  userText: "text-[#f2d675] font-extrabold italic",
+  selectedCellBg: "bg-[#f2d675]/30",
+  selectedCellBorder: "ring-2 ring-[#f2d675] shadow-[0_0_12px_rgba(242,214,117,0.45)]",
+  crosshairBg: "bg-[#eef2e6]/10",
+  matchingDigitBg: "bg-[#f2d675]/20 text-[#fff0b3]",
+  errorBg: "bg-rose-900/60",
+  errorText: "text-rose-200 font-black animate-pulse",
+  noteText: "text-[#c3d1bf] font-sans italic",
+  keypadBg: "bg-[#1a2f24] hover:bg-[#2a4a3a]",
+  keypadText: "text-[#f4f7ee] font-bold",
+  keypadBorder: "border-[#8f6334] shadow-xs",
+  keypadActiveBg: "bg-[#f2d675] text-[#1f372b] font-black shadow-md",
+  keypadCompletedBg: "bg-[#1a2f24]/50 text-[#c3d1bf]/55 border-[#6a4825]/60",
+  keypadCompletedText: "text-[#c3d1bf]/55",
+  accentGlow: "rgba(242, 214, 117, 0.35)",
+  accentText: "text-[#f2d675]",
+  accentChrome: "text-[#f2d675]",
+  badgeBg: "bg-[#1a2f24] border border-[#c4955a] text-[#f2d675]",
 };
 
 export const SUDOKU_THEMES: Record<SudokuThemeId, SudokuTheme> = {
   chronicle: CHRONICLE_THEME,
   cyber: CYBER_THEME,
   arcade: ARCADE_THEME,
+  slate: SLATE_THEME,
   // Backward compatibility aliases
   paper: { ...CHRONICLE_THEME, id: "paper" },
   obsidian: { ...CYBER_THEME, id: "obsidian" },
@@ -196,3 +254,8 @@ export const SUDOKU_THEMES: Record<SudokuThemeId, SudokuTheme> = {
 };
 
 export const THEME_CYCLE: SudokuThemeId[] = ["chronicle", "cyber", "arcade"];
+
+/** The themes a player can step through: the slate joins the ring only for an account that has earned it. */
+export function themeCycle(ownsSlate: boolean): SudokuThemeId[] {
+  return ownsSlate ? [...THEME_CYCLE, "slate"] : THEME_CYCLE;
+}

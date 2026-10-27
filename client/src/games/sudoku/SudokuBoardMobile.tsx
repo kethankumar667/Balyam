@@ -4,8 +4,9 @@ import SudokuKeypad from "./SudokuKeypad";
 import SudokuDifficultyModal from "./SudokuDifficultyModal";
 import SudokuVictoryModal from "./SudokuVictoryModal";
 import SudokuTutorialModal from "./SudokuTutorialModal";
-import { type UseSudokuReturn, type SudokuDifficulty } from "./useSudoku";
-import { SUDOKU_THEMES, THEME_CYCLE, type SudokuThemeId, isLightTheme } from "./sudokuThemes";
+import { type SudokuDifficulty } from "./useSudoku";
+import { type SudokuGame } from "./sudokuSlate";
+import { SUDOKU_THEMES, type SudokuThemeId, isLightTheme } from "./sudokuThemes";
 import {
   ArrowLeft,
   Pause,
@@ -24,7 +25,7 @@ import {
 import { useAudio } from "../../hooks/useAudio";
 
 export interface SudokuBoardMobileProps {
-  game: UseSudokuReturn;
+  game: SudokuGame;
   onExit?: () => void;
 }
 
@@ -44,12 +45,13 @@ function SudokuBoardMobile({ game, onExit }: SudokuBoardMobileProps) {
   const isLight = isLightTheme(game.themeId);
 
   const cycleTheme = () => {
-    const nextIdx = (THEME_CYCLE.indexOf(game.themeId) + 1) % THEME_CYCLE.length;
-    game.setThemeId(THEME_CYCLE[nextIdx]!);
+    const nextIdx = (game.themeCycle.indexOf(game.themeId) + 1) % game.themeCycle.length;
+    game.setThemeId(game.themeCycle[nextIdx]!);
   };
 
   return (
     <div
+      style={theme.bgStyle}
       className={`w-full min-h-dvh-safe h-dvh-safe max-h-dvh-safe ${theme.bg} flex flex-col items-center justify-between p-2 sm:p-3 select-none overflow-x-hidden overflow-y-auto overscroll-none touch-pan-y transition-colors duration-300 relative short-land:grid short-land:grid-cols-[auto_minmax(0,1fr)] short-land:grid-rows-[auto_auto_1fr] short-land:items-start short-land:gap-x-3 short-land:justify-start`}
     >
       {/* Phone held sideways: the board takes the left column at the largest square the height allows and the
@@ -79,10 +81,10 @@ function SudokuBoardMobile({ game, onExit }: SudokuBoardMobileProps) {
               onClick={() => setShowDifficultyModal(true)}
               className={`min-h-[44px] px-3.5 py-1.5 rounded-2xl border text-xs font-black uppercase tracking-wider transition active:scale-95 flex items-center gap-1.5 shadow-xs whitespace-nowrap shrink-0 ${theme.badgeBg}`}
             >
-              <Zap className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+              <Zap className={`w-3.5 h-3.5 ${theme.accentChrome} shrink-0`} />
               <span>{game.difficulty}</span>
               <span className="opacity-40">·</span>
-              <span className={isLight ? "text-blue-600 font-extrabold" : "text-cyan-400 font-extrabold"}>
+              <span className={isLight ? "text-blue-600 font-extrabold" : `${theme.accentChrome} font-extrabold`}>
                 Board {game.boardNumber}
               </span>
               <ChevronDown className="w-3.5 h-3.5 opacity-50 ml-0.5 shrink-0" />
@@ -99,7 +101,7 @@ function SudokuBoardMobile({ game, onExit }: SudokuBoardMobileProps) {
                 className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-2xl border transition active:scale-95 ${
                   isLight
                     ? "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs"
-                    : "bg-white/5 border-white/10 text-cyan-400 hover:text-white"
+                    : `bg-white/5 border-white/10 ${theme.accentChrome} hover:text-white`
                 }`}
               >
                 <BookOpen className="w-4 h-4" />
@@ -161,7 +163,7 @@ function SudokuBoardMobile({ game, onExit }: SudokuBoardMobileProps) {
                 isLight ? "hover:bg-slate-100" : "hover:bg-white/10"
               }`}
             >
-              <Palette className="w-3.5 h-3.5 text-cyan-500" />
+              <Palette className={`w-3.5 h-3.5 ${theme.accentChrome}`} />
               <span className="truncate">{theme.name}</span>
             </button>
 

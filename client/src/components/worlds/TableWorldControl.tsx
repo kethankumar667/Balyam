@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { GameKind } from "@shared/types";
 import type { WorldId } from "@shared/worlds";
 import { Palette } from "lucide-react";
+import { SCHOOL_SLATE_ID, type SchoolSlateScope } from "@shared/cosmetics";
 import { useCosmeticsStore } from "../../store/cosmeticsStore";
 import { useRoomStore } from "../../store/roomStore";
 import { useTableTheme } from "../../lib/cosmeticsResolver";
@@ -10,8 +11,8 @@ import { useWorldChoice } from "../../lib/worlds/useWorldChoice";
 import { WorldPickerDialog } from "./WorldPickerDialog";
 import { WorldSwatch } from "./WorldSwatch";
 
-/** The Rummy table look earned through the Social Quest; it is a cosmetic, not a world (see `AGENTS.md`). */
-const SLATE_ID = "table_retro_school_slate";
+/** The table look earned through the Social Quest, worn on a classic Rummy or Ludo table; a cosmetic, not a world. */
+const SLATE_ID = SCHOOL_SLATE_ID;
 const SLATE_FAILED = "School Slate could not be changed. Please try again.";
 
 export interface TableWorldControlProps {
@@ -43,14 +44,14 @@ export function TableWorldControl({ game, variant, className = "", onChanged }: 
   const [themeError, setThemeError] = useState<string | null>(null);
   if (!roomState || roomState.hostId !== playerId || roomState.phase !== "playing" || !choice.canChoose) return null;
 
-  const isRummy = game === "rummy";
-  const slateOn = isRummy && tableTheme.id === SLATE_ID;
+  const slateScope: SchoolSlateScope | null = game === "rummy" || game === "ludo" ? game : null;
+  const slateOn = slateScope !== null && tableTheme.id === SLATE_ID;
   const store = useCosmeticsStore.getState;
 
   /** Plain Classic means no look on it, so a worn School Slate comes off first. */
   async function chooseWorld(world: WorldId): Promise<void> {
     setThemeError(null);
-    if (isRummy && world === "classic" && slateOn && !(await store().unequipItem("TABLE_THEME", "rummy"))) {
+    if (slateScope && world === "classic" && slateOn && !(await store().unequipItem("TABLE_THEME", slateScope))) {
       setThemeError(store().errorMessage ?? SLATE_FAILED);
       return;
     }
@@ -59,8 +60,9 @@ export function TableWorldControl({ game, variant, className = "", onChanged }: 
 
   /** School Slate only draws on a classic table, so choosing it moves the table to Classic if it is somewhere else. */
   async function chooseSlate(): Promise<void> {
+    if (!slateScope) return;
     setThemeError(null);
-    if (!(await store().equipItem("TABLE_THEME", "rummy", SLATE_ID))) {
+    if (!(await store().equipItem("TABLE_THEME", slateScope, SLATE_ID))) {
       setThemeError(store().errorMessage ?? SLATE_FAILED);
       return;
     }
@@ -115,7 +117,7 @@ export function TableWorldControl({ game, variant, className = "", onChanged }: 
         onChoose={(world) => void chooseWorld(world)}
         error={themeError ?? choice.error}
         classicTheme={
-          isRummy
+          slateScope
             ? {
                 name: "School Slate",
                 blurb: "A chalk-lined slate for your classic table. Only you see it.",

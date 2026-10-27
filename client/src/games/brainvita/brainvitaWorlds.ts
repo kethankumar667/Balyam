@@ -57,6 +57,61 @@ const WOOD: SkinTokens = {
   swatchBoard: "#cb8745",
 };
 
+const CHALK_STOPS = ["#ffffff", "#f4f7ee", "#dce6d6", "#b9c9b6", "#7f957f"] as const;
+
+/**
+ * The earned School Slate: the board is a slab of blackboard in a teak frame, the marbles are lumps of chalk, a
+ * captured marble turns to chalk dust, and the planks round it are teak. It is not one of the six worlds on the
+ * ladder (it is earned by inviting friends, and kept apart in `SKINS`), but it is made like them: the same tokens, with
+ * its drawing in `worlds/SlateWorld.tsx`. The classic board carving is reused with a slate palette.
+ */
+export const SLATE_SKIN: SkinTokens = {
+  id: "slate",
+  name: "School Slate",
+  surface: "slate",
+  marbleKind: "glass",
+  particleKind: "dust",
+  particleColors: ["#eef2e6", "#c3d1bf", "#f2d675"],
+  board: {
+    stops: ["#3a5f4c", "#2a4638", "#1f372b"],
+    side: "#4d3115",
+    edge: "rgba(238,242,230,0.5)",
+    grainDark: "rgba(0,0,0,0.12)",
+    grainLight: "rgba(238,242,230,0.1)",
+    grooveDark: "rgba(0,0,0,0.5)",
+    grooveLight: "rgba(238,242,230,0.38)",
+    sprigDark: "rgba(0,0,0,0.4)",
+    sprigLight: "rgba(238,242,230,0.55)",
+  },
+  glass: null,
+  accent: "#f2d675",
+  accentSoft: "#fff0b3",
+  accentAlt: "#eef2e6",
+  marbleStops: CHALK_STOPS,
+  tableBackground: "radial-gradient(ellipse at 50% 0%, #2a4638 0%, #1f372b 46%, #15271e 100%)",
+  ...chrome({ accent: "#f2d675", accentSoft: "#fff0b3", plankTop: "#6a4825", plankBottom: "#4d3115", tableEdge: "#15271e", panelAlpha: 0.78 }),
+  signBackground: "linear-gradient(180deg, #2f503f 0%, #1f372b 100%)",
+  signBorder: "2px solid #c4955a",
+  signShadow: `0 6px 14px rgba(0,0,0,0.5), inset 0 0 0 1px ${rgba("#eef2e6", 0.18)}, inset 0 1px 0 ${rgba("#fff0b3", 0.3)}`,
+  signRadius: "0.5rem",
+  signIcon: "blocks",
+  titleColor: "#f2d675",
+  titleShadow: `0 0 8px ${rgba("#eef2e6", 0.28)}, 0 2px 4px rgba(0,0,0,0.5)`,
+  titleStroke: "0px transparent",
+  titleFont: FONT_ROUND,
+  titleSize: "clamp(1.2rem, 6vw, 2.1rem)",
+  titleWeight: 700,
+  titleSpacing: "0.06em",
+  titleLetters: null,
+  holeWell: "radial-gradient(circle at 38% 30%, #1a2f24 0%, #12241b 62%, #0b1812 100%)",
+  holeRim: "inset 0 4px 7px rgba(0,0,0,0.8), 0 1px 0 rgba(238,242,230,0.35), 0 -1px 0 rgba(0,0,0,0.35)",
+  marbleFill: marbleGradient(CHALK_STOPS),
+  marbleShadow: `0 4px 6px rgba(0,0,0,0.55), inset 0 -5px 9px ${rgba("#7f957f", 0.5)}`,
+  marbleSelectedShadow: `0 10px 12px rgba(0,0,0,0.5), 0 0 0 3px ${rgba("#f2d675", 0.85)}, inset 0 -5px 9px ${rgba("#7f957f", 0.5)}`,
+  voice: "stone",
+  swatchBoard: "#2a4638",
+};
+
 const HOLO_STOPS = ["#ffffff", "#c4f8ff", "#22D3EE", "#0e7490", "#083344"] as const;
 
 /** A pane of glowing glass over a lattice of light, with marbles that are cores of energy. */

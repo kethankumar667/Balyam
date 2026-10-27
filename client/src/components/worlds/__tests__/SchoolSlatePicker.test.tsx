@@ -13,9 +13,9 @@ const emit = vi.fn();
 vi.mock("../../../lib/socket", () => ({ getSocket: () => ({ emit }) }));
 
 /**
- * School Slate is earned through the Social Quest and is a look for the classic Rummy table, not a world. The Rummy
- * table picker has to offer it to whoever owns it (an admin owns everything), and keep it honest: it only draws on
- * a classic table, and plain Classic means no look on it.
+ * School Slate is earned through the Social Quest and is a look for the classic Rummy and Ludo tables, not a world. Their
+ * pickers have to offer it to whoever owns it (an admin owns everything), and keep it honest: it only draws on a
+ * classic table, plain Classic means no look on it, and each game keeps its own slot.
  */
 
 const HOST_ID = "host-1";
@@ -31,7 +31,7 @@ function seat(game: string, world: string, owned: string[], wearing: boolean): v
     useRoomStore.setState({ playerId: HOST_ID, roomState: room(game, world) });
     useCosmeticsStore.setState({
       ownedIds: new Set(owned),
-      resolved: resolveEffectiveLoadout(wearing ? { tableThemes: { rummy: SLATE } } : {}),
+      resolved: resolveEffectiveLoadout(wearing ? { tableThemes: { [game]: SLATE } } : {}),
       equipItem,
       unequipItem,
       errorMessage: null,
@@ -118,10 +118,32 @@ describe("School Slate in the Rummy table's picker", () => {
     await waitFor(() => expect(unequipItem).toHaveBeenCalledWith("TABLE_THEME", "rummy"));
   });
 
-  it("keeps the other games' pickers as they were", () => {
+  it("offers it in Ludo's picker too, and equips it for Ludo rather than for Rummy", async () => {
     seat("ludo", "classic", [SLATE], false);
     open("ludo");
 
-    expect(screen.queryByRole("radio", { name: /School Slate/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: /School Slate/ }));
+
+    await waitFor(() => expect(equipItem).toHaveBeenCalledWith("TABLE_THEME", "ludo", SLATE));
+    expect(equipItem).not.toHaveBeenCalledWith("TABLE_THEME", "rummy", SLATE);
+  });
+
+  it("takes it off Ludo, and only Ludo, when plain Classic is chosen there", async () => {
+    seat("ludo", "classic", [SLATE], true);
+    open("ludo");
+
+    expect(screen.getByRole("radio", { name: /School Slate/ })).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByRole("radio", { name: /The table as it has always been/ }));
+
+    await waitFor(() => expect(unequipItem).toHaveBeenCalledWith("TABLE_THEME", "ludo"));
+    expect(unequipItem).not.toHaveBeenCalledWith("TABLE_THEME", "rummy");
+  });
+
+  it("does not take a slate worn in Rummy for one worn in Ludo", () => {
+    seat("ludo", "classic", [SLATE], false);
+    act(() => useCosmeticsStore.setState({ resolved: resolveEffectiveLoadout({ tableThemes: { rummy: SLATE } }) }));
+    open("ludo");
+
+    expect(screen.getByRole("radio", { name: /School Slate/ })).toHaveAttribute("aria-checked", "false");
   });
 });

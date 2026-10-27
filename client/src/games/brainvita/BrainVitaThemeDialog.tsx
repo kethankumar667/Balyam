@@ -3,7 +3,18 @@ import { Check, Lock, X } from "lucide-react";
 import Modal from "../../components/Modal";
 import { MarbleBody } from "./BrainVitaMarble";
 import { BrainVitaSkinContext, useSkinTokens } from "./BrainVitaSkinContext";
-import { SKINS, requirementText, type EarnedSkinId, type SkinId, type SkinTokens } from "./brainvitaSkins";
+import { SCHOOL_SLATE_REQUIREMENT } from "../../lib/schoolSlate";
+import { SKINS, SLATE_SKIN, requirementText, type EarnedSkinId, type SkinId, type SkinTokens } from "./brainvitaSkins";
+
+/** What the dialog needs of the School Slate: whether it is worn, whether the account owns it, and how to put it on. */
+export interface SlateChoice {
+  isOn: boolean;
+  isOwned: boolean;
+  error: string | null;
+  select: () => void;
+}
+
+const SLATE_BLURB = "A blackboard in a teak frame, chalk marbles and a duster. Only you see it.";
 
 export interface BrainVitaThemeDialogProps {
   open: boolean;
@@ -15,6 +26,8 @@ export interface BrainVitaThemeDialogProps {
   onSelectSkin: (skin: SkinId) => void;
   /** This account can open every world without earning it (an admin, to test and review them). */
   isAllOpen?: boolean;
+  /** The earned School Slate, listed after the classic table. Left out, the dialog lists only the ladder. */
+  slate?: SlateChoice;
 }
 
 /** One line on what each world is, so a locked one says what it would be like to play in. */
@@ -51,10 +64,10 @@ function WorldSwatch({ tokens, isDimmed }: { tokens: SkinTokens; isDimmed: boole
  * the order this player will win them, each saying what it is, and what it asks for until it has been earned.
  * None can be picked before then.
  */
-export function BrainVitaThemeDialog({ open, onClose, skin, unlocked, order, onSelectSkin, isAllOpen = false }: BrainVitaThemeDialogProps) {
+export function BrainVitaThemeDialog({ open, onClose, skin, unlocked, order, onSelectSkin, isAllOpen = false, slate }: BrainVitaThemeDialogProps) {
   const current = useSkinTokens();
   const closeRef = useRef<HTMLButtonElement>(null);
-  const rows: SkinId[] = ["wood", ...order];
+  const rows: (SkinId | "slate")[] = slate ? ["wood", "slate", ...order] : ["wood", ...order];
   return (
     <Modal
       open={open}
@@ -83,9 +96,11 @@ export function BrainVitaThemeDialog({ open, onClose, skin, unlocked, order, onS
           {isAllOpen && <p className="text-xs leading-snug text-amber-100/80">Every world is open on this account so it can be tested and reviewed. Nothing here is saved as earned.</p>}
           <div role="radiogroup" aria-label="World" className="max-h-[60dvh] space-y-2 overflow-y-auto pr-1">
             {rows.map((id) => {
-              const tokens = SKINS[id];
-              const isOwned = unlocked.includes(id);
-              const isChosen = skin === id;
+              const isSlate = id === "slate";
+              const tokens = isSlate ? SLATE_SKIN : SKINS[id];
+              const isOwned = isSlate ? (slate?.isOwned ?? false) : unlocked.includes(id);
+              // While the slate is worn it is the choice; the world beneath it is only remembered.
+              const isChosen = isSlate ? (slate?.isOn ?? false) : skin === id && !slate?.isOn;
               return (
                 <button
                   key={id}
@@ -94,7 +109,9 @@ export function BrainVitaThemeDialog({ open, onClose, skin, unlocked, order, onS
                   aria-checked={isChosen}
                   aria-disabled={!isOwned}
                   onClick={() => {
-                    if (isOwned) onSelectSkin(id);
+                    if (!isOwned) return;
+                    if (isSlate) slate?.select();
+                    else onSelectSkin(id);
                   }}
                   className="flex min-h-[64px] w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-2 text-left aria-disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E4B128]"
                   style={{ background: "rgba(0,0,0,0.28)", border: isChosen ? `1.5px solid ${current.accent}` : "1px solid rgba(255,255,255,0.12)" }}
@@ -102,8 +119,10 @@ export function BrainVitaThemeDialog({ open, onClose, skin, unlocked, order, onS
                   <WorldSwatch tokens={tokens} isDimmed={!isOwned} />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-bold">{tokens.name}</span>
-                    <span className="block text-xs leading-snug text-amber-100/80">{WORLD_BLURBS[id]}</span>
-                    {!isOwned && id !== "wood" && <span className="mt-0.5 block text-xs font-semibold leading-snug text-amber-200">{requirementText(order, id)}</span>}
+                    <span className="block text-xs leading-snug text-amber-100/80">{isSlate ? SLATE_BLURB : WORLD_BLURBS[id]}</span>
+                    {!isOwned && id !== "wood" && (
+                      <span className="mt-0.5 block text-xs font-semibold leading-snug text-amber-200">{isSlate ? SCHOOL_SLATE_REQUIREMENT : requirementText(order, id)}</span>
+                    )}
                   </span>
                   {isChosen && <Check aria-hidden className="h-5 w-5 flex-shrink-0" style={{ color: current.accent }} />}
                   {!isOwned && <Lock aria-hidden className="h-4 w-4 flex-shrink-0 text-amber-100/70" />}
@@ -111,6 +130,11 @@ export function BrainVitaThemeDialog({ open, onClose, skin, unlocked, order, onS
               );
             })}
           </div>
+          {slate?.error && (
+            <p role="alert" className="text-xs font-semibold leading-snug text-rose-200">
+              {slate.error}
+            </p>
+          )}
         </div>
       </div>
     </Modal>

@@ -4,8 +4,9 @@ import SudokuKeypad from "./SudokuKeypad";
 import SudokuDifficultyModal from "./SudokuDifficultyModal";
 import SudokuVictoryModal from "./SudokuVictoryModal";
 import SudokuTutorialModal from "./SudokuTutorialModal";
-import { type UseSudokuReturn, type SudokuDifficulty } from "./useSudoku";
-import { SUDOKU_THEMES, THEME_CYCLE, type SudokuThemeId, isLightTheme } from "./sudokuThemes";
+import { type SudokuDifficulty } from "./useSudoku";
+import { type SudokuGame } from "./sudokuSlate";
+import { SUDOKU_THEMES, type SudokuThemeId, isLightTheme } from "./sudokuThemes";
 import {
   ArrowLeft,
   Pause,
@@ -26,7 +27,7 @@ import { useAudio } from "../../hooks/useAudio";
 import { useScorecardStore } from "../../store/scorecardStore";
 
 export interface SudokuBoardDesktopProps {
-  game: UseSudokuReturn;
+  game: SudokuGame;
   onExit?: () => void;
 }
 
@@ -46,8 +47,8 @@ function SudokuBoardDesktop({ game, onExit }: SudokuBoardDesktopProps) {
   const isLight = isLightTheme(game.themeId);
 
   const cycleTheme = () => {
-    const nextIdx = (THEME_CYCLE.indexOf(game.themeId) + 1) % THEME_CYCLE.length;
-    game.setThemeId(THEME_CYCLE[nextIdx]!);
+    const nextIdx = (game.themeCycle.indexOf(game.themeId) + 1) % game.themeCycle.length;
+    game.setThemeId(game.themeCycle[nextIdx]!);
   };
 
   // Keyboard shortcut listener
@@ -156,6 +157,7 @@ function SudokuBoardDesktop({ game, onExit }: SudokuBoardDesktopProps) {
 
   return (
     <div
+      style={theme.bgStyle}
       className={`w-full min-h-screen ${theme.bg} flex flex-col justify-between p-6 select-none transition-colors duration-300 relative`}
     >
       {/* Top Desktop Navigation Bar */}
@@ -181,10 +183,10 @@ function SudokuBoardDesktop({ game, onExit }: SudokuBoardDesktopProps) {
             onClick={() => setShowDifficultyModal(true)}
             className={`min-h-[44px] px-4 py-2 rounded-2xl border text-xs font-black uppercase tracking-wider transition active:scale-95 flex items-center gap-2 shadow-xs whitespace-nowrap ${theme.badgeBg}`}
           >
-            <Zap className="w-4 h-4 text-cyan-500 shrink-0" />
+            <Zap className={`w-4 h-4 ${theme.accentChrome} shrink-0`} />
             <span>{game.difficulty}</span>
             <span className="opacity-40">·</span>
-            <span className={isLight ? "text-blue-600 font-extrabold" : "text-cyan-400 font-extrabold"}>
+            <span className={isLight ? "text-blue-600 font-extrabold" : `${theme.accentChrome} font-extrabold`}>
               Board {game.boardNumber}
             </span>
             <ChevronDown className="w-3.5 h-3.5 opacity-50 ml-0.5 shrink-0" />
@@ -200,7 +202,7 @@ function SudokuBoardDesktop({ game, onExit }: SudokuBoardDesktopProps) {
           >
             Bhalyam Sudoku
           </h1>
-          <span className={`text-[10px] uppercase font-mono tracking-widest ${isLight ? "text-slate-500" : "text-cyan-400/80"}`}>
+          <span className={`text-[10px] uppercase font-mono tracking-widest ${isLight ? "text-slate-500" : `${theme.accentChrome} opacity-80`}`}>
             Level {game.difficulty} · Board #{game.boardNumber}
           </span>
         </div>
@@ -215,7 +217,7 @@ function SudokuBoardDesktop({ game, onExit }: SudokuBoardDesktopProps) {
             className={`min-h-[44px] px-3.5 rounded-2xl border transition flex items-center gap-1.5 text-xs font-bold ${
               isLight
                 ? "bg-white border-slate-300 text-slate-700 hover:bg-slate-50 shadow-xs"
-                : "bg-white/5 border-white/10 text-cyan-400 hover:text-white"
+                : `bg-white/5 border-white/10 ${theme.accentChrome} hover:text-white`
             }`}
           >
             <BookOpen className="w-4 h-4" />
@@ -302,7 +304,7 @@ function SudokuBoardDesktop({ game, onExit }: SudokuBoardDesktopProps) {
                   <span className={`text-[10px] uppercase font-bold tracking-wider ${isLight ? "text-slate-400" : "text-stone-400"}`}>
                     Chrono Timer
                   </span>
-                  <div className={`text-3xl font-black font-mono mt-0.5 ${isLight ? "text-blue-600" : "text-cyan-400"}`}>
+                  <div className={`text-3xl font-black font-mono mt-0.5 ${isLight ? "text-blue-600" : theme.accentChrome}`}>
                     {formatTime(game.elapsedSeconds)}
                   </div>
                 </div>

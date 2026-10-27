@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { capabilitiesFor } from "@shared/permissions";
-import { NOSTALGIA_PACK, type ReferralProgress } from "@shared/referrals";
+import { packEquipTargets, type ReferralProgress } from "@shared/referrals";
 import { ReferralQuest } from "../ReferralQuest";
 
 const mocks = vi.hoisted(() => ({
@@ -49,7 +49,7 @@ describe("Nostalgia Pack Admin Pass", () => {
     fireEvent.click(screen.getByRole("button", { name: "Equip pack · Admin Pass" }));
     await screen.findByText(/Pack equipped/);
     expect(mocks.fetchCosmetics).toHaveBeenCalledOnce();
-    expect(mocks.equipItem.mock.calls).toEqual(NOSTALGIA_PACK.map(item => [item.category, item.scope, item.id]));
+    expect(mocks.equipItem.mock.calls).toEqual(packEquipTargets().map(item => [item.category, item.scope, item.id]));
     expect(mocks.progress?.rewardGranted).toBe(false);
     expect(mocks.retry).not.toHaveBeenCalled();
   });
@@ -61,7 +61,7 @@ describe("Nostalgia Pack Admin Pass", () => {
     show();
     fireEvent.click(screen.getByRole("button", { name: "Equip pack · Admin Pass" }));
     await screen.findByText(/Pack equipped/);
-    expect(mocks.equipItem).toHaveBeenCalledTimes(3);
+    expect(mocks.equipItem).toHaveBeenCalledTimes(packEquipTargets().length);
   });
 
   it("preserves the existing Admin Pass for ordinary admins too", () => {
@@ -87,7 +87,7 @@ describe("Nostalgia Pack Admin Pass", () => {
     show();
     fireEvent.click(screen.getByRole("button", { name: "Equip earned pack" }));
     await screen.findByText(/Pack equipped/);
-    expect(mocks.equipItem).toHaveBeenCalledTimes(3);
+    expect(mocks.equipItem).toHaveBeenCalledTimes(packEquipTargets().length);
   });
 
   it("surfaces a server refusal and stops without claiming the whole pack is equipped", async () => {

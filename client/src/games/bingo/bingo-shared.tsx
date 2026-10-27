@@ -41,7 +41,7 @@ export function BingoLetterBanner({ completedLetters = [], skin }: { completedLe
             aria-label={isEarned ? `${letter}, completed` : letter}
             className={`relative grid h-12 w-12 place-items-center rounded-full bg-gradient-to-b font-display text-2xl text-white shadow-[inset_0_-5px_0_rgba(0,0,0,0.22),0_5px_10px_rgba(0,0,0,0.25)] transition-all duration-300 [text-shadow:0_2px_0_rgba(0,0,0,0.35)] sm:h-14 sm:w-14 lg:h-16 lg:w-16 lg:text-3xl ${LETTER_BALL[letter]} ${
               isEarned
-                ? `scale-110 ring-4 ring-[#FFD84D] ring-offset-2 ${skin.isDark ? "ring-offset-[#2A170C]" : "ring-offset-[#FFF6DC]"}`
+                ? `scale-110 ring-4 ring-[#FFD84D] ring-offset-2 ${skin.ringOffset}`
                 : "saturate-[0.7]"
             }`}
           >

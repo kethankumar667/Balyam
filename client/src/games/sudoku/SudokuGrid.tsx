@@ -35,6 +35,7 @@ function SudokuGrid({
 
   return (
     <div
+      style={theme.boardStyle}
       className={`relative w-full max-w-[min(92vw,max(240px,calc(100dvh-280px)),440px)] md:max-w-[480px] short-land:!max-w-[min(50vw,calc(100dvh-20px))] aspect-square rounded-3xl p-1.5 sm:p-2.5 transition-all duration-300 flex flex-col justify-between ${theme.boardFrame}`}
     >
       {/* Thematic Masthead Banner */}

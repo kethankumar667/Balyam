@@ -1,8 +1,7 @@
 import { useState } from "react";
 import type { BingoPublicState, Player } from "@shared/types";
-import { useGameTheme } from "../../hooks/useGameTheme";
 import { AllPlayerBoardsView } from "./bingo-shared";
-import { bingoSkinFor } from "./bingoSkin";
+import { useBingoLook } from "./bingoLook";
 
 export default function BingoBoardInspection({
   state, selfId, players,
@@ -12,8 +11,7 @@ export default function BingoBoardInspection({
   players: Player[];
 }) {
   const [open, setOpen] = useState(false);
-  const { theme } = useGameTheme("bingo");
-  const skin = bingoSkinFor(theme === "neon");
+  const { skin } = useBingoLook();
   if (state.phase !== "finished") return null;
 
   return (

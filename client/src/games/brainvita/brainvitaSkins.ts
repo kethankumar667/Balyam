@@ -22,7 +22,7 @@ export const TIER_MARBLES: readonly number[] = [5, 4, 3, 2, 1];
 
 export { marbleGradient, rgba } from "./brainvitaSkinKit";
 export type { BoardPalette, GlassPalette, MarbleKind, ParticleKind, SignIcon, SkinTokens, Surface, VoiceId } from "./brainvitaSkinKit";
-export { SKINS } from "./brainvitaWorlds";
+export { SKINS, SLATE_SKIN } from "./brainvitaWorlds";
 
 export const isSkinId = (value: unknown): value is SkinId => typeof value === "string" && (SKIN_IDS as readonly string[]).includes(value);
 const isEarnedSkin = (value: unknown): value is EarnedSkinId => typeof value === "string" && (EARNED_SKINS as readonly string[]).includes(value);

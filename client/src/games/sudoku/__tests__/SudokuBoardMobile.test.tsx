@@ -2,10 +2,11 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import SudokuBoardMobile from "../SudokuBoardMobile";
-import { type UseSudokuReturn } from "../useSudoku";
+import { type SudokuGame } from "../sudokuSlate";
+import { THEME_CYCLE } from "../sudokuThemes";
 
 describe("SudokuBoardMobile Redesigned Header & HUD", () => {
-  const mockGame: UseSudokuReturn = {
+  const mockGame: SudokuGame = {
     cells: Array.from({ length: 81 }, (_, i) => ({
       index: i,
       row: Math.floor(i / 9),
@@ -25,6 +26,7 @@ describe("SudokuBoardMobile Redesigned Header & HUD", () => {
     notesMode: false,
     inputMode: "cell-first",
     themeId: "paper",
+    themeCycle: THEME_CYCLE,
     mistakes: 1,
     maxMistakes: 3,
     elapsedSeconds: 125,

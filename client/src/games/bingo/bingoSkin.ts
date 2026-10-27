@@ -1,5 +1,8 @@
+import type { CSSProperties } from "react";
+import { SLATE_ROOM_BACKGROUND } from "../../lib/schoolSlateMaterial";
+
 /**
- * The two looks of the Bingo table, as class strings.
+ * The looks of the Bingo table, as class strings: light and dark, and the School Slate an account earns.
  *
  * The board used to branch on `isNeon` in every element, which made each new piece of chrome a nest of ternaries
  * and left the two themes drifting apart. Everything a theme decides now lives here, once per theme.
@@ -49,6 +52,15 @@ export interface BingoSkin {
   focus: string;
   /** Room-rail variant that matches this skin. */
   railVariant: "dark" | "paper";
+  /** Paint a class cannot say (the slate's doodles), laid over `page`. */
+  pageStyle?: CSSProperties;
+  /** The three colours of the stars and dots drifting at the page edge, and how strongly they show. */
+  specks: readonly [string, string, string];
+  speckOpacity: number;
+  /** The gap a focus ring leaves, as the ring-offset colour of this skin's page. */
+  ringOffset: string;
+  /** The border that lifts an online dot off its avatar. */
+  dotBorder: string;
 }
 
 const FOCUS_LIGHT = "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#E4B128] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FFF6DC]";
@@ -76,6 +88,10 @@ export const BINGO_SKIN_LIGHT: BingoSkin = {
   link: "text-[#8A4B00] hover:bg-[#FFEFC0]",
   focus: FOCUS_LIGHT,
   railVariant: "paper",
+  specks: ["#F2B84B", "#E8745A", "#5AA9E6"],
+  speckOpacity: 0.6,
+  ringOffset: "ring-offset-[#FFF6DC]",
+  dotBorder: "border-[#FFF9E8]",
 };
 
 export const BINGO_SKIN_DARK: BingoSkin = {
@@ -100,6 +116,46 @@ export const BINGO_SKIN_DARK: BingoSkin = {
   link: "text-[#FFD84D] hover:bg-[#3A2410]",
   focus: FOCUS_DARK,
   railVariant: "dark",
+  specks: ["#FFD84D", "#E9A23B", "#C98B3C"],
+  speckOpacity: 0.45,
+  ringOffset: "ring-offset-[#2A170C]",
+  dotBorder: "border-[#2D1B10]",
+};
+
+const FOCUS_SLATE = "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#FFF0B3] focus-visible:ring-offset-2 focus-visible:ring-offset-[#15271E]";
+
+/**
+ * School Slate: a blackboard in teak. Chalk-white numbers on the green, a chalk-yellow stroke for what is struck off,
+ * a teak line round every card. It is a dark skin (`isDark`), so the pieces that already read `isDark` (gold title,
+ * green "Marked" tick) keep their meaning. Every ink here clears 4.5:1 on the board's green (#1F372B to #3A5F4C).
+ */
+export const BINGO_SKIN_SLATE: BingoSkin = {
+  isDark: true,
+  page: "bg-[#15271E] text-[#F4F7EE]",
+  pageStyle: { background: SLATE_ROOM_BACKGROUND },
+  card: "bg-[#1A2F24]/95 border border-[#8F6334] shadow-[0_5px_0_rgba(0,0,0,0.35),0_14px_28px_rgba(0,0,0,0.4)]",
+  well: "bg-[#12241B]/80 border border-[#6A4825]",
+  ink: "text-[#F4F7EE]",
+  inkSoft: "text-[#C3D1BF]",
+  divider: "border-[#6A4825]",
+  tray: "bg-[#2A4638]/95 border-2 border-[#9A6A38] shadow-[inset_0_2px_8px_rgba(0,0,0,0.5),0_10px_24px_rgba(0,0,0,0.4)]",
+  cell: "bg-[#1F372B] border-[#EEF2E6]/35 text-[#F4F7EE] shadow-[inset_0_-4px_0_rgba(0,0,0,0.45)]",
+  cellMarked: "bg-gradient-to-b from-[#FFF0B3] to-[#F2D675] border-[#C9AE5B] text-[#1F372B] shadow-[inset_0_-4px_0_rgba(120,90,10,0.35)]",
+  cellMarkable: "bg-[#3A5F4C] border-[#F2D675] text-[#F4F7EE] ring-4 ring-[#F2D675]/60 animate-pulse motion-reduce:animate-none",
+  cellCallable: "bg-[#1F372B] border-[#F2D675] text-[#F4F7EE] ring-2 ring-[#F2D675]/50 hover:bg-[#3A5F4C]",
+  slotEmpty: "bg-[#12241B] shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]",
+  bannerTurn: "bg-gradient-to-b from-[#2F4B3A] to-[#1F372B] border-2 border-[#F2D675] text-[#F4F7EE] shadow-[0_0_22px_rgba(242,214,117,0.25)]",
+  bannerWait: "bg-[#12241B]/90 border border-[#6A4825] text-[#F4F7EE]",
+  iconButton: "bg-[#1A2F24] border border-[#8F6334] text-[#F2D675] hover:bg-[#2A4A3A] shadow-[0_3px_0_rgba(0,0,0,0.35)]",
+  switchOff: "bg-[#4A5F52]",
+  switchOn: "bg-[#C9AE5B]",
+  link: "text-[#F2D675] hover:bg-[#2A4A3A]",
+  focus: FOCUS_SLATE,
+  railVariant: "dark",
+  specks: ["#F2D675", "#EEF2E6", "#C4955A"],
+  speckOpacity: 0.4,
+  ringOffset: "ring-offset-[#15271E]",
+  dotBorder: "border-[#1A2F24]",
 };
 
 export function bingoSkinFor(isDark: boolean): BingoSkin {

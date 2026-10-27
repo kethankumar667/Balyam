@@ -6,7 +6,8 @@ import { HapticsManager } from "../../services/HapticsManager";
 import { recordSoloScore } from "../../store/scorecardStore";
 import { brainvitaAudio } from "./brainvitaAudio";
 import { marbleCount, solveFrom, type Move } from "./brainvitaRules";
-import { SKINS, SKIN_IDS, loadChosenSkin, loadThemeOrder, loadUnlocked, saveSkin, saveUnlocked, skinsEarnedBy, type EarnedSkinId, type SkinId } from "./brainvitaSkins";
+import { useSchoolSlate } from "../../lib/schoolSlate";
+import { SKINS, SKIN_IDS, SLATE_SKIN, loadChosenSkin, loadThemeOrder, loadUnlocked, saveSkin, saveUnlocked, skinsEarnedBy, type EarnedSkinId, type SkinId, type SkinTokens } from "./brainvitaSkins";
 import { useJumpFlight } from "./useJumpFlight";
 import { createGameState, gameResult, isFinished, reduceGame, targetsOf, type GameResult } from "./brainvitaGame";
 
@@ -50,20 +51,32 @@ export function useBrainVita() {
   const earnedRef = useRef(earnedSkins);
   earnedRef.current = earnedSkins;
 
-  const selectSkin = useCallback((next: SkinId) => {
-    if (!unlockedRef.current.includes(next)) return;
-    setSkin(next);
-    saveSkin(next);
-  }, []);
+  // The School Slate is an equipped cosmetic, not a rung of the ladder, so it is laid over the chosen world and the
+  // chosen world is left as it was: taking the slate off brings that world back.
+  const slate = useSchoolSlate("brainvita");
+  const tokens: SkinTokens = slate.isOn ? SLATE_SKIN : SKINS[skin];
+  const setSlateOn = slate.setOn;
+  const isSlateOn = slate.isOn;
+
+  const selectSkin = useCallback(
+    (next: SkinId) => {
+      if (!unlockedRef.current.includes(next)) return;
+      if (isSlateOn) void setSlateOn(false);
+      setSkin(next);
+      saveSkin(next);
+    },
+    [isSlateOn, setSlateOn],
+  );
+  const selectSlate = useCallback(() => void setSlateOn(true), [setSlateOn]);
   const dismissUnlock = useCallback(() => setJustUnlocked([]), []);
 
   // ── each world has its own voice: what the marbles knock against, and the colour of the drone ──────
   useEffect(() => {
-    brainvitaAudio.setVoice(SKINS[skin].voice);
+    brainvitaAudio.setVoice(tokens.voice);
     // Changing the voice lets the drone go; a game under way gets it back, in the new voice.
     const now = stateRef.current;
     if (now.moves.length > 0 && !isFinished(now)) brainvitaAudio.setAmbient(marbleCount(now.board));
-  }, [skin]);
+  }, [tokens.voice]);
 
   // ── the drone under the game: thins with every marble, resolves at the end, silent between games ───
   useEffect(() => {
@@ -212,6 +225,9 @@ export function useBrainVita() {
     flight,
     burst,
     skin,
+    /** What the screen is painted with: the slate while it is equipped, otherwise the chosen world. */
+    tokens,
+    slate: { isOn: slate.isOn, isOwned: slate.isOwned, error: slate.error, select: selectSlate },
     unlockedSkins: unlocked,
     isAllOpen,
     selectSkin,

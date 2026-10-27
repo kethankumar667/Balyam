@@ -13,6 +13,7 @@ import {
 } from "./ludo-board-composites";
 import { LudoWorldScene } from "./LudoWorldScene";
 import { LudoTurnStatus } from "./LudoTurnStatus";
+import { useSchoolSlate } from "../../lib/schoolSlate";
 
 /** The board is never allowed past this, matching the desktop shell. */
 const MAX_BOARD = 620;
@@ -38,6 +39,8 @@ const SHORT_LANDSCAPE_QUERY = "(orientation: landscape) and (max-height: 520px)"
 export default function LudoBoardMobile(props: LudoBoardProps) {
   const { state, players, selfId, messages, roomCode, roomPhase } = props;
   const m = useLudoBoard(props);
+  // The earned School Slate is drawn only on a classic table: a host's world wins, as in Rummy.
+  const isSlate = useSchoolSlate("ludo").isOn && m.world === "classic";
   const [unread, setUnread] = useState(0);
   const camera = useTableCamera();
   useLudoTableImpact(state.lastEvent, camera);
@@ -82,7 +85,7 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
   return (
     <div
       ref={camera.cameraRef}
-      className={`theme-${m.world} bhalyam-font relative z-0 rounded-2xl p-1.5 sm:p-4 shadow-2xl flex flex-col gap-2 h-[calc(100svh-0.5rem)] overflow-hidden short-land:grid short-land:grid-cols-[auto_minmax(0,1fr)] short-land:grid-rows-[auto_minmax(0,1fr)_auto] short-land:gap-x-3 short-land:gap-y-1`}
+      className={`theme-${m.world}${isSlate ? " ludo-school-slate" : ""} bhalyam-font relative z-0 rounded-2xl p-1.5 sm:p-4 shadow-2xl flex flex-col gap-2 h-[calc(100svh-0.5rem)] overflow-hidden short-land:grid short-land:grid-cols-[auto_minmax(0,1fr)] short-land:grid-rows-[auto_minmax(0,1fr)_auto] short-land:gap-x-3 short-land:gap-y-1`}
       style={
         {
           background: "var(--ludo-screen-bg)",

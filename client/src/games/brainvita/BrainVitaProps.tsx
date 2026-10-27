@@ -14,7 +14,7 @@ const LEAF_GRADIENT_ID = "bvp-leaf";
 const BURLAP_GRADIENT_ID = "bvp-burlap";
 
 /** The holes of the little sketch on the notepad, in board units. */
-const SKETCH_HOLES = Array.from({ length: GRID_UNITS * GRID_UNITS }, (_, index) => ({ row: Math.floor(index / GRID_UNITS), col: index % GRID_UNITS })).filter(
+export const SKETCH_HOLES = Array.from({ length: GRID_UNITS * GRID_UNITS }, (_, index) => ({ row: Math.floor(index / GRID_UNITS), col: index % GRID_UNITS })).filter(
   ({ row, col }) => (row >= ARM_START && row < ARM_END) || (col >= ARM_START && col < ARM_END),
 );
 

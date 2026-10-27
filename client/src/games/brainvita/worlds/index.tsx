@@ -28,6 +28,8 @@ const ToyProps = lazy(() => import("./ToyWorld").then((m) => ({ default: m.ToyPr
 const PalaceScene = lazy(() => import("./PalaceWorld").then((m) => ({ default: m.PalaceScene })));
 const PalaceSurface = lazy(() => import("./PalaceWorld").then((m) => ({ default: m.PalaceSurface })));
 const PalaceProps = lazy(() => import("./PalaceWorld").then((m) => ({ default: m.PalaceProps })));
+const SlateScene = lazy(() => import("./SlateWorld").then((m) => ({ default: m.SlateScene })));
+const SlateProps = lazy(() => import("./SlateWorld").then((m) => ({ default: m.SlateProps })));
 
 /** Whatever fills the table behind the board, over the world's background colour. */
 export function SceneArt() {
@@ -40,6 +42,7 @@ export function SceneArt() {
       {surface === "reef" && <ReefScene />}
       {surface === "toy" && <ToyScene />}
       {surface === "palace" && <PalaceScene />}
+      {surface === "slate" && <SlateScene />}
     </Suspense>
   );
 }
@@ -47,7 +50,8 @@ export function SceneArt() {
 /** The board itself, at the rim width the screen allows. */
 export function BoardArt({ frame }: { frame: number }) {
   const { surface } = useSkinTokens();
-  if (surface === "wood") return <WoodSurface frame={frame} />;
+  // The slate's board is the classic carving in a slate palette, so it is drawn by the same component.
+  if (surface === "wood" || surface === "slate") return <WoodSurface frame={frame} />;
   return (
     <Suspense fallback={null}>
       {surface === "holo" && <HoloSurface frame={frame} />}
@@ -70,6 +74,7 @@ export function PropsArt() {
       {surface === "reef" && <ReefProps />}
       {surface === "toy" && <ToyProps />}
       {surface === "palace" && <PalaceProps />}
+      {surface === "slate" && <SlateProps />}
     </Suspense>
   );
 }

@@ -18,7 +18,21 @@ export const COSMETIC_CATEGORIES = [
 ] as const;
 export type CosmeticCategory = (typeof COSMETIC_CATEGORIES)[number];
 
-export type CosmeticGameScope = "GLOBAL" | "uno" | "rummy" | "ludo" | "snl";
+export type CosmeticGameScope =
+  | "GLOBAL"
+  | "uno"
+  | "rummy"
+  | "ludo"
+  | "snl"
+  | "brainvita"
+  | "bingo"
+  | "stargame"
+  | "sudoku";
+
+/** The earned table look that is drawn on a blackboard, and the games that draw it. Viewer-local: never broadcast. */
+export const SCHOOL_SLATE_ID = "table_retro_school_slate";
+export const SCHOOL_SLATE_SCOPES = ["rummy", "ludo", "brainvita", "bingo", "stargame", "sudoku"] as const;
+export type SchoolSlateScope = (typeof SCHOOL_SLATE_SCOPES)[number];
 export type CosmeticRarity = "COMMON" | "RARE" | "EPIC" | "LEGENDARY";
 export type UnlockMethod = "COIN_PURCHASE" | "STREAK_MILESTONE" | "REFERRAL_MILESTONE" | "DEFAULT";
 
@@ -41,7 +55,7 @@ export interface RegistryCosmeticDef {
 export const BHALYAM_COSMETIC_REGISTRY: readonly RegistryCosmeticDef[] = [
   { id: "aura_nostalgia_gold", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "aura-nostalgia-gold", isDefault: false },
   { id: "title_gang_leader", category: "PODIUM_TITLE", supportedScopes: ["GLOBAL"], bundledAssetKey: "title-gang-leader", isDefault: false },
-  { id: "table_retro_school_slate", category: "TABLE_THEME", supportedScopes: ["rummy"], bundledAssetKey: "felt-school-slate", isDefault: false },
+  { id: SCHOOL_SLATE_ID, category: "TABLE_THEME", supportedScopes: SCHOOL_SLATE_SCOPES, bundledAssetKey: "felt-school-slate", isDefault: false },
   // ── Table Themes ──
   {
     id: "table_classic_green",
@@ -742,6 +756,10 @@ export function resolveEffectiveLoadout(
       rummy: sanitizedOrDefault(equipped?.tableThemes?.rummy, "TABLE_THEME", "rummy", tableGlobal),
       ludo: sanitizedOrDefault(equipped?.tableThemes?.ludo, "TABLE_THEME", "ludo", tableGlobal),
       snl: sanitizedOrDefault(equipped?.tableThemes?.snl, "TABLE_THEME", "snl", tableGlobal),
+      brainvita: sanitizedOrDefault(equipped?.tableThemes?.brainvita, "TABLE_THEME", "brainvita", tableGlobal),
+      bingo: sanitizedOrDefault(equipped?.tableThemes?.bingo, "TABLE_THEME", "bingo", tableGlobal),
+      stargame: sanitizedOrDefault(equipped?.tableThemes?.stargame, "TABLE_THEME", "stargame", tableGlobal),
+      sudoku: sanitizedOrDefault(equipped?.tableThemes?.sudoku, "TABLE_THEME", "sudoku", tableGlobal),
     },
     diceSkins: {
       GLOBAL: sanitizedOrDefault(equipped?.diceSkins?.GLOBAL, "DICE_SKIN", "GLOBAL", defaultDice),
@@ -759,6 +777,10 @@ export function resolveEffectiveLoadout(
       ),
       uno: defaultDice,
       rummy: defaultDice,
+      brainvita: defaultDice,
+      bingo: defaultDice,
+      stargame: defaultDice,
+      sudoku: defaultDice,
     },
     tokenSkins: {
       GLOBAL: sanitizedOrDefault(equipped?.tokenSkins?.GLOBAL, "TOKEN_SKIN", "GLOBAL", defaultToken),
@@ -766,6 +788,10 @@ export function resolveEffectiveLoadout(
       snl: defaultToken,
       uno: defaultToken,
       rummy: defaultToken,
+      brainvita: defaultToken,
+      bingo: defaultToken,
+      stargame: defaultToken,
+      sudoku: defaultToken,
     },
     cardBacks: {
       uno: sanitizedOrDefault(equipped?.cardBacks?.uno, "CARD_BACK", "uno", defaultUnoCardBack),

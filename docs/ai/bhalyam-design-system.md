@@ -220,8 +220,12 @@ cross-device playable saves are a separate milestone.
 Referrals show authenticated server counts, explicit loading/retry/unavailable
 states and user-revealed sharing channels. Never invent a joined-friend count,
 saved mode, XP reward or continuation estimate. The earned School Slate
-material is personal, Rummy-only, and applies in both layouts only while the
-host's world is classic. Non-classic host worlds take priority.
+material is personal (never broadcast) and is drawn in Rummy, Ludo, Goli Jump,
+Bingo, Star Game and Sudoku, in both layouts of each. In Rummy and Ludo it
+applies only while the host's world is classic; non-classic host worlds take
+priority. The shared palette lives in `client/src/lib/schoolSlateMaterial.ts`
+and every ink on it clears 4.5:1 (`schoolSlateMaterial.test.ts`). A slate never
+recolours a seat, a suit or any piece that carries meaning.
 
 ### Ludo board inspection
 

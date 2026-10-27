@@ -8,7 +8,7 @@ import type { SkinId } from "./brainvitaSkins";
  */
 
 /** Which set of art is drawn: the scene behind, the board, and the things on the table. */
-export type Surface = "wood" | "holo" | "stone" | "reef" | "toy" | "palace";
+export type Surface = "wood" | "holo" | "stone" | "reef" | "toy" | "palace" | "slate";
 /** The marble's form and finish. */
 export type MarbleKind = "glass" | "orb" | "pebble" | "pearl" | "candy" | "gem";
 /** What a captured marble turns into. */
@@ -40,7 +40,8 @@ export interface GlassPalette {
 }
 
 export interface SkinTokens {
-  id: SkinId;
+  /** The earned School Slate is not one of the six worlds on the ladder, so it has an id of its own. */
+  id: SkinId | "slate";
   name: string;
   surface: Surface;
   marbleKind: MarbleKind;

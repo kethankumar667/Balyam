@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { useViewport } from "../../lib/useViewport";
 import { useSudoku, type SudokuDifficulty } from "./useSudoku";
+import { useSlatedSudoku } from "./sudokuSlate";
 import SudokuBoardMobile from "./SudokuBoardMobile";
 import SudokuBoardDesktop from "./SudokuBoardDesktop";
 
@@ -10,7 +11,7 @@ export interface SudokuBoardProps {
 }
 
 function SudokuBoard({ onExit, initialDifficulty = "medium" }: SudokuBoardProps) {
-  const game = useSudoku(initialDifficulty);
+  const game = useSlatedSudoku(useSudoku(initialDifficulty));
   const viewport = useViewport();
 
   if (viewport === "desktop") {

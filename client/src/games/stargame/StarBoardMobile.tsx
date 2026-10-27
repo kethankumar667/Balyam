@@ -9,6 +9,7 @@ import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 import { StarBurstOverlay, StarWinnerCelebration } from "./StarAnimations";
+import StarSlateToggle from "./StarSlateToggle";
 import { STARGAME_TUTORIAL } from "../tutorials";
 import {
   PAPER,
@@ -394,6 +395,7 @@ export default function StarBoardMobile(props: StarBoardProps) {
         <StarLogo compact />
         <RoundProgress round={m.round} total={m.totalRounds} />
         <span className="flex min-w-[3.25rem] items-center justify-end gap-1.5">
+          <StarSlateToggle />
           <TutorialButton onClick={() => tut.setOpen(true)} label="How to play Star Game" />
           <DeadlinePill deadline={m.deadline} />
         </span>

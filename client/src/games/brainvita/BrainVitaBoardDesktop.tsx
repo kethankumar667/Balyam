@@ -43,7 +43,7 @@ export default function BrainVitaBoardDesktop({ onExit }: BrainVitaBoardProps) {
     setIsLookOpen(true);
   }, [dismissUnlock]);
   const marbles = marbleCount(state.board);
-  const skin = SKINS[game.skin];
+  const skin = game.tokens;
   const recent = state.moves.slice(-LOG_LENGTH).map((move, index, list) => ({ move, number: state.moves.length - list.length + index + 1 }));
 
   const muteIcon = game.isMuted ? <VolumeX className="h-4 w-4 text-rose-300" /> : <Volume2 className="h-4 w-4 text-emerald-300" />;
@@ -174,6 +174,7 @@ export default function BrainVitaBoardDesktop({ onExit }: BrainVitaBoardProps) {
           onSelectSkin={game.selectSkin}
           order={game.themeOrder}
           isAllOpen={game.isAllOpen}
+          slate={game.slate}
         />
 
         <BrainVitaResultModal

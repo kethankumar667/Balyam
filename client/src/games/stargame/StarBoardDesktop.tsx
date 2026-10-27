@@ -7,6 +7,7 @@ import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 import { StarBurstOverlay, StarWinnerCelebration } from "./StarAnimations";
+import StarSlateToggle from "./StarSlateToggle";
 import { STARGAME_TUTORIAL } from "../tutorials";
 import { useFullscreenToggle } from "../../hooks/useFullscreenToggle";
 import { isFullscreenSupported } from "../../lib/fullscreen";
@@ -176,7 +177,7 @@ export default function StarBoardDesktop(props: StarBoardProps) {
   return (
     <div
       className="relative flex h-full min-h-0 w-full flex-col font-sans select-none"
-      style={{ background: "#060814", color: "#F8FAFC" }}
+      style={{ background: "var(--star-deepest, #060814)", color: "#F8FAFC" }}
     >
       <StarRoomBackdrop />
       <GrainOverlay />
@@ -190,7 +191,7 @@ export default function StarBoardDesktop(props: StarBoardProps) {
           tree) painted over the bottom of every sheet. The background is 95%
           opaque, so the blur was not visible anyway. */}
       <header
-        className="relative flex h-14 shrink-0 items-center justify-between border-b border-[#1E294B]/90 px-5 bg-[#090E22]/95 shadow-md"
+        className="relative flex h-14 shrink-0 items-center justify-between border-b border-[color:color-mix(in_srgb,var(--star-line,#1E294B)_90%,transparent)] px-5 bg-[color:color-mix(in_srgb,var(--star-deep,#090E22)_95%,transparent)] shadow-md"
       >
         <StarLogo />
 
@@ -200,7 +201,7 @@ export default function StarBoardDesktop(props: StarBoardProps) {
             type="button"
             onClick={props.onRequestLeave}
             aria-label="Exit room"
-            className="h-8 w-8 rounded-full bg-[#0D1428] border border-[#1E294B] text-zinc-300 hover:text-white hover:bg-[#1A2342] flex items-center justify-center text-xs font-bold transition shadow-sm"
+            className="h-8 w-8 rounded-full bg-[color:var(--star-deep2,#0D1428)] border border-[color:var(--star-line,#1E294B)] text-zinc-300 hover:text-white hover:bg-[color:var(--star-linehi,#1A2342)] flex items-center justify-center text-xs font-bold transition shadow-sm"
           >
             ✕
           </button>
@@ -208,6 +209,7 @@ export default function StarBoardDesktop(props: StarBoardProps) {
 
         {/* Right Controls & Leave Button */}
         <div className="flex items-center gap-2.5">
+          <StarSlateToggle />
           {isFullscreenSupported() && (
             <StarIconButton
               onClick={toggleFullscreen}
@@ -284,7 +286,7 @@ export default function StarBoardDesktop(props: StarBoardProps) {
           </Panel>
 
           {/* Card 4: TIP CARD with Vector Kids Illustration */}
-          <div className="rounded-2xl border border-[#1E294B]/90 bg-[#0D1326]/90 p-3.5 space-y-2 shadow-lg">
+          <div className="rounded-2xl border border-[color:color-mix(in_srgb,var(--star-line,#1E294B)_90%,transparent)] bg-[color:color-mix(in_srgb,var(--star-deep2,#0D1326)_90%,transparent)] p-3.5 space-y-2 shadow-lg">
             <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
               <span aria-hidden>💡</span>
               <span>Pass smart, win more!</span>
@@ -299,9 +301,9 @@ export default function StarBoardDesktop(props: StarBoardProps) {
         {/* CENTER COLUMN — Main Felt Arena with Circular Orbit Table */}
         <main
           ref={mainRef}
-          className="relative flex min-h-0 flex-1 flex-col justify-between items-center overflow-hidden rounded-3xl border border-[#1E294B]/90 p-4 sm:p-5 shadow-2xl"
+          className="relative flex min-h-0 flex-1 flex-col justify-between items-center overflow-hidden rounded-3xl border border-[color:color-mix(in_srgb,var(--star-line,#1E294B)_90%,transparent)] p-4 sm:p-5 shadow-2xl"
           style={{
-            background: "radial-gradient(ellipse at 50% 30%, #101633 0%, #090E22 65%, #050814 100%)",
+            background: "radial-gradient(ellipse at 50% 30%, var(--star-lit, #101633) 0%, var(--star-deep, #090E22) 65%, var(--star-deepest, #050814) 100%)",
           }}
           aria-live="polite"
         >
@@ -344,7 +346,7 @@ export default function StarBoardDesktop(props: StarBoardProps) {
           <Panel title="Theme">
             <div className="flex items-center gap-3">
               <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#2A3764] text-2xl bg-[#090E22] shadow-inner"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[color:var(--star-line,#2A3764)] text-2xl bg-[color:var(--star-deep,#090E22)] shadow-inner"
                 aria-hidden
               >
                 {m.theme.glyph}
@@ -395,7 +397,7 @@ export default function StarBoardDesktop(props: StarBoardProps) {
                   <span
                     className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-black tabular-nums"
                     style={{
-                      background: i === 0 ? "#FBBF24" : "#1E294B",
+                      background: i === 0 ? "#FBBF24" : "var(--star-line, #1E294B)",
                       color: i === 0 ? "#1C1917" : "#94A3B8",
                     }}
                   >
@@ -429,7 +431,7 @@ export default function StarBoardDesktop(props: StarBoardProps) {
 
       {/* ── Persistent Bottom Hand Area ─────────────────────────────────── */}
       <footer
-        className="relative z-20 flex shrink-0 items-center justify-between gap-6 border-t border-[#1E294B]/90 px-6 py-3.5 bg-[#0A0F24]/95 shadow-[0_-12px_28px_rgba(0,0,0,0.6)]"
+        className="relative z-20 flex shrink-0 items-center justify-between gap-6 border-t border-[color:color-mix(in_srgb,var(--star-line,#1E294B)_90%,transparent)] px-6 py-3.5 bg-[color:color-mix(in_srgb,var(--star-deep,#0A0F24)_95%,transparent)] shadow-[0_-12px_28px_rgba(0,0,0,0.6)]"
       >
         {/* Left: YOUR HAND title + Curved Arrow */}
         <div className="flex shrink-0 flex-col items-start gap-0.5">
@@ -581,7 +583,7 @@ function CenterContent({
           ) : (
             <div className="space-y-3">
               <div
-                className="mx-auto flex w-fit items-center gap-2 rounded-xl border border-amber-400/60 px-5 py-3 bg-[#0D1428] shadow-lg"
+                className="mx-auto flex w-fit items-center gap-2 rounded-xl border border-amber-400/60 px-5 py-3 bg-[color:var(--star-deep2,#0D1428)] shadow-lg"
               >
                 <span aria-hidden className="text-xl">🔒</span>
                 <span className="font-script text-2xl font-bold text-amber-300">
@@ -735,11 +737,11 @@ function Panel({
 }) {
   return (
     <section
-      className={`rounded-2xl border border-[#1E294B]/90 bg-[#0D1326]/90 shadow-lg ${className}`}
+      className={`rounded-2xl border border-[color:color-mix(in_srgb,var(--star-line,#1E294B)_90%,transparent)] bg-[color:color-mix(in_srgb,var(--star-deep2,#0D1326)_90%,transparent)] shadow-lg ${className}`}
     >
       {title && (
         <h2
-          className="border-b border-[#1E294B]/80 px-3.5 py-2 font-display text-[11px] font-black uppercase tracking-wider text-amber-400"
+          className="border-b border-[color:color-mix(in_srgb,var(--star-line,#1E294B)_80%,transparent)] px-3.5 py-2 font-display text-[11px] font-black uppercase tracking-wider text-amber-400"
         >
           {title}
         </h2>
@@ -774,9 +776,9 @@ function PassToButton({
         className="flex items-center justify-center gap-2.5 rounded-2xl px-7 py-3 font-display text-base font-black uppercase tracking-wider text-white transition active:scale-95 disabled:active:scale-100 disabled:opacity-50"
         style={{
           background: disabled
-            ? "#2A3358"
+            ? "var(--star-kraft, #2A3358)"
             : "linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #4338CA 100%)",
-          border: disabled ? "1px solid #1E294B" : "1px solid rgba(165,180,252,0.5)",
+          border: disabled ? "1px solid var(--star-line, #1E294B)" : "1px solid rgba(165,180,252,0.5)",
           boxShadow: disabled
             ? undefined
             : "0 0 24px rgba(99,102,241,0.6), inset 0 1px 0 rgba(255,255,255,0.3)",

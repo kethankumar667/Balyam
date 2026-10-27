@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import StarBoardMobile from "./StarBoardMobile";
 import StarBoardDesktop from "./StarBoardDesktop";
 import type { StarBoardProps } from "./useStarBoard";
+import { useSchoolSlate } from "../../lib/schoolSlate";
+import { STAR_SLATE_VARS } from "./starSlate";
 
 /** Desktop gate copied from RummyBoard: real desktop only (rules out phone
  *  landscape ≤1133px). Do NOT widen. The mobile shell handles every smaller
@@ -24,5 +26,11 @@ export default function StarBoard(props: StarBoardProps) {
       window.removeEventListener("orientationchange", onResize);
     };
   }, []);
-  return isDesktop ? <StarBoardDesktop {...props} /> : <StarBoardMobile {...props} />;
+  const slate = useSchoolSlate("stargame");
+  // The wrapper only carries the slate's colour variables down to both shells; it takes no part in layout.
+  return (
+    <div className="contents" style={slate.isOn ? STAR_SLATE_VARS : undefined}>
+      {isDesktop ? <StarBoardDesktop {...props} /> : <StarBoardMobile {...props} />}
+    </div>
+  );
 }

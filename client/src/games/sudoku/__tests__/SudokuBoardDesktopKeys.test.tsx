@@ -2,7 +2,8 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import SudokuBoardDesktop from "../SudokuBoardDesktop";
-import { type UseSudokuReturn } from "../useSudoku";
+import { type SudokuGame } from "../sudokuSlate";
+import { THEME_CYCLE } from "../sudokuThemes";
 
 // The victory modal fires a canvas burst; happy-dom has no canvas context.
 vi.mock("canvas-confetti", () => ({ default: vi.fn() }));
@@ -13,7 +14,7 @@ vi.mock("canvas-confetti", () => ({ default: vi.fn() }));
  * fifth of a second, and holding H spent every hint and solved the board.
  */
 describe("SudokuBoardDesktop keyboard", () => {
-  function makeGame(overrides: Partial<UseSudokuReturn> = {}): UseSudokuReturn {
+  function makeGame(overrides: Partial<SudokuGame> = {}): SudokuGame {
     return {
       cells: Array.from({ length: 81 }, (_, i) => ({
         index: i,
@@ -34,6 +35,7 @@ describe("SudokuBoardDesktop keyboard", () => {
       notesMode: false,
       inputMode: "cell-first",
       themeId: "paper",
+      themeCycle: THEME_CYCLE,
       mistakes: 0,
       maxMistakes: 3,
       elapsedSeconds: 0,
@@ -69,7 +71,7 @@ describe("SudokuBoardDesktop keyboard", () => {
     };
   }
 
-  function mount(game: UseSudokuReturn) {
+  function mount(game: SudokuGame) {
     return render(
       <MemoryRouter>
         <SudokuBoardDesktop game={game} />

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Check, Copy, Users } from "lucide-react";
-import { NOSTALGIA_PACK } from "@shared/referrals";
+import { NOSTALGIA_PACK, packEquipTargets } from "@shared/referrals";
 import { useReferralProgress } from "../../hooks/useReferralProgress";
 import { useCosmeticsStore } from "../../store/cosmeticsStore";
 import { PackCollectible } from "./JourneyArtwork";
@@ -31,7 +31,7 @@ export function ReferralQuest({ isMember }: { isMember: boolean }) {
     setFeedback(null);
     try {
       await useCosmeticsStore.getState().fetchCosmetics();
-      for (const item of NOSTALGIA_PACK) {
+      for (const item of packEquipTargets()) {
         if (useAuthStore.getState().userId !== userId) return;
         const ok = await useCosmeticsStore.getState().equipItem(item.category, item.scope, item.id);
         if (useAuthStore.getState().userId !== userId) return;
@@ -40,7 +40,7 @@ export function ReferralQuest({ isMember }: { isMember: boolean }) {
           return;
         }
       }
-      if (useAuthStore.getState().userId === userId) setFeedback("Pack equipped. School Slate appears on your classic Rummy table; host-selected worlds take priority.");
+      if (useAuthStore.getState().userId === userId) setFeedback("Pack equipped. School Slate appears in Rummy, Ludo, Goli Jump, Bingo, Star Game and Sudoku; a host-selected world takes priority at the table.");
     } catch (error) {
       if (useAuthStore.getState().userId === userId) setFeedback(error instanceof Error ? error.message : "The pack could not be equipped. Please try again.");
     } finally { if (useAuthStore.getState().userId === userId) setEquipping(false); }

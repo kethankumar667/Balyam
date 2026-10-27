@@ -20,7 +20,7 @@ import {
   BingoTurnBanner,
   buildBingoSeats,
 } from "./bingo-chrome";
-import { bingoSkinFor } from "./bingoSkin";
+import { useBingoLook } from "./bingoLook";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
@@ -60,11 +60,9 @@ export default function BingoBoardMobile(props: BingoBoardProps) {
     setCallOutEnabled,
     claimBingo,
     canAttemptClaim,
-    isNeon,
-    toggleTheme,
   } = model;
 
-  const skin = bingoSkinFor(isNeon);
+  const { skin, next: nextLook, cycle: cycleLook } = useBingoLook();
   const isArranging = state.phase === "arranging";
   const myPlayer = state.players.find((p) => p.id === model.selfId);
   const myBoard = state.myBoard ?? [];
@@ -94,7 +92,7 @@ export default function BingoBoardMobile(props: BingoBoardProps) {
             messages={props.messages}
             variant={skin.railVariant}
           />
-          <BingoThemeSwitch skin={skin} onToggle={toggleTheme} />
+          <BingoThemeSwitch skin={skin} next={nextLook} onToggle={cycleLook} />
         </div>
 
         {isArranging ? (
