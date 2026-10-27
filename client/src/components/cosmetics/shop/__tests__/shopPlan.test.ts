@@ -98,6 +98,12 @@ describe("planShopAction — one primary control per state", () => {
     expect(p.showPrice).toBe(false);
   });
 
+  it("explains a referral lock without describing it as a streak", () => {
+    const p = plan({ item: frame({ unlockMethod: "REFERRAL_MILESTONE", priceCoins: 0 }) });
+    expect(p.note).toBe("Invite 3 qualifying friends to unlock this.");
+    expect(p.showPrice).toBe(false);
+  });
+
   it("makes the Admin Pass free: no price, no refund, and says so", () => {
     const p = plan({ isAdminUser: true, walletBalance: "0" });
 

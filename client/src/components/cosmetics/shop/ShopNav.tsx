@@ -14,10 +14,13 @@ import { getRegistryCosmetic, type CosmeticCategory, type CosmeticGameScope } fr
 import type { CosmeticsShop } from "../useCosmeticsShop";
 import { Button } from "../../../design-system/dls/Buttons";
 import { CARD_BACK_SCOPES, SHOP_CATEGORY_TABS } from "../shopLogic";
+import { formatCoinString } from "../../economy/CoinAmount";
+import type { WalletStatus } from "../../../hooks/useEconomy";
 
 export interface ShopHeaderProps {
   /** Whole-coin balance as the wallet reports it. */
-  balance: string;
+  balance: string | null;
+  walletStatus?: WalletStatus;
   onBack: () => void;
   /** Show "Cosmetic only. Every match stays fair." under the title. The phone shows it by the action instead. */
   showReassurance?: boolean;
@@ -30,14 +33,17 @@ export const REASSURANCE = "Cosmetic only. Every match stays fair.";
 export const SHOWROOM_ID = "shop-showroom";
 export const shopTabId = (category: CosmeticCategory): string => `shop-tab-${category}`;
 
-export function ShopHeader({ balance, onBack, showReassurance = true }: ShopHeaderProps) {
-  const coins = Number(balance || 0).toLocaleString();
+export function ShopHeader({ balance, walletStatus = "loaded", onBack, showReassurance = true }: ShopHeaderProps) {
+  const unknown = balance === null || walletStatus === "error" || walletStatus === "unavailable";
+  const loading = unknown && walletStatus === "loading";
+  const coins = formatCoinString(unknown ? null : balance);
+  const label = loading ? "Loading wallet balance" : unknown ? "Wallet unavailable" : `Your balance: ${coins} coins`;
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex min-w-0 flex-wrap items-center gap-3">
       <Button variant="chrome" size="iconOnly" aria-label="Back" onClick={onBack} leftIcon={<ArrowLeft className="h-5 w-5" />}>
         Back
       </Button>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 basis-32">
         <h1 className="flex items-center gap-2 font-display text-[28px] leading-tight text-ink-hi sm:text-[34px] short-land:text-[24px]">
           <Store className="h-6 w-6 shrink-0 text-orange-600" aria-hidden /> Shop
         </h1>
@@ -46,12 +52,13 @@ export function ShopHeader({ balance, onBack, showReassurance = true }: ShopHead
       </div>
       <div
         role="status"
-        aria-label={`Your balance: ${coins} coins`}
-        className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-[var(--chrome-hairline)] bg-surface-1 px-4 font-bold tabular-nums text-ink-hi shadow-[0_2px_6px_rgba(0,0,0,0.1)]"
+        aria-label={label}
+        aria-busy={loading || undefined}
+        className="inline-flex min-h-[44px] max-w-full items-center gap-2 rounded-2xl border border-[var(--chrome-hairline)] bg-surface-1 px-4 py-2 font-bold tabular-nums text-ink-hi shadow-[0_2px_6px_rgba(0,0,0,0.1)]"
       >
         <Coins className="h-5 w-5 text-amber-600 dark:text-amber-400" aria-hidden />
-        <span>{coins}</span>
-        <span className="hidden font-medium text-ink-mid sm:inline">coins</span>
+        <span className="min-w-0 [overflow-wrap:anywhere]">{unknown ? loading ? "Loading…" : "Unavailable" : coins}</span>
+        {!unknown && <span className="hidden font-medium text-ink-mid sm:inline">coins</span>}
       </div>
     </div>
   );

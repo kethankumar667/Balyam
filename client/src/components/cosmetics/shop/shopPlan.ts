@@ -124,8 +124,18 @@ export function planShopAction(params: {
     case "LOCKED":
       return {
         ...base,
-        note: "Keep a 7-day streak to unlock this.",
+        note: item.unlockMethod === "REFERRAL_MILESTONE"
+          ? "Invite 3 qualifying friends to unlock this."
+          : "Keep a 7-day streak to unlock this.",
         primary: { kind: "button", intent: "locked", label: "Locked", disabled: true },
+      };
+
+    case "UNAVAILABLE":
+      return {
+        ...base,
+        refundPromise: null,
+        note: "Your balance must be available before purchasing.",
+        primary: { kind: "button", intent: "locked", label: "Balance unavailable", disabled: true },
       };
 
     default:

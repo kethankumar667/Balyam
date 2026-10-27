@@ -57,7 +57,7 @@ describe("loading a saved loadout while in a room", () => {
   });
 
   it("does not announce anything if the load failed", async () => {
-    apiJson.mockRejectedValue(new Error("offline"));
+    apiJson.mockRejectedValueOnce(new Error("offline"));
     putInRoom("ludo");
 
     await useCosmeticsStore.getState().fetchCosmetics();
@@ -76,6 +76,21 @@ describe("loading a saved loadout while in a room", () => {
 });
 
 describe("entering the shop", () => {
+  it("reports the API helper's null failure result rather than treating it as an empty catalog", async () => {
+    apiJson.mockResolvedValue(null);
+    await useCosmeticsStore.getState().fetchCosmetics();
+    expect(useCosmeticsStore.getState().errorMessage).toMatch(/failed to load/i);
+    expect(useCosmeticsStore.getState().isLoading).toBe(false);
+  });
+
+  it("does not erase a catalog failure when switching an empty shop category", async () => {
+    apiJson.mockRejectedValueOnce(new Error("offline"));
+    useCosmeticsStore.setState({ catalog: [] });
+    await useCosmeticsStore.getState().fetchCosmetics();
+    useCosmeticsStore.getState().selectCategory("AVATAR_AURA");
+    expect(useCosmeticsStore.getState().errorMessage).toMatch(/failed to load/i);
+  });
+
   beforeEach(() => apiJson.mockResolvedValue(loadoutResponse(equippedWithDraco)));
 
   it("lands on the Ludo slot when the Tokens tab was the last one viewed, so tokens are listed", () => {

@@ -37,10 +37,11 @@ export function useCosmeticsShop() {
     refundItem,
     equipItem,
     unequipItem,
+    fetchCosmetics,
   } = useCosmeticsStore();
 
-  const { balance } = useWallet();
-  const walletBalance = balance ?? "0";
+  const { balance, status: walletStatus, error: walletError, refetch: retryWallet } = useWallet();
+  const walletBalance = walletStatus === "error" || walletStatus === "unavailable" ? null : balance;
   const { isAdmin, isSuperAdmin } = useAuthStore();
   const isAdminUser = isAdmin || isSuperAdmin;
 
@@ -115,6 +116,10 @@ export function useCosmeticsShop() {
     ownedIds,
     equipped,
     walletBalance,
+    walletStatus,
+    walletError,
+    retryWallet,
+    retryCatalog: fetchCosmetics,
     isAdminUser,
     // what is on screen
     selectedCategory,

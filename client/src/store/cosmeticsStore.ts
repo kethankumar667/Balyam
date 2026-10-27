@@ -124,6 +124,7 @@ export const useCosmeticsStore = create<CosmeticsStore>((set, get) => ({
       } else {
         // Fallback: public catalog only
         const catalogOnly = await apiJson<CosmeticCatalogItem[]>("/api/cosmetics/catalog");
+        if (!catalogOnly) throw new Error("cosmetics_catalog_unavailable");
         if (catalogOnly) {
           const ownedIds = isAdmin
             ? new Set(catalogOnly.map((c) => c.id))
@@ -155,7 +156,7 @@ export const useCosmeticsStore = create<CosmeticsStore>((set, get) => ({
       selectedCategory: category,
       selectedScope: defaultScopeFor(category),
       selectedItemId: null,
-      errorMessage: null,
+      errorMessage: get().catalog.length ? null : get().errorMessage,
     });
   },
 

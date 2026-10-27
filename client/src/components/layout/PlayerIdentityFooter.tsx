@@ -68,7 +68,7 @@ export default function PlayerIdentityFooter({
       >
         <IdCard className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
         <span className="min-w-0 flex-1">
-          <span className="block text-[9px] font-bold uppercase tracking-wider opacity-80">Player ID</span>
+          <span className="block text-[9px] font-bold uppercase tracking-wider">Player ID</span>
           <span className="block text-[11px] font-mono truncate">{truncated}</span>
         </span>
         {copied ? (

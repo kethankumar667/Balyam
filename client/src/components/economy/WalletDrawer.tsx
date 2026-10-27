@@ -252,12 +252,12 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                     >
                       Coin Wallet
                       {presentation.isVerifiedMember && (
-                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full">
                           {presentation.label}
                         </span>
                       )}
                       {presentation.isLocalFallback && (
-                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full">
                           Offline Demo
                         </span>
                       )}
@@ -305,7 +305,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                       Available Balance
                     </span>
                     {wallet?.isFrozen && (
-                      <span className="text-[10px] font-black uppercase text-red-600 bg-red-500/20 px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-black uppercase text-red-200 bg-red-500/20 px-2 py-0.5 rounded-full">
                         Frozen
                       </span>
                     )}
@@ -315,7 +315,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                     <EconomySkeleton variant="wallet" className="my-2" />
                   ) : isWalletError ? (
                     <div className="relative my-2 p-3.5 rounded-2xl bg-[#292322] border border-red-300/30 text-white space-y-2">
-                      <div className="flex items-center gap-2 text-xs font-bold text-red-600 dark:text-red-400">
+                      <div className="flex items-center gap-2 text-xs font-bold text-red-300">
                         <AlertCircle className="w-4 h-4 flex-shrink-0" />
                         <span>Wallet Unavailable</span>
                       </div>
@@ -323,7 +323,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                         {walletError || "Unable to retrieve server-authoritative balance. Please check your connection."}
                       </p>
                       {correlationId && (
-                        <div className="text-[10px] font-mono text-ink-lo dark:text-text-lo bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded-md inline-block">
+                        <div className="max-w-full [overflow-wrap:anywhere] text-[10px] font-mono text-stone-200 bg-white/5 px-2 py-0.5 rounded-md inline-block">
                           Ref: {correlationId}
                         </div>
                       )}
@@ -423,12 +423,12 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                       <EconomySkeleton variant="generic" className="h-16" count={3} />
                     </div>
                   ) : ledgerError ? (
-                    <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-600 dark:text-red-400 text-center space-y-2">
+                    <div role="alert" className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-800 dark:text-red-300 text-center space-y-2">
                       <p>{ledgerError}</p>
                       <button
                         type="button"
                         onClick={() => void refetchLedger()}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-700 dark:text-red-300 text-xs font-bold transition active:scale-95 cursor-pointer"
+                        className="inline-flex min-h-11 items-center gap-1 px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-800 dark:text-red-200 text-xs font-bold transition active:scale-95 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"
                       >
                         <RefreshCw className="w-3 h-3" />
                         <span>Retry Ledger</span>
@@ -475,8 +475,8 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <div className="text-right">
+                            <div className="flex min-w-0 max-w-[50%] items-center gap-2">
+                              <div className="min-w-0 text-right [&_span]:min-w-0 [&_span]:break-all">
                                 <CoinDelta delta={entry.amount} type={type} size="sm" showIcon={false} showBadgeText={false} />
                                 <span className={`mt-1 block text-[8px] font-bold tracking-wider ${isGrant ? "text-purple-700 dark:text-purple-300" : "text-stone-600 dark:text-stone-300"}`}>{isGrant ? "GRANT" : type}</span>
                               </div>
@@ -515,26 +515,26 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                 {selectedEntry && (
                   <Modal open onClose={() => setSelectedEntry(null)} zIndex={60} ariaLabel="Ledger Entry Details" panelClassName="w-full max-w-sm">
                     <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
+                      initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
+                      exit={{ opacity: 0, scale: reduceMotion ? 1 : 0.95 }}
                       className="w-full max-w-sm bg-white dark:bg-[#131824] border border-amber-600/30 rounded-3xl p-5 space-y-4 shadow-2xl"
                     >
-                      <div className="flex justify-between items-center pb-2 border-b border-black/10 dark:border-white/10">
-                        <h4 className="text-sm font-bold text-ink-hi dark:text-text-hi">
+                      <div className="flex justify-between items-center gap-2 pb-2 border-b border-black/10 dark:border-white/10">
+                        <h4 className="min-w-0 [overflow-wrap:anywhere] text-sm font-bold text-ink-hi dark:text-text-hi">
                           Ledger Audit #{selectedEntry.id}
                         </h4>
                         <button
                           type="button"
                           aria-label="Close ledger entry details"
                           onClick={() => setSelectedEntry(null)}
-                          className="min-h-11 min-w-11 flex items-center justify-center rounded-full text-ink-lo hover:text-ink-hi dark:text-text-lo dark:hover:text-text-hi focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
+                          className="min-h-11 min-w-11 shrink-0 flex items-center justify-center rounded-full text-ink-lo hover:text-ink-hi dark:text-text-lo dark:hover:text-text-hi focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
                         >
                           <X className="w-4 h-4" />
                         </button>
                       </div>
 
-                      <div className="space-y-2 text-xs">
+                      <div data-ledger-details className="space-y-2 text-xs [overflow-wrap:anywhere] [&_span]:min-w-0 [&_span]:flex-wrap [&_span]:max-w-full [&>div:not(:last-child)]:grid [&>div:not(:last-child)]:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] [&>div:not(:last-child)]:gap-3">
                         <div className="flex justify-between py-1 border-b border-black/5 dark:border-white/5">
                           <span className="text-ink-lo dark:text-text-lo">Entry Type:</span>
                           <span className="font-bold text-ink-hi dark:text-text-hi">{selectedEntry.entryType}</span>
@@ -570,7 +570,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                         {selectedEntry.sourceId && (
                           <div className="flex justify-between py-1 border-b border-black/5 dark:border-white/5">
                             <span className="text-ink-lo dark:text-text-lo">Source ID:</span>
-                            <span className="font-mono text-ink-hi dark:text-text-hi truncate max-w-[160px]">
+                            <span className="font-mono text-ink-hi dark:text-text-hi">
                               {selectedEntry.sourceId}
                             </span>
                           </div>

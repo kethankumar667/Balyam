@@ -39,6 +39,25 @@
 
 ## 2. Standardized Component Library
 
+### Wallet and shop states
+
+The shop preserves `useWallet`'s nullable balance: loading and failed reads are
+never presented as zero or an invented shortfall. A failed wallet read disables
+paid unlocks and offers Retry wallet; default and already-owned styles remain
+equippable. A real zero still shows the exact shortfall. Use `formatCoinString`
+for balance labels, not `Number`, so large balances keep their precision.
+
+Both shop layouts share `ShopFeedback`. Catalog failure offers Retry shop and
+must not be described as an empty category; category changes cannot erase a
+failed initial load. API helpers returning `null` are failures, not empty lists.
+Retry reloads data; it never resubmits a purchase.
+
+The wallet's balance hero stays dark in both themes, so its error text uses
+fixed pale ink. Ledger details wrap complete source identifiers, amounts and
+descriptions at narrow widths rather than truncating audit data. Its child
+dialog owns Escape and restores focus to the selected ledger row; the wallet
+remains open and the page remains scroll-locked until the wallet itself closes.
+
 ### Brick Blocks Color Arcade
 
 The `/brickblocks` solo game uses the app's `surface.*`, `ink.*` and `rim` tokens for

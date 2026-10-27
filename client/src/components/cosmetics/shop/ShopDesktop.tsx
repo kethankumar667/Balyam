@@ -15,6 +15,7 @@ import { ShopStage } from "./ShopStage";
 import { ShopShelf, useRarityShelf } from "./ShopShelf";
 import { categoryLabel } from "./shopPlan";
 import { rarityVars } from "./shopRarity";
+import { ShopFeedback } from "./ShopFeedback";
 
 export interface ShopDesktopProps {
   shop: CosmeticsShop;
@@ -32,7 +33,7 @@ export function ShopDesktop({ shop: source, onBack }: ShopDesktopProps) {
   return (
     <div className="flex min-h-full min-w-0 flex-1 flex-col bg-[#FFF9ED] dark:bg-surface-0">
       <div className="mx-auto grid w-full max-w-[1440px] items-center gap-4 px-6 pb-4 pt-5 short-land:pt-2 lg:grid-cols-[1fr_300px]">
-        <ShopHeader balance={shop.walletBalance} onBack={onBack} />
+        <ShopHeader balance={shop.walletBalance} walletStatus={shop.walletStatus} onBack={onBack} />
         <ShopCollection shop={shop} />
       </div>
       <div className="mx-auto w-full max-w-[1440px] px-6">
@@ -45,11 +46,7 @@ export function ShopDesktop({ shop: source, onBack }: ShopDesktopProps) {
         />
       </div>
 
-      {shop.errorMessage && (
-        <p role="alert" className="mx-auto w-full max-w-[1280px] px-6 pt-3 text-[14px] font-medium text-rose-700 dark:text-rose-300">
-          {shop.errorMessage}
-        </p>
-      )}
+      <ShopFeedback shop={shop} />
 
       <section
         id={SHOWROOM_ID}
@@ -65,7 +62,7 @@ export function ShopDesktop({ shop: source, onBack }: ShopDesktopProps) {
         <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(0deg,rgba(245,158,11,0.1),transparent)]" />
         <div className="relative mx-auto grid w-full max-w-[1440px] gap-x-8 gap-y-3 px-6 py-8 short-land:py-3 md:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_400px]">
           {shop.isLoading && !hasItems ? (
-            <div className="relative min-h-[440px] md:col-span-2" aria-busy="true">
+            <div role="status" aria-label="Loading shop" className="relative min-h-[440px] md:col-span-2" aria-busy="true">
               <p className="absolute inset-0 flex items-center justify-center text-[15px] font-medium text-ink-mid motion-safe:animate-pulse">
                 Loading the shop…
               </p>
@@ -73,7 +70,7 @@ export function ShopDesktop({ shop: source, onBack }: ShopDesktopProps) {
           ) : !hasItems || !shopPlan ? (
             <div className="relative min-h-[320px] md:col-span-2">
               <p className="absolute inset-0 flex items-center justify-center text-[16px] font-medium text-ink-mid">
-                {source.categoryItems.length ? "No matching styles. Choose another rarity below." : `Nothing in ${tabLabel.toLowerCase()} yet.`}
+                {shop.errorMessage ? "Shop unavailable. Use Retry shop above." : source.categoryItems.length ? "No matching styles. Choose another rarity below." : `Nothing in ${tabLabel.toLowerCase()} yet.`}
               </p>
             </div>
           ) : (

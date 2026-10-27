@@ -22,6 +22,40 @@ function show(Layout: typeof ShopDesktop | typeof ShopMobile, over: FakeShopOpti
 }
 
 describe.each(layouts)("shop — %s layout", (_name, Layout) => {
+  it("does not call an unavailable balance zero or invent a coin shortfall", () => {
+    show(Layout, { walletBalance: null, walletStatus: "unavailable", walletError: "Wallet could not be loaded." });
+    expect(screen.getByRole("status", { name: "Wallet unavailable" })).toBeDefined();
+    expect(screen.queryByText(/You need .* more coins/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Unlock for/ })).toBeNull();
+    expect((screen.getByRole("button", { name: "Balance unavailable" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("keeps owned styles equippable while the wallet is unavailable and offers a wallet retry", () => {
+    const { shop } = show(Layout, { walletBalance: null, walletStatus: "error", walletError: "Wallet could not be loaded.", ownedIds: new Set(["frame_bubble_float"]) });
+    fireEvent.click(screen.getByRole("button", { name: "Equip frame" }));
+    expect(shop.equip).toHaveBeenCalledWith(shop.previewItem);
+    fireEvent.click(screen.getByRole("button", { name: "Retry wallet" }));
+    expect(shop.retryWallet).toHaveBeenCalledOnce();
+  });
+
+  it("shows loading instead of zero before the first balance arrives", () => {
+    show(Layout, { walletBalance: null, walletStatus: "loading" });
+    expect(screen.getByRole("status", { name: "Loading wallet balance" }).getAttribute("aria-busy")).toBe("true");
+    expect(screen.queryByRole("status", { name: "Your balance: 0 coins" })).toBeNull();
+  });
+
+  it("keeps balances above the safe-number limit exact", () => {
+    show(Layout, { walletBalance: "9007199254740993" });
+    expect(screen.getByRole("status", { name: "Your balance: 9,007,199,254,740,993 coins" })).toBeDefined();
+  });
+
+  it("provides a catalog retry instead of describing a failure as an empty category", () => {
+    const { shop } = show(Layout, { ...makeEmptyShop(), errorMessage: "Failed to load cosmetics catalog. Please try again." });
+    fireEvent.click(screen.getByRole("button", { name: "Retry shop" }));
+    expect(shop.retryCatalog).toHaveBeenCalledOnce();
+    expect(screen.queryByText(/Nothing in .* yet/)).toBeNull();
+  });
+
   it("shows real collection progress", () => {
     show(Layout, { ownedIds: new Set(["frame_blaze_ring"]) });
     const collection = screen.getByRole("progressbar", { name: "Your collection" });
@@ -170,7 +204,7 @@ describe.each(layouts)("shop — %s layout", (_name, Layout) => {
   it("shows a failure as an alert instead of swallowing it", () => {
     show(Layout, { errorMessage: "Could not reach the shop." });
 
-    expect(screen.getByRole("alert").textContent).toBe("Could not reach the shop.");
+    expect(within(screen.getByRole("alert")).getByText("Could not reach the shop.")).toBeDefined();
   });
 
   it("does not show a failed empty catalog as a zero collection", () => {

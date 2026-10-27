@@ -17,6 +17,7 @@ import { ShopStage } from "./ShopStage";
 import { ShopShelf, useRarityShelf } from "./ShopShelf";
 import { categoryLabel } from "./shopPlan";
 import { rarityVars } from "./shopRarity";
+import { ShopFeedback } from "./ShopFeedback";
 
 export interface ShopMobileProps {
   shop: CosmeticsShop;
@@ -35,18 +36,14 @@ export function ShopMobile({ shop: source, onBack }: ShopMobileProps) {
     // at once. The page grows and scrolls instead of crushing the stage; the action bar stays pinned (sticky).
     <div className="flex min-h-full min-w-0 flex-1 flex-col bg-[#FFF9ED] dark:bg-surface-0">
       <div className="shrink-0 px-3 pb-1 pt-2">
-        <ShopHeader balance={shop.walletBalance} onBack={onBack} showReassurance={false} />
+        <ShopHeader balance={shop.walletBalance} walletStatus={shop.walletStatus} onBack={onBack} showReassurance={false} />
       </div>
       <div className="px-3 py-2"><ShopCollection shop={shop} /></div>
       <div className="shrink-0 px-1">
         <ShopTabs fill selected={selectedCategory} onSelect={shop.selectCategory} />
       </div>
 
-      {shop.errorMessage && (
-        <p role="alert" className="shrink-0 px-4 pt-2 text-[14px] font-medium text-rose-700 dark:text-rose-300">
-          {shop.errorMessage}
-        </p>
-      )}
+      <ShopFeedback shop={shop} />
 
       <section
         id={SHOWROOM_ID}
@@ -56,12 +53,12 @@ export function ShopMobile({ shop: source, onBack }: ShopMobileProps) {
         className="flex min-w-0 flex-1 flex-col"
       >
         {shop.isLoading && !hasItems ? (
-          <p aria-busy="true" className="flex flex-1 items-center justify-center text-[15px] font-medium text-ink-mid motion-safe:animate-pulse">
+          <p role="status" aria-label="Loading shop" aria-busy="true" className="flex flex-1 items-center justify-center text-[15px] font-medium text-ink-mid motion-safe:animate-pulse">
             Loading the shop…
           </p>
         ) : !hasItems || !shopPlan ? (
           <p className="flex flex-1 items-center justify-center px-6 text-center text-[16px] font-medium text-ink-mid">
-            {source.categoryItems.length ? "No matching styles. Choose another rarity below." : `Nothing in ${tabLabel.toLowerCase()} yet.`}
+            {shop.errorMessage ? "Shop unavailable. Use Retry shop above." : source.categoryItems.length ? "No matching styles. Choose another rarity below." : `Nothing in ${tabLabel.toLowerCase()} yet.`}
           </p>
         ) : (
           <>

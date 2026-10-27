@@ -40,7 +40,7 @@ export function resolveCosmeticPresentationState(params: {
   isOwned: boolean;
   isEquipped: boolean;
   isAdminUser: boolean;
-  walletBalance: string;
+  walletBalance: string | null;
   isSubmitting: boolean;
   activeActionId?: string | null;
 }): CosmeticPresentationResult {
@@ -55,7 +55,7 @@ export function resolveCosmeticPresentationState(params: {
   } = params;
 
   // Safe integer balance parsing (invalid / malformed input defaults to 0)
-  const rawParsed = Number.parseInt(walletBalance, 10);
+  const rawParsed = walletBalance === null ? NaN : Number.parseInt(walletBalance, 10);
   const safeBalance =
     Number.isFinite(rawParsed) && rawParsed >= 0 ? rawParsed : 0;
   const priceCoins = item.priceCoins;
@@ -176,6 +176,23 @@ export function resolveCosmeticPresentationState(params: {
       badgeLabel: isReferral ? "SOCIAL QUEST" : "DAY 7",
       badgeStyle: "bg-amber-500/10 text-amber-400 border-amber-500/30",
       cardSubtext: isReferral ? "Earn through your home page's Social Quest" : "Unlock by maintaining a 7-day streak",
+    };
+  }
+
+  // An unknown balance is not a zero. Ownership and earned locks above do not depend on it.
+  if (walletBalance === null) {
+    return {
+      state: "UNAVAILABLE",
+      canPurchase: false,
+      canEquip: false,
+      shortfall: 0,
+      safeBalance: 0,
+      progressPercent: 0,
+      progressText: "Balance unavailable",
+      ctaLabel: "Balance unavailable",
+      badgeLabel: "BALANCE UNAVAILABLE",
+      badgeStyle: "bg-surface-2 text-ink-hi border-[var(--chrome-hairline)]",
+      cardSubtext: "Your balance must be available before purchasing.",
     };
   }
 

@@ -90,7 +90,7 @@ export const CoinDelta: React.FC<CoinDeltaProps> = ({
       <span>{displayVal}</span>
       {showBadgeText && (
         <span
-          className="text-[10px] font-bold uppercase tracking-wider px-1 py-0.2 rounded bg-black/10 dark:bg-white/10 ml-0.5"
+          className="text-[10px] font-bold uppercase tracking-wider px-1 py-0.2 rounded bg-white/80 dark:bg-white/10 ml-0.5"
           aria-hidden="true"
         >
           {config.label}
