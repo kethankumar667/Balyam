@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import type { CategorySelection } from "../bhalyam/CategoryFilter";
 import { useTheme } from "../../lib/useTheme";
+import { useReducedMotion } from "../../hooks/useReducedMotion";
+import { scrollIntoViewHorizontally } from "../../lib/scrollIntoViewHorizontally";
 
 export interface FilterBarProps {
   selectedCategory: CategorySelection;
@@ -42,6 +44,7 @@ export default function FilterBar({
 }: FilterBarProps) {
   const [theme] = useTheme();
   const isDark = theme === "dark";
+  const reducedMotion = useReducedMotion();
 
   const trackRef = useRef<HTMLDivElement | null>(null);
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -80,19 +83,17 @@ export default function FilterBar({
   );
 
   useEffect(() => {
-    refs.current[activeIndex]?.scrollIntoView({
-      inline: "nearest",
-      block: "nearest",
-      behavior: "smooth",
-    });
-  }, [activeIndex]);
+    const track = trackRef.current;
+    const item = refs.current[activeIndex];
+    if (track && item) scrollIntoViewHorizontally(track, item, reducedMotion ? "auto" : "smooth");
+  }, [activeIndex, reducedMotion]);
 
   const nudge = useCallback((side: "left" | "right") => {
     const el = trackRef.current;
     if (!el) return;
     const step = Math.max(120, el.clientWidth * 0.6);
-    el.scrollBy({ left: side === "right" ? step : -step, behavior: "smooth" });
-  }, []);
+    el.scrollBy({ left: side === "right" ? step : -step, behavior: reducedMotion ? "auto" : "smooth" });
+  }, [reducedMotion]);
 
   return (
     <div className={`relative w-full group/filter ${className}`}>
@@ -106,7 +107,7 @@ export default function FilterBar({
         role="tablist"
         aria-label="Game categories"
         className="flex items-center gap-2 overflow-x-auto py-2 px-1 sm:px-1.5
-                   scroll-smooth overscroll-x-contain scroll-px-6 touch-pan-x select-none
+                   motion-safe:scroll-smooth overscroll-x-contain scroll-px-6 touch-pan-x select-none
                    [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {CATEGORIES.map((cat, i) => {
@@ -159,14 +160,14 @@ function EdgeCue({
       type="button"
       aria-label={isRight ? "Scroll next categories" : "Scroll previous categories"}
       aria-hidden={!show}
-      tabIndex={-1}
+      tabIndex={show ? 0 : -1}
       disabled={!show}
       onClick={() => onNudge(side)}
       data-side={side}
-      className={`absolute inset-y-0 z-20 flex items-center justify-center transition-all duration-200 cursor-pointer ${
+      className={`absolute inset-y-0 z-20 min-w-[44px] min-h-[44px] flex items-center justify-center transition-opacity duration-200 motion-reduce:transition-none cursor-pointer ${
         isRight ? "right-0" : "left-0"
       } ${
-        show ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-75"
+        show ? "opacity-100" : "pointer-events-none opacity-0"
       }`}
     >
       <div

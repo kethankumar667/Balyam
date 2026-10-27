@@ -38,6 +38,7 @@ interface AppHeaderProps {
   onOpenSettings?: () => void;
   onOpenWallet?: () => void;
   onToggleMobileMenu?: () => void;
+  mobileMenuOpen?: boolean;
   onSelectGame?: (slug: BhalyamGameSlug) => void;
   unreadCount?: number;
 }
@@ -54,6 +55,7 @@ export default function AppHeader({
   onOpenSettings,
   onOpenWallet,
   onToggleMobileMenu,
+  mobileMenuOpen = false,
   unreadCount = 0,
 }: AppHeaderProps) {
   const isPhone = useMediaQuery("(max-width: 639px)");
@@ -92,6 +94,8 @@ export default function AppHeader({
               variant="chrome"
               size="iconOnly"
               onClick={onToggleMobileMenu}
+              aria-expanded={mobileMenuOpen}
+              aria-controls={mobileMenuOpen ? "mobile-navigation" : undefined}
               className="lg:hidden"
               title="Toggle Menu"
               aria-label="Toggle Menu"
@@ -103,10 +107,10 @@ export default function AppHeader({
             <Link
               to="/"
               aria-label="BHALYAM — go to the lounge home"
-              className="flex items-center gap-2.5 sm:gap-3 group min-w-0 select-none"
+              className="flex max-[359px]:hidden items-center justify-center gap-2.5 sm:gap-3 group min-w-[44px] min-h-[44px] select-none"
             >
-              {/* 36px on a phone, and dropped under 360px where the chips need the room (the menu has Home). */}
-              <span className="flex-shrink-0 max-[359px]:hidden">
+              {/* Keep the artwork compact inside a full touch target; the menu has Home below 360px. */}
+              <span className="flex-shrink-0">
                 <BhalyamLogo size={isPhone ? 36 : 44} decorative />
               </span>
               <span className="hidden sm:flex flex-col leading-none min-w-0">

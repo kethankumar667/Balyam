@@ -12,14 +12,28 @@
 - **Deep Obsidian (`#070B14`)**: Root lounge backdrop and dark gaming felt.
 - **Elevated Slate (`#0E1526`)**: Elevated cards, sheets, and modal hero headers.
 - **Surface Dark (`#141C30`)**: Hover states, interactive item slots, and table headers.
-- **Border Rail (`#292524` / `stone-800`)**: Subtle hairline divider and container borders.
+- **Lounge chrome**: Use the existing `--chrome-*` variables in `client/src/index.css`.
+  Light mode is warm parchment with brown ink; dark mode is navy with pale ink.
+  `--chrome-panel`, `--chrome-control`, `--chrome-control-hi`, `--chrome-hairline`,
+  `--chrome-ink`, `--chrome-ink-soft` and `--chrome-accent` are paired surface,
+  text and focus tokens, not independent decorative swatches.
+  Game worlds and approved scoped profile/records designs retain their own tokens.
 
 ### 1.2 Spacing & Surface Scale (`Spacing.ts`, `Surfaces.ts`)
 - **Page Max Width**: `max-w-6xl` (`1152px`) centered on desktop.
 - **Page Padding**: `px-3 sm:px-6` with safe-area bottom buffers.
-- **Card Default**: `bg-stone-900/80 backdrop-blur-md border border-stone-800 rounded-2xl`
-- **Card Elevated**: `bg-slate-900/90 backdrop-blur-xl border border-stone-700/80 rounded-3xl shadow-2xl`
-- **Modal Hero**: `bg-slate-950/95 backdrop-blur-2xl border border-stone-800 rounded-3xl shadow-2xl`
+- **Card Default**: `SURFACES.cardDefault`, adaptive chrome panel, ink and hairline; `rounded-2xl`.
+- **Card Elevated**: `SURFACES.cardElevated`, adaptive chrome panel, ink and hairline; `rounded-3xl`.
+- **Modal Hero**: `SURFACES.modalHero`, adaptive chrome panel, ink and border; `rounded-3xl`.
+- **Text**: `TYPOGRAPHY` supplies adaptive heading/body/caption colors. Do not put
+  fixed white text on a shared panel that becomes parchment in light mode.
+- **Buttons**: Shared buttons default to `type="button"`; form submissions must
+  explicitly use `type="submit"`. Loading retains the action's accessible name,
+  disables activation and exposes `aria-busy`. Caller Tailwind overrides are
+  merged through `cn`; hover/press transforms respect OS reduced motion.
+- **Dialogs and navigation**: Centered dialogs use `Modal` for labelled dialog
+  semantics, focus containment/restoration and scroll locking. The mobile
+  navigation drawer shares the focus trap and closes on Escape or desktop entry.
 
 ---
 
@@ -229,7 +243,7 @@ its service-role-only RPC never creates a wallet or changes any balance.
 | Button Component | Visual Style | Intended Usage |
 | :--- | :--- | :--- |
 | `<PrimaryButton>` | Gradient amber-500 to yellow-500 with gold shadow | Primary actions: "Start Match", "Create Room", "Save Profile". |
-| `<SecondaryButton>` | Slate-900 with stone-700 hairline border | Secondary actions: "Cancel", "Back", "View Rules". |
+| `<SecondaryButton>` | Adaptive `surface-*` fill, `ink-hi` text and hairline border | Secondary actions: "Cancel", "Back", "View Rules". |
 | `<TournamentCTAButton>`| Glowing violet-500 gradient with crown icon | Competitive actions: "Enter Arena", "Check In", "Claim Crown". |
 | `<RewardButton>` | Radiant emerald-500 gradient | Claiming rewards: "Claim +100 XP", "Unlock Badge". |
 | `<DangerButton>` | Rose-600/90 with danger border | Destructive actions: "Disband Party", "Forfeit Match", "Leave Room". |
@@ -466,7 +480,9 @@ with focus restoration, visible focus rings and reduced-motion transitions.
 - `<SharedHistoryModal>`: Head-to-head combat analytics between two players.
 
 ### 2.4 Feedback & Fallback States
-- `<SkeletonLoader>`: Shimmering dark skeleton layouts (`hero`, `card`, `profile`, `table`, `grid`).
+- `<SkeletonLoader>`: Adaptive chrome placeholders (`hero`, `card`, `profile`, `table`, `grid`),
+  with one named busy status, hidden decoration, narrow-screen wrapping and no
+  pulse under OS reduced motion.
 - `<EmptyStateIllustration>`: Gamified zero-data illustration (`matches`, `achievements`, `friends`, `tournaments`) with action CTA.
 - `<PremiumErrorState>`: Diagnostic container with glowing danger aura and retry button.
 - `<TurnTimeWarning>`: Pulsing golden-border warning activating when <= 10 seconds remain on turn timer.

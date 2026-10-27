@@ -1,11 +1,12 @@
 import "@testing-library/jest-dom/vitest";
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
-vi.mock("../AppHeader", () => ({ default: () => null }));
-vi.mock("../AppSidebar", () => ({ default: () => null }));
+vi.mock("../AppHeader", () => ({ default: ({ onToggleMobileMenu }: { onToggleMobileMenu: () => void }) => <button onClick={onToggleMobileMenu}>Open navigation</button> }));
+vi.mock("../AppSidebar", () => ({ default: ({ onCloseMobile }: { onCloseMobile?: () => void }) => onCloseMobile ? <div><button onClick={onCloseMobile}>Close navigation</button><a href="/games">Browse games</a></div> : null }));
 vi.mock("../../navigation/Breadcrumbs", () => ({ default: () => null }));
+vi.mock("../../../lib/useMediaQuery", () => ({ useMediaQuery: () => false }));
 vi.mock("../../../hooks/useMandaliInbox", () => ({ useMandaliInbox: () => ({ items: [], update: vi.fn() }) }));
 // The shell's other global sheets share one Suspense boundary with the create sheet; stub them so the
 // real, heavy modules never load.
@@ -51,6 +52,26 @@ describe("AppLayout: arriving from a finished table's 'Create a new room'", () =
     renderAt({ newRoom: "ludo" });
 
     expect(await screen.findByTestId("create-sheet")).toHaveTextContent("ludo");
+  });
+
+  describe("AppLayout mobile navigation", () => {
+    afterEach(cleanup);
+
+    it("labels the drawer, traps focus and restores the trigger after Escape", async () => {
+      render(<MemoryRouter><AppLayout>Page</AppLayout></MemoryRouter>);
+      const trigger = screen.getByRole("button", { name: "Open navigation" });
+      trigger.focus();
+      fireEvent.click(trigger);
+      const dialog = await screen.findByRole("dialog", { name: "Main navigation" });
+      const close = screen.getByRole("button", { name: "Close navigation" });
+      expect(dialog).toHaveAttribute("aria-modal", "true");
+      expect(close).toHaveFocus();
+      fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
+      expect(screen.getByRole("link", { name: "Browse games" })).toHaveFocus();
+      fireEvent.keyDown(window, { key: "Escape" });
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(trigger).toHaveFocus();
+    });
   });
 
   it("carries the Mandali to post the new room into, when it came from a group's Start game", async () => {

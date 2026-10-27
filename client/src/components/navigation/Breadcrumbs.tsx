@@ -89,7 +89,7 @@ export default function Breadcrumbs({
                 {!isLast && item.path ? (
                   <Link
                     to={item.path}
-                    className="inline-flex items-center min-h-[44px] sm:min-h-[28px] px-1 sm:px-0 py-1 text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-accent)] hover:underline underline-offset-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chrome-accent)] rounded"
+                    className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] sm:min-h-[28px] px-1 sm:px-0 py-1 text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-accent)] hover:underline underline-offset-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--chrome-accent)] rounded"
                   >
                     {item.label}
                   </Link>

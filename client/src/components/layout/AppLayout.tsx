@@ -9,6 +9,9 @@ import { useMandaliInbox } from "../../hooks/useMandaliInbox";
 import { type BhalyamGameSlug } from "../bhalyam/data";
 import { useTheme } from "../../lib/useTheme";
 import { useAuthStore } from "../../store/authStore";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useReducedMotion } from "../../hooks/useReducedMotion";
+import { useMediaQuery } from "../../lib/useMediaQuery";
 
 const FallingPetals = lazy(() => import("../../animations/app/FallingPetals"));
 const JoinRoomModal = lazy(() => import("../bhalyam/JoinRoomModal"));
@@ -99,6 +102,13 @@ export default function AppLayout({
   const memberId = useAuthStore((s) => s.userId);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const desktop = useMediaQuery("(min-width: 1024px)");
+  const reducedMotion = useReducedMotion();
+  const menuOpen = chrome && mobileMenuOpen && !desktop;
+  const { containerRef: navigationRef } = useFocusTrap({
+    open: menuOpen,
+    onClose: () => setMobileMenuOpen(false),
+  });
   const [joinOpen, setJoinOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
   const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
@@ -126,28 +136,20 @@ export default function AppLayout({
     setMobileMenuOpen(false);
   }, [pathname, search]);
 
-  // Close on Escape key press
   useEffect(() => {
-    if (!mobileMenuOpen) return;
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setMobileMenuOpen(false);
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [mobileMenuOpen]);
+    if (desktop) setMobileMenuOpen(false);
+  }, [desktop]);
 
   // Lock body scroll when mobile menu is open to prevent touch events from being swallowed
   useEffect(() => {
-    if (mobileMenuOpen) {
+    if (menuOpen) {
       const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = "hidden";
       return () => {
         document.body.style.overflow = originalOverflow;
       };
     }
-  }, [mobileMenuOpen]);
+  }, [menuOpen]);
 
   /**
    * Drop the drawer when the chrome goes away.
@@ -203,6 +205,7 @@ export default function AppLayout({
             onOpenSettings={() => setSettingsOpen(true)}
             onOpenWallet={() => setWalletOpen(true)}
             onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
+            mobileMenuOpen={menuOpen}
             onSelectGame={handleSelectGame}
             unreadCount={notifications.filter((n) => n.unread).length}
           />
@@ -232,23 +235,27 @@ export default function AppLayout({
 
           {/* Mobile Drawer Sidebar */}
           <AnimatePresence>
-            {chrome && mobileMenuOpen && (
+            {menuOpen && (
               <>
-                <motion.div
+                <motion.button
+                  type="button"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   onClick={() => setMobileMenuOpen(false)}
-                  onTouchStart={() => setMobileMenuOpen(false)}
-                  role="button"
-                  tabIndex={0}
+                  tabIndex={-1}
                   aria-label="Close navigation menu"
                   className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[2px] lg:hidden cursor-pointer touch-none"
                 />
                 <motion.div
-                  initial={{ x: -320 }}
+                  ref={navigationRef}
+                  id="mobile-navigation"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Main navigation"
+                  initial={reducedMotion ? false : { x: -320 }}
                   animate={{ x: 0 }}
-                  exit={{ x: -320 }}
+                  exit={reducedMotion ? { opacity: 0 } : { x: -320 }}
                   transition={{ type: "spring", damping: 26, stiffness: 260 }}
                   drag="x"
                   dragConstraints={{ left: -320, right: 0 }}

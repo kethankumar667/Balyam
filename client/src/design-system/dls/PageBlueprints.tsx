@@ -44,9 +44,9 @@ export const SectionHeaderBlock: React.FC<SectionHeaderBlockProps> = ({
   badge,
 }) => {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-stone-800/60 dark:border-zinc-800/60">
-      <div className="space-y-0.5">
-        <div className="flex items-center gap-2">
+    <div className="flex min-w-0 flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[var(--chrome-hairline)]">
+      <div className="min-w-0 space-y-0.5">
+        <div className="flex flex-wrap items-center gap-2">
           <h2 className={TYPOGRAPHY.sectionHeader}>{title}</h2>
           {badge}
         </div>

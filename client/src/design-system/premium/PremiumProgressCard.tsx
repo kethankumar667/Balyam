@@ -28,24 +28,24 @@ export const PremiumProgressCard: React.FC<PremiumProgressCardProps> = ({
         <div className="flex items-center gap-2">
           {icon}
           <div>
-            <h4 className="text-xs font-bold text-stone-200 dark:text-zinc-200">{title}</h4>
-            {subtitle && <span className="text-[10px] font-mono text-stone-500">{subtitle}</span>}
+            <h4 className="text-sm font-bold text-[var(--chrome-ink)]">{title}</h4>
+            {subtitle && <span className="text-xs text-[var(--chrome-ink-soft)]">{subtitle}</span>}
           </div>
         </div>
-        <span className="text-xs font-mono font-bold text-amber-400">
+        <span className="text-xs font-mono font-bold text-[var(--chrome-accent)]">
           {current} / {total}
         </span>
       </div>
 
       <div className="space-y-1">
-        <div className="h-2 bg-stone-950 rounded-full overflow-hidden border border-stone-800">
+        <div role="progressbar" aria-label={title} aria-valuenow={Math.min(100, Math.max(0, progressPercent))} aria-valuemin={0} aria-valuemax={100} className="h-2 bg-[var(--chrome-control-hi)] rounded-full overflow-hidden border border-[var(--chrome-border)]">
           <div
-            className={`h-full bg-gradient-to-r ${barGradient} rounded-full transition-all duration-500 shadow-[0_0_12px_rgba(245,158,11,0.3)]`}
+            className={`h-full bg-gradient-to-r ${barGradient} rounded-full transition-all duration-500 motion-reduce:transition-none`}
             style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
           />
         </div>
-        <div className="flex justify-end text-[10px] font-mono text-stone-500">
-          <span>{Math.round(progressPercent)}%</span>
+        <div className="flex justify-end text-xs font-mono text-[var(--chrome-ink-soft)]">
+          <span>{Math.round(Math.min(100, Math.max(0, progressPercent)))}%</span>
         </div>
       </div>
     </div>

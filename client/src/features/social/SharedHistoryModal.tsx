@@ -1,6 +1,7 @@
 import React from "react";
 import type { Friend, SharedHistory } from "@shared/social/Friend";
-import { SURFACES } from "../../design-system/dls";
+import { SURFACES, SecondaryButton, TYPOGRAPHY } from "../../design-system/dls";
+import Modal from "../../components/Modal";
 import { TournamentCupIcon, StreakFlameIcon } from "../../design-system/icons";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 
@@ -25,15 +26,12 @@ export default function SharedHistoryModal({
       : 0;
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-200"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="sharedHistoryTitle"
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      ariaLabelledBy="sharedHistoryTitle"
+      panelClassName={`max-w-md w-full p-6 sm:p-8 ${SURFACES.modalHero} text-center space-y-6 relative overflow-hidden`}
     >
-      <div
-        className={`max-w-md w-full rounded-3xl p-6 sm:p-8 ${SURFACES.modalHero} text-center space-y-6 relative overflow-hidden border border-stone-800 shadow-2xl`}
-      >
         <div className="flex justify-center">
           <SeatAvatar
             avatar={friend.avatar}
@@ -45,63 +43,62 @@ export default function SharedHistoryModal({
         </div>
 
         <div className="space-y-1">
-          <span className="text-[10px] font-mono font-black text-amber-400 uppercase tracking-widest block">
+          <span className="text-xs font-bold text-[var(--chrome-accent)] uppercase tracking-widest block">
             SHARED COMBAT HISTORY
           </span>
-          <h3 id="sharedHistoryTitle" className="text-xl font-black text-stone-100">
+          <h3 id="sharedHistoryTitle" className={TYPOGRAPHY.sectionHeader}>
             Battles with {friend.displayName}
           </h3>
-          <p className="text-xs text-stone-500 font-mono">
+          <p className={`${TYPOGRAPHY.caption} break-all`}>
             ID: {friend.friendPlayerId}
           </p>
         </div>
 
         {/* Metrics Grid */}
         <div className="grid grid-cols-3 gap-2.5">
-          <div className="bg-stone-950/80 border border-stone-800 p-3 rounded-xl space-y-1">
-            <span className="text-[10px] font-mono text-stone-500 block uppercase">
+          <div className={`${SURFACES.panelSubtle} p-3 space-y-1`}>
+            <span className="text-xs text-[var(--chrome-ink-soft)] block">
               Matches
             </span>
-            <span className="text-lg font-black font-mono text-stone-100">
+            <span className="text-lg font-black font-mono">
               {history?.matchesPlayedTogether || 0}
             </span>
           </div>
-          <div className="bg-stone-950/80 border border-stone-800 p-3 rounded-xl space-y-1">
-            <span className="text-[10px] font-mono text-stone-500 block uppercase">
+          <div className={`${SURFACES.panelSubtle} p-3 space-y-1`}>
+            <span className="text-xs text-[var(--chrome-ink-soft)] block">
               Wins
             </span>
-            <span className="text-lg font-black font-mono text-amber-400">
+            <span className="text-lg font-black font-mono text-[var(--chrome-accent)]">
               {history?.winsTogether || 0}
             </span>
           </div>
-          <div className="bg-stone-950/80 border border-stone-800 p-3 rounded-xl space-y-1">
-            <span className="text-[10px] font-mono text-stone-500 block uppercase">
+          <div className={`${SURFACES.panelSubtle} p-3 space-y-1`}>
+            <span className="text-xs text-[var(--chrome-ink-soft)] block">
               Win Rate
             </span>
-            <span className="text-lg font-black font-mono text-emerald-400">
+            <span className="text-lg font-black font-mono text-emerald-700 dark:text-emerald-300">
               {winRate}%
             </span>
           </div>
         </div>
 
         {/* Tournaments played */}
-        <div className="bg-stone-950/80 border border-stone-800 p-3.5 rounded-xl flex items-center justify-between text-xs font-mono">
-          <span className="text-stone-400 flex items-center gap-1.5">
+        <div className={`${SURFACES.panelSubtle} p-3.5 flex items-center justify-between text-xs`}>
+          <span className="text-[var(--chrome-ink-soft)] flex items-center gap-1.5">
             <TournamentCupIcon size={14} className="text-amber-400" />
             Tournaments Together
           </span>
-          <span className="font-bold text-stone-200">
+          <span className="font-bold">
             {history?.tournamentsTogether || 0}
           </span>
         </div>
 
-        <button
+        <SecondaryButton
           onClick={onClose}
-          className="w-full bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold py-2.5 rounded-xl text-xs font-mono uppercase transition"
+          className="w-full"
         >
           Close
-        </button>
-      </div>
-    </div>
+        </SecondaryButton>
+    </Modal>
   );
 }

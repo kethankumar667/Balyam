@@ -59,7 +59,7 @@ export default function SecurityDataPage() {
                   </p>
                 </div>
               </div>
-              <span className="text-[10px] font-mono font-bold uppercase text-stone-400 dark:text-slate-500 bg-stone-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+              <span className="text-xs font-mono font-bold uppercase text-stone-600 dark:text-slate-300 bg-stone-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
                 Auth
               </span>
             </div>
@@ -80,12 +80,12 @@ export default function SecurityDataPage() {
                         {authEmail ? maskEmail(authEmail) : "No email linked (Device Guest Session)"}
                       </span>
                       {authEmail && isMember ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40">
+                        <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40">
                           <ShieldCheck className="w-3 h-3" />
                           Verified
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/40">
+                        <span className="text-xs font-bold text-amber-800 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/40">
                           Guest Mode
                         </span>
                       )}
@@ -96,7 +96,7 @@ export default function SecurityDataPage() {
                 {!isMember && (
                   <Link
                     to="/signup"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-stone-950 transition shadow-xs self-start sm:self-auto min-h-[38px]"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-stone-950 transition shadow-xs self-start sm:self-auto min-h-[44px]"
                   >
                     <span>Create Free Account</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -123,7 +123,7 @@ export default function SecurityDataPage() {
 
                   <Link
                     to="/forgot-password"
-                    className="inline-flex items-center gap-1 px-4 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-stone-200 dark:border-slate-700 text-stone-900 dark:text-white hover:bg-stone-50 dark:hover:bg-slate-700 transition self-start sm:self-auto min-h-[38px]"
+                    className="inline-flex items-center gap-1 px-4 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-stone-200 dark:border-slate-700 text-stone-900 dark:text-white hover:bg-stone-50 dark:hover:bg-slate-700 transition self-start sm:self-auto min-h-[44px]"
                   >
                     <span>Change Password</span>
                   </Link>
@@ -146,7 +146,7 @@ export default function SecurityDataPage() {
                   </div>
                 </div>
 
-                <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800/40">
+                <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800/40">
                   ACTIVE NOW
                 </span>
               </div>

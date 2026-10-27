@@ -32,14 +32,14 @@ export const PremiumHeroCard: React.FC<PremiumHeroCardProps> = ({
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
         <div className="space-y-1.5 max-w-2xl">
-          <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-amber-400 block">
+          <span className="text-xs font-bold uppercase tracking-widest text-[var(--chrome-accent)] block">
             {category}
           </span>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-stone-100 dark:text-zinc-100 tracking-tight leading-tight">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[var(--chrome-ink)] tracking-tight leading-tight">
             {title}
           </h1>
           {subtitle && (
-            <p className="text-xs sm:text-sm text-stone-400 dark:text-zinc-400 font-mono leading-relaxed">
+            <p className="text-sm text-[var(--chrome-ink-soft)] leading-relaxed">
               {subtitle}
             </p>
           )}

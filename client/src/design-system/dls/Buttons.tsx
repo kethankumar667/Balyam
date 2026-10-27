@@ -1,6 +1,8 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { ctaPress, bhalyamSpring } from "../../lib/motion";
+import { cn } from "../../lib/cn";
+import { useReducedMotion } from "../../hooks/useReducedMotion";
 
 export interface ButtonProps
   extends Omit<
@@ -42,8 +44,10 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
   rightIcon,
   className = "",
   disabled,
+  type = "button",
   ...props
 }, ref) => {
+  const reducedMotion = useReducedMotion();
   const getSizeStyles = () => {
     switch (size) {
       case "sm":
@@ -113,17 +117,22 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
   return (
     <motion.button
       ref={ref}
+      type={type}
+      aria-busy={loading || undefined}
       disabled={disabled || loading}
       variants={ctaPress}
       initial="rest"
-      whileHover={interactive ? "hover" : undefined}
-      whileTap={interactive ? "tap" : undefined}
+      whileHover={interactive && !reducedMotion ? "hover" : undefined}
+      whileTap={interactive && !reducedMotion ? "tap" : undefined}
       transition={bhalyamSpring}
-      className={`inline-flex items-center justify-center gap-2 transition-colors duration-200 select-none focus:outline-none focus:ring-2 focus:ring-amber-500/50 disabled:opacity-50 disabled:cursor-not-allowed ${getSizeStyles()} ${getVariantStyles()} ${className}`}
+      className={cn("inline-flex items-center justify-center gap-2 transition-colors duration-200 select-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--chrome-accent)] disabled:opacity-50 disabled:cursor-not-allowed", getSizeStyles(), getVariantStyles(), className)}
       {...props}
     >
       {loading ? (
-        <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+        <>
+          <span aria-hidden="true" className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
+          <span className={size === "iconOnly" ? "sr-only" : undefined}>{children}</span>
+        </>
       ) : (
         <>
           {leftIcon && <span className="shrink-0">{leftIcon}</span>}

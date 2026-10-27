@@ -20,7 +20,7 @@ export const PremiumStatCard: React.FC<PremiumStatCardProps> = ({
 }) => {
   return (
     <div
-      className={`rounded-2xl p-4 sm:p-5 ${GLASSMORPHISM.panel} shadow-lg relative overflow-hidden flex flex-col justify-between space-y-2 group transition-all duration-200 hover:border-stone-700 ${className}`}
+      className={`rounded-2xl p-4 sm:p-5 ${GLASSMORPHISM.panel} shadow-sm relative overflow-hidden flex flex-col justify-between space-y-2 group transition-colors duration-200 hover:border-[var(--chrome-border)] ${className}`}
     >
       <div
         className="absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl opacity-10 pointer-events-none transition-opacity group-hover:opacity-20"
@@ -28,18 +28,18 @@ export const PremiumStatCard: React.FC<PremiumStatCardProps> = ({
       />
 
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-mono uppercase tracking-wider text-stone-400 font-bold">
+        <span className="text-xs text-[var(--chrome-ink-soft)] font-bold">
           {label}
         </span>
-        {icon && <span className="text-stone-400 group-hover:scale-110 transition-transform">{icon}</span>}
+        {icon && <span className="text-[var(--chrome-accent)] motion-safe:group-hover:scale-110 transition-transform">{icon}</span>}
       </div>
 
       <div>
-        <span className="text-xl sm:text-2xl font-black font-mono text-stone-100 dark:text-zinc-100 block tracking-tight">
+        <span className="text-xl sm:text-2xl font-black font-mono text-[var(--chrome-ink)] block tracking-tight">
           {value}
         </span>
         {subValue && (
-          <span className="text-[10px] font-mono text-stone-400 block mt-0.5">
+          <span className="text-xs text-[var(--chrome-ink-soft)] block mt-0.5">
             {subValue}
           </span>
         )}

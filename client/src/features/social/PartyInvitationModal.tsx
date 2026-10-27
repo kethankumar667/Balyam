@@ -1,7 +1,7 @@
 import React from "react";
 import type { PartyInvitation } from "@shared/party/Party";
 import { SwordsClashIcon } from "../../design-system/icons";
-import { SURFACES, RewardButton } from "../../design-system/dls";
+import { SURFACES, RewardButton, SecondaryButton, TYPOGRAPHY } from "../../design-system/dls";
 import Modal from "../../components/Modal";
 
 interface PartyInvitationModalProps {
@@ -36,13 +36,13 @@ export default function PartyInvitationModal({
         </div>
 
         <div className="space-y-1.5">
-          <span className="text-[10px] font-mono font-black text-amber-400 uppercase tracking-widest block">
+          <span className="text-xs font-bold text-[var(--chrome-accent)] uppercase tracking-widest block">
             SQUAD INVITATION
           </span>
-          <h3 id="partyInviteTitle" className="text-xl font-black text-stone-100">
+          <h3 id="partyInviteTitle" className={TYPOGRAPHY.sectionHeader}>
             {invitation.inviterName} invited you!
           </h3>
-          <p className="text-xs text-stone-400 font-mono">
+          <p className={TYPOGRAPHY.body}>
             Join squad to enter multiplayer game rooms and tournaments together.
           </p>
         </div>
@@ -51,17 +51,13 @@ export default function PartyInvitationModal({
           <RewardButton size="sm" className="flex-1" onClick={() => onAccept(invitation.id)}>
             Accept & Join
           </RewardButton>
-          {/* Not migrated: this whole dialog is hardcoded dark (SURFACES.modalHero
-              resolves dark in both branches, no `dark:` toggle anywhere else in
-              this file), but DLS's `secondary` is genuinely theme-aware — it
-              would flip pale in light mode and mismatch every other surface
-              here. Left as the matching raw dark treatment. */}
-          <button
+          <SecondaryButton
             onClick={() => onDecline(invitation.id)}
-            className="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold py-3 rounded-xl text-xs uppercase tracking-wider transition border border-stone-700"
+            size="sm"
+            className="flex-1"
           >
             Decline
-          </button>
+          </SecondaryButton>
         </div>
     </Modal>
   );

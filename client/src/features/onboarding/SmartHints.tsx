@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { SURFACES } from "../../design-system/dls";
+import { X } from "lucide-react";
 
 interface SmartHintProps {
   id: string;
@@ -42,13 +43,13 @@ export const SmartHint: React.FC<SmartHintProps> = ({
 
   return (
     <div
-      className={`${SURFACES.cardDefault} p-4 rounded-2xl border border-amber-500/20 bg-stone-900/60 flex items-center justify-between gap-3 text-xs font-mono shadow-md ${className}`}
+      className={`${SURFACES.cardDefault} p-4 flex flex-wrap items-center justify-between gap-3 text-sm shadow-sm ${className}`}
     >
       <div className="flex items-center gap-3 min-w-0">
         <span className="text-xl flex-shrink-0">{icon}</span>
         <div className="min-w-0">
-          <span className="font-bold text-stone-200 block truncate">{title}</span>
-          <span className="text-stone-400 text-[11px] block">{tip}</span>
+          <span className="font-bold text-[var(--chrome-ink)] block">{title}</span>
+          <span className="text-[var(--chrome-ink-soft)] block">{tip}</span>
         </div>
       </div>
 
@@ -56,17 +57,18 @@ export const SmartHint: React.FC<SmartHintProps> = ({
         {actionRoute && actionText && (
           <Link
             to={actionRoute}
-            className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold px-2.5 py-1 rounded-lg border border-amber-500/40 text-[11px] transition"
+            className="inline-flex items-center min-h-[44px] bg-[var(--chrome-control)] hover:bg-[var(--chrome-control-hi)] text-[var(--chrome-accent)] font-bold px-3 py-2 rounded-xl border border-[var(--chrome-border)] text-xs transition"
           >
             {actionText}
           </Link>
         )}
         <button
+          type="button"
           onClick={handleDismiss}
-          className="text-stone-500 hover:text-stone-300 p-1 text-xs"
+          className="text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-xl"
           aria-label="Dismiss hint"
         >
-          ✕
+          <X className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
     </div>

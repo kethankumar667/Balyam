@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { scrollIntoViewHorizontally } from "../../lib/scrollIntoViewHorizontally";
 import { ChevronLeft, ChevronRight, Heart } from "lucide-react";
 import {
   BHALYAM_GAMES,
@@ -174,24 +175,21 @@ export default function CategoryFilter({
     const el = trackRef.current;
     if (!el) return;
     const step = Math.max(80, el.clientWidth * 0.7);
-    el.scrollBy({ left: side === "right" ? step : -step, behavior: "smooth" });
-  }, []);
+    el.scrollBy({ left: side === "right" ? step : -step, behavior: reduceMotion ? "auto" : "smooth" });
+  }, [reduceMotion]);
 
   /**
    * Keep the chosen segment on screen.
    *
    * Tapping a half-visible segment used to select it and leave it half
    * visible, so the sliding thumb ran off the edge and the control looked
-   * like it had lost its selection. `inline: "nearest"` only scrolls when
-   * the segment is actually clipped, so a segment already in view does not
-   * jump under the user's finger.
+   * like it had lost its selection. Scroll only this rail when clipped;
+   * `scrollIntoView` also moved the page past the home hero on first load.
    */
   useEffect(() => {
-    refs.current[activeIndex]?.scrollIntoView({
-      inline: "nearest",
-      block: "nearest",
-      behavior: reduceMotion ? "auto" : "smooth",
-    });
+    const track = trackRef.current;
+    const item = refs.current[activeIndex];
+    if (track && item) scrollIntoViewHorizontally(track, item, reduceMotion ? "auto" : "smooth");
   }, [activeIndex, reduceMotion]);
 
   /**
@@ -262,7 +260,7 @@ export default function CategoryFilter({
              content fits, so keeping it on is free above the breakpoint and
              restores reachability below it. */
           className="flex w-full items-stretch gap-1 overflow-x-auto
-                     scroll-smooth overscroll-x-contain scroll-px-12 touch-pan-x
+                     motion-safe:scroll-smooth overscroll-x-contain scroll-px-12 touch-pan-x
                      [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {segments.map((seg, i) => {
@@ -362,9 +360,8 @@ export default function CategoryFilter({
  * to pass UNDER, which is what makes a row read as scrollable; the chevron
  * names the direction for anyone who does not read the gradient.
  *
- * `pointer-events-none` throughout — the affordance must never eat a tap
- * meant for the segment beneath it, and the segments remain the only
- * interactive things in the control.
+ * The chevron is a keyboard-reachable scroll button when more categories
+ * exist in that direction; an inactive cue cannot intercept a tap.
  */
 function EdgeCue({
   side,
@@ -383,15 +380,15 @@ function EdgeCue({
     <button
       type="button"
       aria-label={isRight ? "Scroll next categories" : "Scroll previous categories"}
-      aria-hidden
-      tabIndex={-1}
+      aria-hidden={!show}
+      tabIndex={show ? 0 : -1}
       disabled={!show}
       onClick={() => onNudge(side)}
       data-side={side}
-      className={`absolute inset-y-0 z-20 flex items-center justify-center transition-all duration-200 cursor-pointer sm:hidden ${
+      className={`absolute inset-y-0 z-20 min-w-[44px] min-h-[44px] flex items-center justify-center transition-opacity duration-200 motion-reduce:transition-none cursor-pointer sm:hidden ${
         isRight ? "right-1" : "left-1"
       } ${
-        show ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-75"
+        show ? "opacity-100" : "pointer-events-none opacity-0"
       }`}
     >
       <div

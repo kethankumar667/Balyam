@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import AppLayout from "../components/layout/AppLayout";
+import BhalyamResultModal from "../components/BhalyamResultModal";
 import {
   TYPOGRAPHY,
   SPACING,
@@ -31,12 +32,15 @@ import {
   PremiumProgressCard,
   RewardRevealModal,
   EmptyStateIllustration,
+  SkeletonLoader,
   PREMIUM_RANK_COLORS,
 } from "../design-system/premium";
 import { ArrowLeftIcon } from "../components/auth/authIcons";
 
 export default function DesignSystemCatalogPage() {
   const [showRewardModal, setShowRewardModal] = useState(false);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <AppLayout>
@@ -44,7 +48,7 @@ export default function DesignSystemCatalogPage() {
         backLink={
           <Link
             to="/"
-            className="inline-flex items-center gap-2 min-h-[44px] py-2 pr-3 text-xs font-bold text-stone-400 hover:text-stone-100 transition"
+            className="inline-flex items-center gap-2 min-h-[44px] py-2 pr-3 text-sm font-bold text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] transition"
           >
             <ArrowLeftIcon className="w-4 h-4" />
             Back to Lounge
@@ -52,8 +56,8 @@ export default function DesignSystemCatalogPage() {
         }
         headerAction={
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono font-black text-amber-400 bg-amber-500/10 border border-amber-500/30 px-3 py-1 rounded-full uppercase">
-              DLS v1.0.0 Active
+            <span className="text-xs font-bold text-[var(--chrome-accent)] bg-[var(--chrome-active-bg)] border border-[var(--chrome-hairline)] px-3 py-1 rounded-full">
+              Component preview
             </span>
           </div>
         }
@@ -62,7 +66,7 @@ export default function DesignSystemCatalogPage() {
         <div className={SURFACES.cardElevated + " p-6 sm:p-8 relative overflow-hidden"}>
           <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
           <div className="space-y-2 relative z-10 max-w-2xl">
-            <span className="text-xs font-mono uppercase tracking-widest text-amber-400 font-black">
+            <span className="text-xs font-mono uppercase tracking-widest text-[var(--chrome-accent)] font-black">
               DESIGN GOVERNANCE & LIVING CATALOG
             </span>
             <h1 className={TYPOGRAPHY.heroTitle}>BHALYAM Design Language System</h1>
@@ -132,11 +136,11 @@ export default function DesignSystemCatalogPage() {
             {(["common", "rare", "epic", "legendary", "mythic"] as const).map((rarity) => (
               <div
                 key={rarity}
-                className="bg-stone-900/80 border border-stone-800 rounded-2xl p-4 flex flex-col items-center text-center space-y-2"
+                className={`${SURFACES.cardDefault} p-4 flex flex-col items-center text-center space-y-2`}
               >
                 <AchievementRarityBadge icon="👑" rarity={rarity} unlocked={true} size={52} />
-                <span className="text-xs font-bold capitalize text-stone-200">{rarity} Tier</span>
-                <span className="text-[10px] font-mono text-stone-500">Tier Frame Token</span>
+                <span className="text-sm font-bold capitalize">{rarity} Tier</span>
+                <span className={TYPOGRAPHY.caption}>Tier Frame Token</span>
               </div>
             ))}
           </div>
@@ -160,10 +164,10 @@ export default function DesignSystemCatalogPage() {
             ].map((game) => (
               <div
                 key={game}
-                className="bg-stone-900/80 border border-stone-800 rounded-2xl p-3 flex flex-col items-center justify-center space-y-1.5"
+                className={`${SURFACES.cardDefault} p-3 flex flex-col items-center justify-center space-y-1.5`}
               >
                 <GameCategoryIcon game={game} size={32} />
-                <span className="text-[11px] font-mono text-stone-300 font-bold uppercase">
+                <span className="text-xs font-mono font-bold uppercase">
                   {game}
                 </span>
               </div>
@@ -213,25 +217,28 @@ export default function DesignSystemCatalogPage() {
             <PrimaryButton onClick={() => setShowRewardModal(true)}>
               Preview Reward Reveal Modal
             </PrimaryButton>
+            <SecondaryButton onClick={() => setShowResultModal(true)}>
+              Preview Match Results
+            </SecondaryButton>
           </div>
           <EmptyStateIllustration
             type="tournaments"
-            title="Knockout Championship Schedule"
-            description="Our bracket engine automatically sets up knockout competitions every evening."
+            title="No tournaments to display"
+            description="This is an empty-state preview. Explore the game catalog to start a game."
             actionText="Browse Games"
-            onAction={() => {}}
+            onAction={() => navigate("/games")}
           />
         </div>
 
         {/* Section 7: Flipkart-Style Breadcrumbs */}
         <div className="space-y-4">
           <SectionHeaderBlock
-            title="7. Flipkart-Style Breadcrumbs Hierarchy"
+            title="7. Breadcrumb Navigation"
             subtitle="Compact, accessible horizontal hierarchy navigation with interactive links and clean chevrons."
           />
-          <div className="p-4 rounded-2xl bg-stone-900/60 border border-stone-800 space-y-3">
+          <div className={`${SURFACES.cardDefault} p-4 space-y-3`}>
             <div>
-              <div className="text-[11px] font-mono uppercase text-stone-400 mb-1 font-semibold">Catalog Trail Example:</div>
+              <div className={`${TYPOGRAPHY.caption} mb-1 font-semibold`}>Catalog Trail Example:</div>
               <Breadcrumbs
                 crumbs={[
                   { label: "Home", path: "/" },
@@ -239,24 +246,24 @@ export default function DesignSystemCatalogPage() {
                   { label: "Card Games", path: "/games?c=cards" },
                   { label: "Indian Rummy 13-Card" },
                 ]}
-                className="!py-1.5 !border-0 !bg-stone-950/80 rounded-xl px-3"
+                className="!py-1.5 !border-0 !bg-[var(--chrome-control)] rounded-xl px-3"
                 containerClassName="px-0"
               />
             </div>
             <div>
-              <div className="text-[11px] font-mono uppercase text-stone-400 mb-1 font-semibold">Account / Profile Trail Example:</div>
+              <div className={`${TYPOGRAPHY.caption} mb-1 font-semibold`}>Account / Profile Trail Example:</div>
               <Breadcrumbs
                 crumbs={[
                   { label: "Home", path: "/" },
                   { label: "My Account", path: "/profile" },
                   { label: "Personal Information" },
                 ]}
-                className="!py-1.5 !border-0 !bg-stone-950/80 rounded-xl px-3"
+                className="!py-1.5 !border-0 !bg-[var(--chrome-control)] rounded-xl px-3"
                 containerClassName="px-0"
               />
             </div>
             <div>
-              <div className="text-[11px] font-mono uppercase text-stone-400 mb-1 font-semibold">Game Room Trail Example:</div>
+              <div className={`${TYPOGRAPHY.caption} mb-1 font-semibold`}>Game Room Trail Example:</div>
               <Breadcrumbs
                 crumbs={[
                   { label: "Home", path: "/" },
@@ -264,23 +271,52 @@ export default function DesignSystemCatalogPage() {
                   { label: "Ludo Classic", path: "/games" },
                   { label: "Room #BHAL99" },
                 ]}
-                className="!py-1.5 !border-0 !bg-stone-950/80 rounded-xl px-3"
+                className="!py-1.5 !border-0 !bg-[var(--chrome-control)] rounded-xl px-3"
                 containerClassName="px-0"
               />
             </div>
           </div>
         </div>
 
+        <section className="space-y-4" aria-label="Loading state previews">
+          <SectionHeaderBlock
+            title="8. Loading States"
+            subtitle="Adaptive placeholders with one accessible status per loading region."
+          />
+          <SkeletonLoader type="hero" />
+          <DashboardGrid columns={2}>
+            <SkeletonLoader type="profile" />
+            <SkeletonLoader type="table" />
+          </DashboardGrid>
+        </section>
+
         {/* Interactive Reward Reveal Modal */}
         <RewardRevealModal
           isOpen={showRewardModal}
           onClose={() => setShowRewardModal(false)}
-          title="Victory Celebration!"
-          rewardName="Ludo Championship Winner"
+          title="Reward preview"
+          rewardName="Example achievement"
           badge="🏆"
           earnedXP={500}
-          subtitle="You have defeated the arena bracket and earned 500 XP!"
+          subtitle="Component preview only. No XP or rewards are granted."
         />
+        {showResultModal && (
+          <BhalyamResultModal
+            title="Example match results"
+            winnerId="preview-winner"
+            winnerName="Sample winner"
+            winnerScore={40}
+            rankedPlayers={[
+              { id: "preview-winner", name: "Sample winner", score: 40 },
+              { id: "preview-self", name: "Sample player", score: 20 },
+              { id: "preview-third", name: "Sample third player", score: 10 },
+            ]}
+            players={[]}
+            selfId="preview-self"
+            onClose={() => setShowResultModal(false)}
+            onLeave={() => setShowResultModal(false)}
+          />
+        )}
       </StandardLoungePageLayout>
     </AppLayout>
   );

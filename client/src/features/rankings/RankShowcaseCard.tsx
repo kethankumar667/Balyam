@@ -59,27 +59,27 @@ export const RankShowcaseCard: React.FC<RankShowcaseCardProps> = ({
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-center sm:justify-start gap-2">
-              <span className="text-3xl sm:text-4xl font-black font-mono text-stone-100 dark:text-zinc-100 tracking-tight">
+              <span className="text-3xl sm:text-4xl font-black font-mono text-[var(--chrome-ink)] tracking-tight">
                 {rank.rating}
               </span>
-              <span className="text-xs font-mono font-bold uppercase tracking-wider text-amber-400">
+              <span className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--chrome-accent)]">
                 Competitive Rating
               </span>
             </div>
 
-            <div className="flex items-center justify-center sm:justify-start gap-3 text-xs font-mono text-stone-300">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs font-mono text-[var(--chrome-ink-soft)]">
               <span className="flex items-center gap-1">
                 <ShieldNavIcon size={14} className="text-amber-400" />
-                Global Rank: <strong className="text-amber-400">#{rank.globalRank}</strong>
+                Global Rank: <strong className="text-[var(--chrome-accent)]">#{rank.globalRank}</strong>
               </span>
               <span>• Top {rank.percentile}% of lounge</span>
             </div>
 
             {/* Tier Progress Bar */}
             <div className="w-full sm:w-64 pt-2 space-y-1.5">
-              <div className="flex justify-between text-[11px] font-mono text-stone-400">
+              <div className="flex justify-between text-xs font-mono text-[var(--chrome-ink-soft)]">
                 <span>Tier Progress</span>
-                <span className="font-bold text-stone-200">{rank.tierProgressPercent}%</span>
+                <span className="font-bold text-[var(--chrome-ink)]">{rank.tierProgressPercent}%</span>
               </div>
               <div className="h-2 bg-stone-950 rounded-full overflow-hidden border border-stone-800 shadow-inner">
                 <div
@@ -98,13 +98,13 @@ export const RankShowcaseCard: React.FC<RankShowcaseCardProps> = ({
         {/* Level XP Progress & Win Streak Pill */}
         <div className="flex flex-col items-center lg:items-end space-y-3 w-full lg:w-auto">
           {/* Level Progress */}
-          <div className="bg-stone-950/80 border border-stone-800 rounded-2xl p-4 w-full sm:w-72 space-y-2 shadow-lg">
+          <div className="bg-[var(--chrome-control)] border border-[var(--chrome-hairline)] rounded-2xl p-4 w-full sm:w-72 space-y-2 shadow-sm">
             <div className="flex justify-between items-center text-xs font-mono">
-              <span className="font-bold text-amber-400 flex items-center gap-1.5">
+              <span className="font-bold text-[var(--chrome-accent)] flex items-center gap-1.5">
                 <LevelSparkleIcon size={14} className="text-amber-400" />
                 Level {progression.currentLevel}
               </span>
-              <span className="text-stone-400 text-[11px]">
+              <span className="text-[var(--chrome-ink-soft)] text-xs">
                 {progression.currentXP} / {progression.nextLevelXP} XP
               </span>
             </div>
@@ -119,11 +119,11 @@ export const RankShowcaseCard: React.FC<RankShowcaseCardProps> = ({
           {/* Streaks Banner */}
           {stats && (
             <div className="flex flex-wrap items-center justify-center lg:justify-end gap-2 text-xs font-mono">
-              <div className="bg-amber-500/10 border border-amber-500/30 px-3.5 py-1.5 rounded-xl text-amber-300 flex items-center gap-1.5 shadow">
+              <div className="bg-amber-500/10 border border-amber-500/30 px-3.5 py-1.5 rounded-xl text-amber-800 dark:text-amber-300 flex items-center gap-1.5 shadow">
                 <StreakFlameIcon size={14} className="text-amber-400" />
                 <span>Win Streak: <strong>{stats.currentWinStreak}</strong> (Best: {stats.bestWinStreak})</span>
               </div>
-              <div className="bg-sky-500/10 border border-sky-500/30 px-3.5 py-1.5 rounded-xl text-sky-300 flex items-center gap-1 shadow">
+              <div className="bg-sky-500/10 border border-sky-500/30 px-3.5 py-1.5 rounded-xl text-sky-800 dark:text-sky-300 flex items-center gap-1 shadow">
                 <span>Play Streak: <strong>{stats.currentPlayStreak}d</strong></span>
               </div>
             </div>

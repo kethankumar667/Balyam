@@ -1,6 +1,7 @@
-import React, { ReactNode } from "react";
+import { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ArrowLeft, User, Sliders, Shield, Settings, Gamepad2 } from "lucide-react";
+import { ArrowLeft, User, Sliders, Shield, Settings } from "lucide-react";
+import { SURFACES, TYPOGRAPHY } from "../../design-system/dls";
 import AppLayout from "./AppLayout";
 
 interface SettingsLayoutProps {
@@ -38,24 +39,20 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
             </Link>
           </div>
 
-          {/* ── Settings Header Chassis (Executive Titanium & Gold Foil) ── */}
-          <div className="relative rounded-3xl p-0.5 bg-gradient-to-b from-amber-500/30 via-orange-500/20 to-purple-500/30 shadow-md">
-            <div className="rounded-[22px] p-6 sm:p-7 bg-gradient-to-br from-stone-900 via-neutral-900 to-stone-950 dark:from-[#0b101e] dark:via-[#11192e] dark:to-[#070c16] border border-amber-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 text-white">
+          <div className={SURFACES.cardElevated}>
+            <div className="p-5 sm:p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-stone-950 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/20">
                   <Settings className="w-6 h-6" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+                    <h1 className={TYPOGRAPHY.pageTitle}>
                       Account &amp; Lounge Settings
                     </h1>
-                    <span className="hidden sm:inline-flex text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                      Settings
-                    </span>
                   </div>
-                  <p className="text-xs sm:text-sm text-stone-300 dark:text-slate-300 font-medium mt-0.5">
-                    Fine-tune audio soundscapes, tactile haptics, theme aesthetics, language, and security tokens.
+                  <p className={`${TYPOGRAPHY.body} mt-1`}>
+                    Make the lounge feel like home. Manage your sound, appearance, privacy and account.
                   </p>
                 </div>
               </div>
@@ -63,7 +60,7 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
           </div>
 
           {/* ── Floating Segmented Control Tabs ── */}
-          <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-stone-200/60 dark:bg-[#111827]/90 border border-stone-300/60 dark:border-white/5 backdrop-blur-md overflow-x-auto [scrollbar-width:none]">
+          <nav aria-label="Settings sections" className="grid grid-cols-2 gap-1.5 p-1.5 rounded-2xl bg-[var(--chrome-control)] border border-[var(--chrome-hairline)]">
             {SETTINGS_TABS.map((tab) => {
               const active = pathname === tab.path || (tab.path === "/settings/preferences" && pathname === "/settings");
               const Icon = tab.icon;
@@ -72,21 +69,22 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
                 <Link
                   key={tab.path}
                   to={tab.path}
-                  className={`flex-1 min-w-[160px] inline-flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl text-xs font-bold transition min-h-[44px] cursor-pointer ${
+                  aria-current={active ? "page" : undefined}
+                  className={`min-w-0 inline-flex items-center justify-center gap-1.5 sm:gap-2.5 px-2 sm:px-4 py-3 rounded-xl text-xs font-bold transition min-h-[44px] cursor-pointer ${
                     active
-                      ? "bg-white dark:bg-[#1f293d] text-stone-900 dark:text-white shadow-sm border border-stone-200/80 dark:border-white/10 scale-[1.01]"
-                      : "text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/5"
+                      ? "bg-[var(--chrome-panel)] text-[var(--chrome-ink)] shadow-sm border border-[var(--chrome-border)]"
+                      : "text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] hover:bg-[var(--chrome-control-hi)] border border-transparent"
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${active ? "text-amber-500" : "text-stone-400"}`} />
-                  <span className="truncate">{tab.label}</span>
+                  <Icon aria-hidden="true" className="w-4 h-4 shrink-0" />
+                  <span>{tab.label}</span>
                 </Link>
               );
             })}
-          </div>
+          </nav>
 
           {/* Settings Sub-page Content */}
-          <main>{children}</main>
+          <div className="min-w-0">{children}</div>
         </div>
       </div>
     </AppLayout>

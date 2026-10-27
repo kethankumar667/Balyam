@@ -94,6 +94,15 @@ describe("AppHeader — one row, not nine", () => {
     setAccessToken(null);
   });
 
+  it("reserves a full phone touch target for the home logo and hides the whole link below 360px", () => {
+    asGuest();
+    renderHeader();
+    const home = screen.getByRole("link", { name: /go to the lounge home/i });
+    expect(home.className).toContain("min-w-[44px]");
+    expect(home.className).toContain("min-h-[44px]");
+    expect(home.className).toContain("max-[359px]:hidden");
+  });
+
   it("does not repeat the sidebar's destinations", () => {
     asGuest();
     renderHeader();

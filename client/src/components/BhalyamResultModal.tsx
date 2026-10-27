@@ -1,7 +1,7 @@
 import SeatFrame from "./cosmetics/frames/SeatFrame";
 import { useEffect } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Crown, Zap } from "lucide-react";
+import { Crown, Zap, X } from "lucide-react";
 import type { Player } from "@shared/types";
 import { useRoomStore } from "../store/roomStore";
 import { useScorecardStore } from "../store/scorecardStore";
@@ -14,6 +14,7 @@ import PrizeWonChip from "./economy/PrizeWonChip";
 import { fireFireworksBurst } from "../animations/particles/comicBursts";
 import RateThisGameCTA from "./reviews/RateThisGameCTA";
 import { useMatchSettlement, winnerPrizesFor } from "../hooks/useMatchSettlement";
+import { PrimaryButton, SecondaryButton } from "../design-system/dls";
 
 export interface RankedPlayerResult {
   id: string;
@@ -86,8 +87,8 @@ export default function BhalyamResultModal({
       panelClassName="w-full max-w-xl md:max-w-2xl max-h-[92dvh] flex flex-col rounded-[32px] overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.5)]"
     >
       <motion.div
-        className="relative flex flex-col h-full min-h-0 bg-[#FFFDF6] border-2 border-[#EADFC7]"
-        initial={{ scale: 0.94, opacity: 0 }}
+        className="relative flex flex-col h-full min-h-0 bg-[var(--chrome-panel)] text-[var(--chrome-ink)] border-2 border-[var(--chrome-hairline)]"
+        initial={reduceMotion ? false : { scale: 0.94, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 360, damping: 26 }}
       >
@@ -99,9 +100,9 @@ export default function BhalyamResultModal({
           onClick={onClose}
           type="button"
           aria-label="Close"
-          className="absolute top-3 right-3 sm:top-4 sm:right-4 min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-[#EFE5D2] hover:bg-[#E2D5BE] focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none active:scale-95 flex items-center justify-center text-[#735F4C] text-sm font-black transition z-20 shadow-xs cursor-pointer"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-[var(--chrome-control)] hover:bg-[var(--chrome-control-hi)] focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none motion-safe:active:scale-95 flex items-center justify-center text-[var(--chrome-ink-soft)] transition z-20 shadow-sm cursor-pointer"
         >
-          ✕
+          <X className="w-5 h-5" aria-hidden="true" />
         </button>
 
         {/* Header (fixed at top, never scrolls) */}
@@ -160,13 +161,13 @@ export default function BhalyamResultModal({
           </div>
 
           {/* Winner Headline */}
-          <h2 className="font-display font-black text-2xl sm:text-3xl text-[#2B1B0E] tracking-tight">
+          <h2 className="font-display font-black text-2xl sm:text-3xl text-[var(--chrome-ink)] tracking-tight break-words max-w-full">
             {title ?? (isSelfWinner ? "- You win! -" : `- ${displayWinnerName} wins! -`)}
           </h2>
 
           {/* Points Subtitle */}
           {(winnerScore !== undefined || pointsLabel) && (
-            <div className="mt-1 flex items-center justify-center gap-1.5 text-amber-600 font-extrabold text-sm sm:text-base">
+            <div className="mt-1 flex items-center justify-center gap-1.5 text-[var(--chrome-accent)] font-extrabold text-sm sm:text-base">
               <span className="text-amber-500 font-serif">☆</span>
               <span>{pointsLabel ?? `+${winnerScore ?? 0} points`}</span>
               <span className="text-amber-500 font-serif">☆</span>
@@ -182,7 +183,7 @@ export default function BhalyamResultModal({
         <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-5 items-center my-4 sm:my-5">
           {/* LEFT: Polaroid Memory Card (hidden on mobile — saves scroll height for what matters) */}
           <div className="hidden md:flex md:col-span-5 justify-center">
-            <div className="relative w-full max-w-[210px] sm:max-w-[230px] bg-white p-3 pb-4 rounded-xl shadow-[0_6px_20px_rgba(0,0,0,0.12)] border border-[#E9DFCB] flex flex-col items-center transform -rotate-1 hover:rotate-0 transition-transform duration-300">
+            <div className="relative w-full max-w-[210px] sm:max-w-[230px] bg-[var(--chrome-control)] p-3 pb-4 rounded-xl shadow-[0_6px_20px_rgba(0,0,0,0.12)] border border-[var(--chrome-hairline)] flex flex-col items-center motion-safe:-rotate-1 motion-safe:hover:rotate-0 transition-transform duration-300">
               <div className="absolute -top-2.5 left-2.5 w-9 h-4 bg-[#F2E8D3]/90 border border-[#DECDB2]/70 -rotate-12 rounded-[2px] shadow-xs pointer-events-none" aria-hidden />
               <div className="absolute -top-2.5 right-2.5 w-9 h-4 bg-[#F2E8D3]/90 border border-[#DECDB2]/70 rotate-12 rounded-[2px] shadow-xs pointer-events-none" aria-hidden />
 
@@ -191,10 +192,10 @@ export default function BhalyamResultModal({
               </div>
 
               <div className="text-center mt-2.5 space-y-0.5">
-                <p className="text-xs sm:text-[13px] font-black text-[#3A2819] leading-tight font-body">
+                <p className="text-xs sm:text-[13px] font-black text-[var(--chrome-ink)] leading-tight font-body">
                   Great game!
                 </p>
-                <p className="text-[11px] sm:text-xs font-bold text-[#6D533C] leading-tight">
+                <p className="text-xs font-bold text-[var(--chrome-ink-soft)] leading-tight">
                   Well played everyone! 👏
                 </p>
               </div>
@@ -202,25 +203,30 @@ export default function BhalyamResultModal({
           </div>
 
           {/* RIGHT: Scores Leaderboard */}
-          <div className="md:col-span-7 bg-[#FCF8EE] border border-[#EDE2CC] rounded-2xl p-3.5 sm:p-4 space-y-2">
+          <div className="min-w-0 md:col-span-7 bg-[var(--chrome-control)] border border-[var(--chrome-hairline)] rounded-2xl p-3.5 sm:p-4 space-y-2">
             <div className="flex items-center justify-between px-1 pb-1">
-              <span className="text-[11px] font-black uppercase tracking-wider text-[#8A7564]">
+              <span className="text-xs font-black uppercase tracking-wider text-[var(--chrome-ink-soft)]">
                 SCORES
               </span>
               {lastNewPB && lastNewPB.game === currentGame ? (
-                <div className="flex items-center gap-1 text-[10px] font-mono text-amber-950 bg-gradient-to-r from-amber-400 to-amber-300 px-2.5 py-0.5 rounded-full border border-amber-500 font-black shadow-xs animate-trophy-float">
+                <div className="flex items-center gap-1 text-[10px] font-mono text-amber-950 bg-gradient-to-r from-amber-400 to-amber-300 px-2.5 py-0.5 rounded-full border border-amber-500 font-black shadow-xs animate-trophy-float motion-reduce:animate-none">
                   <Zap className="w-3 h-3 text-amber-950 fill-amber-950" />
                   <span>NEW PB! ({lastNewPB.scorecard.bestScore})</span>
                 </div>
               ) : myPBScore !== undefined ? (
-                <div className="flex items-center gap-1 text-[10px] font-mono text-amber-800 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/30 font-bold">
+                <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--chrome-accent)] bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/30 font-bold">
                   <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
                   <span>PB: {myPBScore}</span>
                 </div>
               ) : null}
             </div>
 
-            <div className="space-y-1.5 max-h-[190px] overflow-y-auto pr-1">
+            <div
+              role="region"
+              aria-label="Player scores"
+              tabIndex={0}
+              className="space-y-1.5 max-h-[190px] overflow-y-auto pr-1 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--chrome-accent)]"
+            >
               {rankedPlayers.map((p, index) => {
                 // With a declared winner, only that seat is crowned. Without one
                 // (a draw, or an engine that reports none), the top row is
@@ -254,18 +260,18 @@ export default function BhalyamResultModal({
                       botSeat ? "flex-wrap" : ""
                     } ${
                       isWinnerRow
-                        ? "bg-[#FFECC7] border border-[#FCD68A] text-[#2B1B0E] shadow-xs"
-                        : "bg-white/60 hover:bg-white border border-[#EDE2CC]/60 text-[#4A3828]"
+                        ? "bg-[var(--chrome-active-bg)] border border-[var(--chrome-border)] text-[var(--chrome-ink)] shadow-sm"
+                        : "bg-[var(--chrome-panel)] border border-[var(--chrome-hairline)] text-[var(--chrome-ink)]"
                     }`}
                   >
                     <div
                       className={`w-5 h-5 rounded-full flex items-center justify-center font-black text-[11px] shrink-0 ${
                         rankNum === 1
-                          ? "bg-[#F59E0B] text-white"
+                          ? "bg-[#F59E0B] text-zinc-950"
                           : rankNum === 2
-                            ? "bg-[#94A3B8] text-white"
+                            ? "bg-[#94A3B8] text-zinc-950"
                             : rankNum === 3
-                              ? "bg-[#CD7F32] text-white"
+                              ? "bg-[#CD7F32] text-zinc-950"
                               : "bg-[#D6C7B2] text-[#4A3828]"
                       }`}
                     >
@@ -283,9 +289,9 @@ export default function BhalyamResultModal({
                       <SeatFrame playerId={p.id} />
                     </div>
 
-                    <span className="min-w-0 flex-1 font-extrabold text-[#2C1D11] flex items-center gap-1.5">
-                      <span className="truncate">{p.name}</span>
-                      {p.id === selfId && <span className="shrink-0 text-xs text-[#7C6652] font-semibold">(you)</span>}
+                    <span className="min-w-0 flex-1 font-extrabold text-[var(--chrome-ink)] flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                      <span className="max-w-full [overflow-wrap:anywhere]">{p.name}</span>
+                      {p.id === selfId && <span className="shrink-0 text-xs text-[var(--chrome-ink-soft)] font-semibold">(you)</span>}
                       {isWinnerRow && <Crown className="w-4 h-4 text-amber-600 fill-amber-500/30 flex-shrink-0" aria-hidden />}
                       {rankNum === 2 && !isWinnerRow && hasDistinctPlacement && (
                         <span className="shrink-0 whitespace-nowrap text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-200/80 text-slate-700">
@@ -293,15 +299,15 @@ export default function BhalyamResultModal({
                         </span>
                       )}
                       {rankNum === 3 && !isWinnerRow && hasDistinctPlacement && (
-                        <span className="shrink-0 whitespace-nowrap text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-200/60 text-amber-800">
+                        <span className="shrink-0 whitespace-nowrap text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-200 text-amber-950">
                           3rd
                         </span>
                       )}
                     </span>
 
-                    <span className={`tabular-nums shrink-0 font-black flex items-center gap-1.5 ${isWinnerRow ? "text-amber-800 text-sm" : "text-[#7C6652]"}`}>
+                    <span className={`tabular-nums shrink-0 font-black flex items-center gap-1.5 ${isWinnerRow ? "text-[var(--chrome-accent)] text-sm" : "text-[var(--chrome-ink-soft)]"}`}>
                       {p.id === selfId && lastNewPB?.isNewPersonalBest && (
-                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-500 text-white uppercase tracking-wider animate-pulse">
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-500 text-zinc-950 uppercase tracking-wider animate-pulse motion-reduce:animate-none">
                           NEW PB!
                         </span>
                       )}
@@ -311,7 +317,7 @@ export default function BhalyamResultModal({
                     {/* Prize — only for a paid, settled match, and only the placements it actually paid */}
                     {winnerPrizes?.[rankNum - 1] && <PrizeWonChip amount={winnerPrizes[rankNum - 1]} />}
 
-                    <BotResultNote player={botSeat} className="basis-full pl-[4rem] -mt-0.5 text-[#7C6652]" />
+                    <BotResultNote player={botSeat} className="basis-full pl-[4rem] -mt-0.5 text-[var(--chrome-ink-soft)]" />
                   </div>
                 );
               })}
@@ -335,20 +341,18 @@ export default function BhalyamResultModal({
         {/* BOTTOM ACTION BUTTONS (fixed at bottom, never scrolls out of reach) */}
         <div className="flex-shrink-0 relative z-10 px-5 sm:px-7 md:px-8 pb-5 sm:pb-7 md:pb-8 pt-3 space-y-2.5">
           <div className="grid grid-cols-2 gap-3 pt-1">
-            <button
-              type="button"
+            <SecondaryButton
               onClick={onClose}
-              className="py-3 px-4 rounded-2xl font-black text-sm text-[#3E2C1E] bg-[#EFE5D3] hover:bg-[#E5D7C0] active:scale-[0.98] border border-[#DFCDB5] transition cursor-pointer text-center"
+              className="min-w-0 rounded-2xl text-sm"
             >
               Continue
-            </button>
-            <button
-              type="button"
+            </SecondaryButton>
+            <PrimaryButton
               onClick={onLeave ?? onClose}
-              className="py-3 px-4 rounded-2xl font-black text-sm text-white bg-[#4A2D1B] hover:bg-[#382012] active:scale-[0.98] transition cursor-pointer text-center"
+              className="min-w-0 rounded-2xl text-sm"
             >
               Leave Table
-            </button>
+            </PrimaryButton>
           </div>
 
           {roomState?.game && <RateThisGameCTA gameId={roomState.game} />}
@@ -464,4 +468,3 @@ function CelebrationIllustration() {
     </svg>
   );
 }
-

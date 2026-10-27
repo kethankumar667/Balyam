@@ -2,7 +2,7 @@
 
 > **Design Language System:** BHALYAM DLS + Premium Gaming Tokens  
 > **Target Audience:** Casual, Competitive, and Social Players  
-> **Aesthetic Philosophy:** *Dark Gaming Depth, Gilded Accents, Radiant Glowing Auras, Immediate Tactile Feedback, Zero Ad-Hoc Styling.*
+> **Aesthetic Philosophy:** *Warm parchment in light mode, deep navy in dark mode, nostalgic gilded accents, readable hierarchy and purposeful feedback.*
 
 ---
 
@@ -12,9 +12,9 @@
    - Never invent arbitrary hex colors (e.g., `#382914`, `#992211`) in component markup.
    - All surfaces, typography, borders, and shadows must be referenced from `client/src/design-system/dls/` and `client/src/design-system/premium/`.
 2. **5 Core Visual Pillars**:
-   - **Pillar 1: Premium Gaming First** — Rich atmospheric dark depths (`#070B14`, `#0E1526`, `#141C30`) layered with gilded gold and radiant gem tones.
-   - **Pillar 2: Zero Visual Stagnation** — Interactive hover glows, spring presses (`whileTap={{ scale: 0.96 }}`), and real-time pulse indicators.
-   - **Pillar 3: Immediate Feedback & Tactile Delight** — Every user action produces visual, audio, and haptic feedback within 1 frame (<16ms).
+   - **Pillar 1: Theme-complete Gaming** — Shared lounge panels and text use paired `--chrome-*` tokens in both document themes; individual game worlds retain their identity.
+   - **Pillar 2: Purposeful Motion** — Hover/press feedback must not be required to understand an action. Suppress decorative transforms, pulse and spin for `prefers-reduced-motion`.
+   - **Pillar 3: Immediate Feedback** — Show pending, success and failure states explicitly. Respect audio/haptic preferences rather than making every action noisy.
    - **Pillar 4: Uncompromising Accessibility & Ergonomics** — Touch targets >= 44x44px, safe area notch compliance, WCAG 2.1 AA contrast.
    - **Pillar 5: Cohesive Gaming Hierarchy** — Unmistakable rank tiers, achievement rarities, and championship badges.
 
@@ -50,13 +50,13 @@
 ## 3. Typography Hierarchy (`TYPOGRAPHY`)
 
 All typography must adhere to the standardized typographic scale:
-- **Hero Title**: `text-3xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight`
-- **Page Title**: `text-2xl sm:text-3xl font-black tracking-tight text-stone-100`
-- **Section Header**: `text-xs font-mono font-bold uppercase tracking-wider text-amber-400`
-- **Card Title**: `text-base sm:text-lg font-bold text-stone-100 leading-snug`
-- **Body Text**: `text-xs sm:text-sm text-stone-300 font-normal leading-relaxed`
-- **Subtle / Meta Text**: `text-[11px] sm:text-xs text-stone-500 font-mono`
-- **Pill / Badge Label**: `text-[10px] sm:text-[11px] font-black font-mono uppercase tracking-widest`
+- **Hero Title**: `TYPOGRAPHY.heroTitle` (24/30/36px), adaptive chrome ink.
+- **Page Title**: `TYPOGRAPHY.pageTitle` (20/24/30px), adaptive chrome ink.
+- **Section Header**: `TYPOGRAPHY.sectionHeader` (16/18px), not small uppercase metadata.
+- **Card Title**: `TYPOGRAPHY.cardTitle` (14/16px).
+- **Body Text**: `TYPOGRAPHY.body` / `bodySubtle` (14px), adaptive soft ink.
+- **Caption**: `TYPOGRAPHY.caption` (12px), adaptive soft ink.
+- **Pill / Badge Label**: `TYPOGRAPHY.metaPill`; reserve small uppercase labels for short metadata, never instructions.
 
 ---
 
@@ -71,6 +71,10 @@ All typography must adhere to the standardized typographic scale:
    - All interactive controls must specify `touch-action: manipulation;` and `-webkit-tap-highlight-color: transparent;` to eliminate 300ms touch delay and grey tap highlights.
 4. **Horizontal Swipe Guides**:
    - Any horizontally scrollable element on mobile (brackets, filter pills, roster rails) must use `.touch-pan-x` and display a subtle visual swipe indicator.
+   - A scroll cue that is a button must be keyboard reachable, named and at least
+     44px wide. Hide inactive cues from assistive technology and pointer input.
+   - Reveal category selections with `scrollIntoViewHorizontally`; do not call
+     `scrollIntoView` on a below-the-fold rail, which also scrolls the page.
 
 ---
 
@@ -90,8 +94,11 @@ All typography must adhere to the standardized typographic scale:
   ```
 
 ### Loading Skeletons (`SkeletonLoader`)
-- Never display `"Loading..."` text.
-- Use animated skeleton pulse layouts matching the target content structure (`hero`, `card`, `profile`, `table`, `grid`).
+- Use skeleton layouts matching the target content (`hero`, `card`, `profile`, `table`, `grid`).
+- Expose one named busy status; hide decorative blocks from assistive technology.
+- Use adaptive chrome control colors, fluid widths and wrapping placeholder actions.
+- Disable pulse for OS reduced motion. A visible text loading status is appropriate
+  where there is no meaningful content shape to preview.
 
 ### Error Fallbacks (`PremiumErrorState`)
 - Display glowing danger border, friendly gaming diagnostic copy, and a prominent retry button.

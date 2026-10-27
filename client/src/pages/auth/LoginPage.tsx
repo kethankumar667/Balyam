@@ -328,7 +328,7 @@ export default function LoginPage() {
               {/* Divider: or continue with */}
               <div className="flex items-center gap-3 my-3.5">
                 <span className="h-px flex-1 bg-[#D8C2A0]/70 dark:bg-slate-700" />
-                <span className="text-[12px] font-semibold text-[#8C6D4F] dark:text-slate-400 whitespace-nowrap">
+                <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] whitespace-nowrap">
                   or continue with
                 </span>
                 <span className="h-px flex-1 bg-[#D8C2A0]/70 dark:bg-slate-700" />
