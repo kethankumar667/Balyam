@@ -54,7 +54,7 @@ export function ModeMenu({ onStart, saved, onResume, records, legacyBest, legacy
         </article>;
       })}
     </div>
-    <p className="mt-5 text-center text-xs text-ink-mid">Personal records stay on this device. Daily Circuit uses the same UTC seed for everyone; it is not an online ranking.</p>
+    <p className="mt-5 text-center text-xs text-ink-mid">Finished results save to your account and keep device bests when storage is allowed. Sprint and Daily Circuit save completion times only after 40 lines. Free Play stays a separate practice record. Daily seeds are repeatable, not verified competition.</p>
   </main>;
 }
 

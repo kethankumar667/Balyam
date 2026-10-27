@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { getGameModeConfig } from "@shared/profile/GameModes";
 import type { AllGameSlug } from "@shared/profile/Scorecard";
 import ChronoScorecardDeckDesktop from "./ChronoScorecardDeckDesktop";
 import ChronoScorecardDeckMobile from "./ChronoScorecardDeckMobile";
 import { ScorecardNavigator, ScorecardModes, PersonalBestCard, RecordIntelligence, PerformanceHistory, RecentBattles, ScorecardDetails } from "./ScorecardDashboardPanels";
 import HoloPassShareModal from "./HoloPassShareModal";
+import { buildRecords, preferredRecordModeId } from "../../features/myrecords/records";
 import {
-  DEFAULT_PINNED_GAMES, PINNED_STORAGE_KEY, SCORECARD_GAMES, scorecardModes,
+  DEFAULT_PINNED_GAMES, PINNED_STORAGE_KEY, SCORECARD_GAMES, scorecardBest, scorecardModes,
   type ScorecardDeckProps, type ScorecardCategory, type CricketFamily,
 } from "./scorecardDashboardModel";
 
@@ -25,8 +26,9 @@ function loadPins(): { games: string[]; error: string | null } {
 
 export default function ScorecardDashboard({
   layout, archive, playerName, avatar, className = "",
-  recentMatches = [], recentMatchesStatus = "ready", onRetryMatches,
+  recentMatches = [], recentMatchesStatus = "ready", onRetryMatches, records: suppliedRecords,
 }: ScorecardDeckProps & { layout: "mobile" | "desktop" }) {
+  const records = useMemo(() => suppliedRecords ?? buildRecords(archive), [suppliedRecords, archive]);
   const [selectedGame, setSelectedGame] = useState<AllGameSlug>("handcricket");
   const [selectedModeId, setSelectedModeId] = useState(getGameModeConfig("handcricket").defaultModeId);
   const [pins, setPins] = useState(loadPins);
@@ -35,13 +37,17 @@ export default function ScorecardDashboard({
   const [family, setFamily] = useState<CricketFamily>("all");
   const [dialog, setDialog] = useState<"details" | "share" | null>(null);
   const config = getGameModeConfig(selectedGame);
-  const modes = scorecardModes(archive, selectedGame);
+  const gameRecords = records.find(game => game.id === selectedGame);
+  const modes = scorecardModes(archive, selectedGame, gameRecords);
   const mode = modes.find(item => item.modeId === selectedModeId) ?? modes[0]!;
-  const record = archive.games[selectedGame]?.modes[mode.modeId];
+  const best = scorecardBest(gameRecords, mode.modeId);
+  const record = best?.record;
+  const fullScorecard = best?.source === "recorded" ? record : undefined;
 
   function selectGame(game: AllGameSlug) {
     setSelectedGame(game);
-    setSelectedModeId(getGameModeConfig(game).defaultModeId);
+    const saved = records.find(item => item.id === game);
+    setSelectedModeId(saved ? preferredRecordModeId(saved) : getGameModeConfig(game).defaultModeId);
     setFamily("all");
     setDialog(null);
   }
@@ -63,14 +69,15 @@ export default function ScorecardDashboard({
     return (category === "all" || category === entry.category)
       && (!query || entry.displayName.toLowerCase().includes(query) || game.includes(query));
   }).sort((a, b) => Number(pins.games.includes(b)) - Number(pins.games.includes(a))
-    || Number(Boolean(archive.games[b])) - Number(Boolean(archive.games[a]))
+    || Number(records.find(game => game.id === b)?.modes.some(mode => mode.best !== null))
+      - Number(records.find(game => game.id === a)?.modes.some(mode => mode.best !== null))
     || getGameModeConfig(a).displayName.localeCompare(getGameModeConfig(b).displayName));
 
   const slots = {
-    navigator: <ScorecardNavigator archive={archive} games={filteredGames} selectedGame={selectedGame}
+    navigator: <ScorecardNavigator records={records} games={filteredGames} selectedGame={selectedGame}
       onSelect={selectGame} pinnedGames={pins.games} onPin={togglePin} category={category} onCategory={setCategory}
       search={search} onSearch={setSearch} onClear={() => { setSearch(""); setCategory("all"); }} />,
-    modes: <ScorecardModes archive={archive} game={selectedGame} modes={modes} selectedModeId={mode.modeId}
+    modes: <ScorecardModes records={gameRecords} game={selectedGame} modes={modes} selectedModeId={mode.modeId}
       onSelect={id => { setSelectedModeId(id); setDialog(null); }} family={family} onFamily={value => {
         setFamily(value);
         if (value !== "all" && !mode.modeId.startsWith(`${value}_`)) {
@@ -78,10 +85,13 @@ export default function ScorecardDashboard({
           if (first) setSelectedModeId(first.modeId);
         }
       }} />,
-    record: <PersonalBestCard game={selectedGame} mode={mode} record={record}
+    record: <PersonalBestCard game={selectedGame} mode={mode} record={fullScorecard} best={best}
       onDetails={() => setDialog("details")} onShare={() => setDialog("share")} />,
     intelligence: <RecordIntelligence record={record} />,
-    history: <PerformanceHistory game={selectedGame} mode={mode} record={record} />,
+    history: <div className="min-w-0">
+      {best && best.source !== "recorded" && record ? <p className="mb-2 text-xs text-score-soft">History and radar below use recorded matches only, not the {best.source === "imported" ? "imported" : "device-only"} best.</p> : null}
+      <PerformanceHistory game={selectedGame} mode={mode} record={record} />
+    </div>,
     battles: <RecentBattles matches={recentMatches} status={recentMatchesStatus} onRetry={onRetryMatches}
       playerName={playerName} avatar={avatar} playerId={archive.playerId} />,
   };
@@ -91,9 +101,9 @@ export default function ScorecardDashboard({
     <div className={`chrono-scorecards min-w-0 text-ink-hi ${className}`} data-layout={layout}>
       {pins.error ? <p role="status" className="mb-3 rounded-xl border border-amber-500/40 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">{pins.error}</p> : null}
       <Layout {...slots} />
-      <ScorecardDetails open={dialog === "details" && Boolean(record)} onClose={() => setDialog(null)}
-        game={selectedGame} mode={mode} record={record} />
-      {dialog === "share" && record ? <HoloPassShareModal game={config.game} scorecard={record}
+      <ScorecardDetails open={dialog === "details" && Boolean(fullScorecard)} onClose={() => setDialog(null)}
+        game={selectedGame} mode={mode} record={fullScorecard} />
+      {dialog === "share" && fullScorecard ? <HoloPassShareModal game={config.game} scorecard={fullScorecard}
         playerName={playerName} avatar={avatar} onClose={() => setDialog(null)} /> : null}
     </div>
   );

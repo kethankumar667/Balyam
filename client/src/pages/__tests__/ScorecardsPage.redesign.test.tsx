@@ -36,8 +36,11 @@ const archive: PlayerScorecardArchive = {
 };
 
 beforeEach(() => {
+  localStorage.clear();
   useScorecardStore.setState({
     archive,
+    localArchive: null,
+    pendingScoreCount: 0,
     loading: false,
     error: null,
     lastNewPB: null,
@@ -46,7 +49,7 @@ beforeEach(() => {
 });
 
 describe("ScorecardsPage redesign", () => {
-  it("frames the responsive deck with truthful archive metrics", () => {
+  function show() {
     const stats = INITIAL_PLAYER_STATS("player_1");
     const context: ProfileFamilyOutletContext = {
       profile,
@@ -78,11 +81,40 @@ describe("ScorecardsPage redesign", () => {
         </Routes>
       </MemoryRouter>,
     );
+  }
 
+  it("frames the responsive deck with truthful archive metrics", () => {
+    show();
     expect(screen.getByRole("heading", { name: "Chrono scorecards" })).toBeDefined();
-    expect(screen.getByRole("group", { name: "Tracked games" }).textContent).toContain("1");
+    expect(screen.getByRole("group", { name: "Tracked games" }).textContent).toContain("0");
     expect(screen.getByRole("group", { name: "Records broken" }).textContent).toContain("6");
     expect(screen.getByRole("group", { name: "Mode coverage" }).textContent).toContain("0%");
     expect(screen.getByText("Scorecard deck")).toBeDefined();
+  });
+
+  it("counts imported modes without inventing personal-best breaks", () => {
+    useScorecardStore.setState({ archive: { ...archive, deviceImports: { breakout: {
+      neon_campaign: { score: 33600, importedAt: 1 }, neon_daily: { score: 5100, importedAt: 1 },
+    } } } });
+    show();
+    expect(screen.getByRole("group", { name: "Tracked games" }).textContent).toContain("1");
+    expect(screen.getByRole("group", { name: "Active modes" }).textContent).toContain("2");
+    expect(screen.getByRole("group", { name: "Records broken" }).textContent).toContain("6");
+  });
+
+  it("keeps local records visible when the account read fails", () => {
+    localStorage.setItem("bhalyam_brick_racer_v1", JSON.stringify({ highScore: 760 }));
+    useScorecardStore.setState({ archive: null, error: "Account unavailable" });
+    show();
+    expect(screen.getByText("Scorecard deck")).toBeDefined();
+    expect(screen.getByRole("group", { name: "Tracked games" }).textContent).toContain("1");
+    expect(screen.getByText("Account unavailable")).toBeDefined();
+  });
+
+  it("never renders the outgoing account's archive during an account switch", () => {
+    useScorecardStore.setState({ archive: { ...archive, playerId: "another-account" } });
+    show();
+    expect(screen.queryByText("Scorecard deck")).toBeNull();
+    expect(screen.getByRole("group", { name: "Records broken" }).textContent).not.toContain("6");
   });
 });

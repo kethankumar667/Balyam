@@ -272,7 +272,7 @@ export const BREAKOUT_ACADEMY: GameAcademySpec = {
         { label: "Side Hit", detail: "Sends the ball back up toward the side of the paddle it struck.", tag: "Steer" },
         { label: "Modes", detail: "Clear eight Campaign sectors or play two active minutes in Score Attack and the UTC Daily Challenge.", tag: "Solo" },
         { label: "Powers", detail: "Catch 3 for multiball, W for 12 seconds of wide paddle, S for a one-hit shield, P for 12 seconds of piercing. II/III mark brick strength.", tag: "Catch" },
-        { label: "Records", detail: "Device-local bests are separate by mode. Daily layouts repeat for a UTC date. These are not verified global rankings.", tag: "Personal" },
+        { label: "Records", detail: "Finished runs save to your account, with separate device bests by mode. Daily layouts repeat for a UTC date. These are not verified global rankings.", tag: "Personal" },
       ],
     },
   ],

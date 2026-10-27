@@ -156,7 +156,21 @@ Durability is not claimed in ephemeral/in-memory mode.
 Older device-only scores remain visible with a local-only label. They are not
 uploaded as trusted account history unless the player chooses "Add to my
 account" in My Records (or in the sign-out prompt): that records them as private
-imported bests (`deviceImports`, never ranked, no date or match count). Signing
+imported bests (`deviceImports`, never ranked, no date or match count). My Records
+and Profile Scorecards both display these imports and local-only bests using the
+same record-selection logic for every registered game. Profile grades, sharing,
+radars and trends remain based on recorded matches, not synthetic imported history.
+Neon Breakout submits each finished Campaign, Score Attack and Daily run through
+the shared solo recorder/outbox, in `neon_campaign`, `neon_score_attack` and
+`neon_daily` respectively. The daily account best spans UTC dates; its device
+list also keeps per-date bests. Brick Blocks uses `arcade_marathon`, `arcade_pentix`,
+`arcade_attack`, `arcade_practice` (points), and `arcade_sprint` / `arcade_daily`
+(elapsed seconds for completed 40-line runs only). The old `classic` / `pentix`
+records remain historical. Free Play is a separate practice record; daily
+account bests span dates, while the in-game list also distinguishes dates.
+Client-reported solo results are not verified
+competitive results and do not award coins or XP. Existing device saves require
+explicit import; they are never automatically rewritten as completed matches. Signing
 out clears the device, so a member's sign-out is checked first and warns about
 anything that exists only on it. A solo result that could not be sent is queued
 on the device and resent, with the same match id, before the next account read.

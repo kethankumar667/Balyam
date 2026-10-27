@@ -6,7 +6,8 @@ import {
 } from "lucide-react";
 import type { ModeDefinition } from "@shared/profile/GameModes";
 import { getGameModeConfig } from "@shared/profile/GameModes";
-import type { AllGameSlug, ModeScorecard, PlayerScorecardArchive } from "@shared/profile/Scorecard";
+import type { AllGameSlug, ModeScorecard } from "@shared/profile/Scorecard";
+import type { RecordGame } from "../../features/myrecords/records";
 import {
   calculatePerformanceRank, derivePlayerArchetype, getGameMetricSchema,
   getNextMilestoneTarget, getSignatureFeatsForGame,
@@ -21,8 +22,8 @@ import Modal from "../Modal";
 import QuantumRadarHexagon from "./QuantumRadarHexagon";
 import { SCORECARD_RANK_CLASSES } from "./scorecardTheme";
 import {
-  SCORECARD_CATEGORIES, scorecardArt, scorecardDate, shortModeName,
-  type ScorecardCategory, type CricketFamily,
+  SCORECARD_CATEGORIES, scorecardArt, scorecardBest, scorecardDate, scorecardValue, shortModeName,
+  type ScorecardCategory, type CricketFamily, type ScorecardBest,
 } from "./scorecardDashboardModel";
 
 const PANEL = "min-w-0 rounded-2xl border border-score-edge bg-score-panel shadow-[0_10px_28px_-24px_rgba(0,60,85,0.65)]";
@@ -49,7 +50,7 @@ function GameArt({ game, className = "" }: { game: string; className?: string })
 }
 
 interface NavigatorProps {
-  archive: PlayerScorecardArchive;
+  records: readonly RecordGame[];
   games: readonly AllGameSlug[];
   selectedGame: AllGameSlug;
   onSelect: (game: AllGameSlug) => void;
@@ -84,7 +85,8 @@ export function ScorecardNavigator(props: NavigatorProps) {
       <div className="flex gap-2 overflow-x-auto px-3 pb-3 xl:max-h-[710px] xl:flex-col xl:overflow-y-auto xl:overflow-x-hidden" aria-label="Games">
         {props.games.map(game => {
           const config = getGameModeConfig(game);
-          const count = Object.keys(props.archive.games[game]?.modes ?? {}).length;
+          const records = props.records.find(item => item.id === game);
+          const count = (records?.modes.filter(mode => mode.best !== null).length ?? 0) + (records?.previousModeRecords.length ?? 0) + Number(records?.previousOverallBest != null);
           const pinned = props.pinnedGames.includes(game);
           const selected = props.selectedGame === game;
           return (
@@ -96,7 +98,7 @@ export function ScorecardNavigator(props: NavigatorProps) {
                 <GameArt game={game} className="h-9 w-9 shrink-0" />
                 <span className="min-w-0">
                   <span className="block text-xs font-bold leading-snug text-score-ink">{config.displayName}</span>
-                  <span className="mt-0.5 block text-[10px] text-score-soft">{count} {count === 1 ? "recorded mode" : "recorded modes"}</span>
+                  <span className="mt-0.5 block text-[10px] text-score-soft">{count} {count === 1 ? "saved best" : "saved bests"}</span>
                 </span>
               </button>
               <button type="button" onClick={() => props.onPin(game)} aria-label={`${pinned ? "Unpin" : "Pin"} ${config.displayName}`}
@@ -115,8 +117,8 @@ export function ScorecardNavigator(props: NavigatorProps) {
   );
 }
 
-export function ScorecardModes({ archive, game, modes, selectedModeId, onSelect, family, onFamily }: {
-  archive: PlayerScorecardArchive; game: AllGameSlug; modes: readonly ModeDefinition[]; selectedModeId: string;
+export function ScorecardModes({ records, game, modes, selectedModeId, onSelect, family, onFamily }: {
+  records?: RecordGame; game: AllGameSlug; modes: readonly ModeDefinition[]; selectedModeId: string;
   onSelect: (id: string) => void; family: CricketFamily; onFamily: (family: CricketFamily) => void;
 }) {
   const config = getGameModeConfig(game);
@@ -134,7 +136,7 @@ export function ScorecardModes({ archive, game, modes, selectedModeId, onSelect,
       </div> : <p className="px-4 pt-2 text-[11px] leading-relaxed text-score-soft">Choose a format to explore your record.</p>}
       <div role="group" aria-label={`${config.displayName} modes`} className="grid grid-cols-2 gap-2 p-3 min-[400px]:grid-cols-3">
         {filtered.map(mode => {
-          const saved = archive.games[game]?.modes[mode.modeId];
+          const saved = scorecardBest(records, mode.modeId);
           const label = shortModeName(mode, game);
           const selected = selectedModeId === mode.modeId;
           return <button key={mode.modeId} type="button" aria-label={`Select ${mode.displayName}`} aria-pressed={selected}
@@ -150,7 +152,7 @@ export function ScorecardModes({ archive, game, modes, selectedModeId, onSelect,
             </span>
             <span className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-score-soft">{label.detail}</span>
             <span className={`mt-auto pt-2 text-[10px] font-semibold ${saved ? "text-score-cyan" : "text-score-soft"}`}>
-              {saved ? `Best: ${formatGameMetricValue(saved.bestScore, getGameMetricSchema(game).primaryRankMetric.format)}` : "No record yet"}
+              {saved ? `Best: ${scorecardValue(game, mode, saved.score)}` : "No record yet"}
             </span>
           </button>;
         })}
@@ -176,7 +178,7 @@ function RecordArtwork({ game }: { game: AllGameSlug }) {
   </div>;
 }
 
-export function PersonalBestCard({ game, mode, record, onDetails, onShare }: RecordProps & { onDetails: () => void; onShare: () => void }) {
+export function PersonalBestCard({ game, mode, record, best, onDetails, onShare }: RecordProps & { best?: ScorecardBest; onDetails: () => void; onShare: () => void }) {
   const titleId = useId();
   const config = getGameModeConfig(game);
   const rank = calculatePerformanceRank(game, mode.modeId, record?.bestScore, record?.scoringDirection ?? mode.scoringDirection);
@@ -191,7 +193,7 @@ export function PersonalBestCard({ game, mode, record, onDetails, onShare }: Rec
         </header>
         {record ? <>
           <div className="mb-4 mt-5">
-            <strong className="block font-display text-5xl leading-none tracking-tight text-score-gold">{record.bestScore.toLocaleString()}</strong>
+            <strong className="block max-w-full break-words font-display text-5xl leading-none tracking-tight text-score-gold">{mode.unit === "s" ? scorecardValue(game, mode, record.bestScore) : record.bestScore.toLocaleString()}</strong>
             <span className="mt-1 block font-mono text-xs font-bold uppercase tracking-[0.14em] text-score-gold">{mode.unit || "score"}</span>
             <p className="mt-3 max-w-[65%] text-xs font-semibold leading-relaxed text-score-ink">{mode.displayName}</p>
           </div>
@@ -203,7 +205,7 @@ export function PersonalBestCard({ game, mode, record, onDetails, onShare }: Rec
           </div>
           <dl className="space-y-2.5 rounded-xl border border-score-edge bg-score-inset p-3 text-[11px]">
             {[
-              { label: "Average score", value: formatGameMetricValue(record.averageScore, getGameMetricSchema(game).primaryRankMetric.format), icon: Activity },
+              { label: "Average score", value: scorecardValue(game, mode, record.averageScore), icon: Activity },
               { label: "Matches played", value: String(record.timesPlayed), icon: Layers },
               { label: "Record set", value: scorecardDate(record.bestScoreAchievedAt), icon: CalendarDays },
             ].map(({ label, value, icon: Icon }) => <div key={label} className="flex items-center justify-between gap-2">
@@ -217,7 +219,15 @@ export function PersonalBestCard({ game, mode, record, onDetails, onShare }: Rec
             <button type="button" onClick={onDetails} className={`${SECONDARY_BUTTON} flex-1`}>View scorecard</button>
             <button type="button" onClick={onShare} aria-label="Share scorecard" className={`${SECONDARY_BUTTON} w-11 px-0`}><Share2 className="h-4 w-4" aria-hidden="true" /></button>
           </div>
-        </> : <div className="relative flex min-h-72 flex-col items-start justify-center">
+        </> : best ? <div className="relative flex min-h-72 flex-col items-start justify-center gap-4">
+          <strong className="max-w-full break-words font-display text-4xl tabular-nums text-score-gold sm:text-5xl">{mode.unit === "s" ? scorecardValue(game, mode, best.score) : best.score.toLocaleString()}</strong>
+          <p className="text-xs font-bold text-score-gold">{mode.unit || "score"} / {mode.displayName}</p>
+          <p className="rounded-xl border border-score-edge bg-score-inset p-3 text-xs leading-relaxed text-score-soft">
+            <span className="block font-bold text-score-ink">{best.source === "imported" ? "Imported from your device" : "Saved on this device"}</span>
+            Date not recorded. This best has no match count or performance grade and does not count on leaderboards.
+          </p>
+          <Link {...launchLinkProps(game)} className={PLAY_BUTTON}><Play className="h-3.5 w-3.5" aria-hidden="true" />Play again</Link>
+        </div> : <div className="relative flex min-h-72 flex-col items-start justify-center">
           <span className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-score-gold bg-score-inset text-score-gold"><Trophy className="h-7 w-7" aria-hidden="true" /></span>
           <h4 className="max-w-48 text-xl font-bold text-score-ink">Your next record starts here</h4>
           <p className="mb-5 mt-2 max-w-56 text-xs leading-relaxed text-score-soft">Play {mode.displayName} to set your first personal best.</p>
@@ -291,7 +301,7 @@ export function PerformanceHistory({ game, mode, record }: RecordProps) {
         <p className="text-[10px] leading-relaxed text-score-soft">{scores.length === 1 ? "One score saved. Play again to build a trend." : "Oldest to newest. The archive retains up to five recent scores per mode."}</p>
         <details className="mt-2 text-[11px] text-score-soft">
           <summary className="min-h-11 cursor-pointer py-3 font-semibold text-score-cyan">Score values</summary>
-          <ol className="flex flex-wrap gap-2 pb-2">{scores.map((score, index) => <li key={index} className="rounded-lg border border-score-edge bg-score-inset px-2 py-1">{index + 1}. {formatGameMetricValue(score, getGameMetricSchema(game).primaryRankMetric.format)}</li>)}</ol>
+          <ol className="flex flex-wrap gap-2 pb-2">{scores.map((score, index) => <li key={index} className="rounded-lg border border-score-edge bg-score-inset px-2 py-1">{index + 1}. {scorecardValue(game, mode, score)}</li>)}</ol>
         </details>
       </div> : <div className="flex min-h-52 flex-col items-center justify-center px-5 pb-5 text-center text-score-soft">
         <BarChart3 className="mb-3 h-8 w-8 text-score-cyan" aria-hidden="true" />
@@ -346,7 +356,7 @@ export function ScorecardDetails({ open, onClose, game, mode, record }: RecordPr
       <button type="button" onClick={onClose} aria-label="Close scorecard" className={`${SECONDARY_BUTTON} w-11 shrink-0 px-0`}><X className="h-4 w-4" aria-hidden="true" /></button>
     </header>
     <div className="my-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-score-edge bg-score-inset p-4">
-      <strong className="text-3xl font-black text-score-gold">{formatGameMetricValue(record.bestScore, schema.primaryRankMetric.format)}</strong>
+      <strong className="text-3xl font-black text-score-gold">{scorecardValue(game, mode, record.bestScore)}</strong>
       <div className="text-right"><p className="text-sm font-bold text-score-cyan">{rank.label}</p><p className="mt-1 text-xs text-score-soft">{rank.grade}-RANK</p></div>
     </div>
     <dl className="grid grid-cols-2 gap-3 text-xs">

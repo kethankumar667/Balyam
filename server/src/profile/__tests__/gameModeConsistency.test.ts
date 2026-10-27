@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BREAKOUT_ARCADE_MODE_IDS,
+  BRICK_BLOCKS_ARCADE_MODE_IDS,
   GAME_MODE_REGISTRY,
   getGameModeConfig,
   nokiaCricketModeId,
@@ -128,6 +129,7 @@ const LOBBY_CHOICES: Record<string, Choice[]> = {
   brickblocks: [
     { options: { mode: "CLASSIC" }, expect: "classic" },
     { options: { mode: "PENTIX" }, expect: "pentix" },
+    ...Object.entries(BRICK_BLOCKS_ARCADE_MODE_IDS).map(([challenge, expect]) => ({ options: { challenge }, expect })),
   ],
   breakout: [{ expect: "classic" }, ...Object.entries(BREAKOUT_ARCADE_MODE_IDS).map(([mode, expect]) => ({ options: { mode }, expect }))],
   sudoku: ["easy", "medium", "hard", "expert"].map((d): Choice => ({ options: { difficulty: d }, expect: d })),
@@ -146,7 +148,7 @@ const CLIENT_DERIVED: Record<string, (options: Record<string, unknown>) => strin
   nokiasnake: (o) => nokiaSnakeModeId(o.gameMode as "CLASSIC" | "WRAP_AROUND"),
   // The next three are recorded by the client straight from the game's own mode name.
   "2048": (o) => String(o.mode),
-  brickblocks: (o) => (o.mode === "PENTIX" ? "pentix" : "classic"),
+  brickblocks: (o) => BRICK_BLOCKS_ARCADE_MODE_IDS[o.challenge as keyof typeof BRICK_BLOCKS_ARCADE_MODE_IDS] ?? (o.mode === "PENTIX" ? "pentix" : "classic"),
   breakout: (o) => BREAKOUT_ARCADE_MODE_IDS[o.mode as keyof typeof BREAKOUT_ARCADE_MODE_IDS],
   sudoku: (o) => String(o.difficulty),
 };

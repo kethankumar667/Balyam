@@ -70,7 +70,7 @@ export function NeonBreakout({ onExit }: { onExit?: () => void }) {
       </nav>
     </header>
     {game.error && <p role="alert" className="mx-3 mb-4 rounded-xl border border-amber-300/50 bg-amber-950 p-3 text-sm text-amber-100">{game.error}</p>}
-    {!game.canSave && <p className="mx-auto max-w-4xl px-4 pb-3 text-xs text-amber-200">Essential-only storage: play normally; new records and preferences last only in this tab.</p>}
+    {!game.canSave && <p className="mx-auto max-w-4xl px-4 pb-3 text-xs text-amber-200">Essential-only storage: local bests and preferences last only in this tab. Finished results still save to your account.</p>}
     {game.menu ? <ModeMenu data={data} start={game.start} /> : <>
       <div className="mx-auto mb-3 flex max-w-6xl flex-wrap items-center justify-between gap-2 px-3 sm:px-5">
         <p className="text-xs font-semibold uppercase tracking-wider text-cyan-200">{MODE_TITLES[state.mode]}{state.mode === "daily" ? ` / ${state.date} UTC` : ""}</p>
@@ -78,6 +78,7 @@ export function NeonBreakout({ onExit }: { onExit?: () => void }) {
       </div>
       {state.status === "finished" ? <div className="px-3 py-6"><RunResults state={state} replay={() => game.start(state.mode)} menu={game.returnToMenu} /></div> :
         <Layout board={board} stats={<RunStats state={state} data={data} />} powers={<PowerStatus state={state} />} controls={controls} guide={<FieldGuide />} />}
+      {state.status === "finished" && game.syncStatus ? <p role="status" className="mx-auto max-w-lg px-4 text-center text-sm text-cyan-100">{game.syncStatus}</p> : null}
       <p role="status" aria-live="polite" className="mx-auto max-w-4xl px-4 py-3 text-center text-xs text-slate-300">{state.notice}</p>
     </>}
     {panel && <Modal open onClose={() => setPanel(null)} ariaLabelledBy="breakout-panel-title" mobileSheet panelClassName="w-full max-w-lg rounded-t-3xl border border-white/20 bg-slate-900 p-6 text-slate-100 md:rounded-3xl">

@@ -206,6 +206,12 @@ Client-submitted scores are forgeable. The pattern that survived review:
 - [ ] Idempotent per `matchId` (no double-record on retry/replay). The controller is rate-limited (`rateLimitByCaller`) — keep it.
 - [ ] `ScorecardService` has the per-game entry; `MyRecordsPage.tsx` + `features/myrecords/records.ts` show it; a new game's
       empty leaderboard renders an honest empty state, not fake rows.
+- [ ] For browser-computed solo games instead: register every actual mode and metric in `GameModes.ts`, submit each
+      eligible finished run once through `recordSoloScore` (or `useSoloScoreSync` for visible save status), and use the
+      existing offline outbox. Time trials require a completed target, not a top-out or abandoned run. Never upload
+      old device bests as played matches: add a mode-specific reader to `features/myrecords/records.ts` so explicit
+      private imports and the sign-out guard can see them. Verify the same score and source label in both My Records
+      and Profile Scorecards, higher/lower-is-better selection, retries and account isolation.
 
 ---
 

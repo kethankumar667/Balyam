@@ -1,4 +1,4 @@
-import { BREAKOUT_ARCADE_MODE_IDS, GAME_MODE_REGISTRY, getGameModeConfig } from "@shared/profile/GameModes";
+import { BREAKOUT_ARCADE_MODE_IDS, BRICK_BLOCKS_ARCADE_MODE_IDS, GAME_MODE_REGISTRY, getGameModeConfig } from "@shared/profile/GameModes";
 import type { AllGameSlug, ModeScorecard, PlayerScorecardArchive } from "@shared/profile/Scorecard";
 import { readModeBest } from "../../lib/modeBests";
 import { formatGameMetricValue } from "../../lib/metricFormatters";
@@ -102,6 +102,19 @@ function deviceBestForMode(game: AllGameSlug, mode: string, raw: unknown): numbe
   }
   if (game === "nokiasnake" || game === "nokiacricket") return readModeBest(data.modeBestScores, mode);
   if (game === "brickblocks") {
+    const challenge = Object.entries(BRICK_BLOCKS_ARCADE_MODE_IDS).find(([, id]) => id === mode)?.[0];
+    if (challenge) {
+      const records = object(data.arcade).records;
+      const entries: unknown[] = Array.isArray(records) ? records : [];
+      const timed = challenge === "sprint" || challenge === "daily";
+      const scores = entries.flatMap(entry => {
+        const record = object(entry);
+        if (record.mode !== challenge || (timed && record.complete !== true)) return [];
+        const value = positive(timed ? record.elapsedMs : record.score);
+        return value === null ? [] : [timed ? value / 1000 : value];
+      });
+      return scores.length ? (timed ? Math.min(...scores) : Math.max(...scores)) : null;
+    }
     const stored = positive(mode === "pentix" ? data.bestPentixScore : data.bestClassicScore);
     const entries: unknown[] = Array.isArray(data.highScores) ? data.highScores : [];
     return positive(entries.reduce<number>((best, entry) => {
@@ -170,6 +183,7 @@ export function buildRecords(archive: PlayerScorecardArchive | null, useDevice =
         const accountBest = isImportedBetter ? importedBest : hasSavedBest ? saved.bestScore : null;
         return {
           ...mode,
+          recorded: hasSavedBest ? saved : undefined,
           best: accountBest ?? deviceBest,
           imported: isImportedBetter,
           deviceBest,
@@ -196,6 +210,12 @@ function hasRecordedBest(saved: ModeScorecard | undefined): saved is ModeScoreca
 
 export type RecordGame = ReturnType<typeof buildRecords>[number];
 export type RecordMode = RecordGame["modes"][number];
+
+export function preferredRecordModeId(game: RecordGame): string {
+  const defaultMode = game.modes.find(mode => mode.modeId === game.config.defaultModeId);
+  return (defaultMode && defaultMode.best !== null ? defaultMode : game.modes.find(mode => mode.best !== null))?.modeId
+    ?? game.config.defaultModeId;
+}
 
 export function formatRecordScore(game: RecordGame, mode: RecordMode, score: number): string {
   const format = mode.unit === "s" ? "duration_seconds" : getGameMetricSchema(game.id).primaryRankMetric.format;

@@ -9,7 +9,7 @@ import { useScorecardStore } from "../store/scorecardStore";
 import { useAuthStore } from "../store/authStore";
 import { usePlayerId } from "../lib/playerIdentity";
 import { launchLinkProps } from "../lib/gameLaunch";
-import { buildRecords, formatRecordScore, goalProgress, recordSummary, recordValue, recordDate, type RecordGame } from "../features/myrecords/records";
+import { buildRecords, formatRecordScore, goalProgress, preferredRecordModeId, recordSummary, recordValue, recordDate, type RecordGame } from "../features/myrecords/records";
 import { importDeviceBests, listDeviceBests } from "../features/myrecords/deviceRecords";
 import { RecordHistory, RecordJourney } from "../features/myrecords/RecordPanels";
 import { useReducedMotion } from "../hooks/useReducedMotion";
@@ -68,7 +68,7 @@ export default function MyRecordsPage() {
   const game = filtered.find((candidate) => candidate.id === gameId) ?? filtered[0] ?? games[0]!;
   const mode = game.modes.find((candidate) => candidate.modeId === modeId) ?? game.modes.find((candidate) => candidate.modeId === game.config.defaultModeId) ?? game.modes[0]!;
   const progress = goalProgress(mode);
-  const selectGame = (next: RecordGame) => { setGameId(next.id); setModeId(next.config.defaultModeId); };
+  const selectGame = (next: RecordGame) => { setGameId(next.id); setModeId(preferredRecordModeId(next)); };
   const stats = [
     { label: "Games explored", value: summary.gamesExplored, icon: Gamepad2, color: "text-violet-600 bg-violet-500/10" },
     { label: "Modes available", value: summary.modesAvailable, icon: Grid2X2, color: "text-cyan-600 bg-cyan-500/10" },

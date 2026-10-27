@@ -57,6 +57,21 @@ describe("bests brought from a device", () => {
 });
 
 describe("personal records data", () => {
+  it("reads each current Brick Blocks mode without assigning a failed sprint a completion time", () => {
+    localStorage.setItem("bhalyam_brick_tetris_save_v1", JSON.stringify({ arcade: { records: [
+      { mode: "marathon", score: 3200 }, { mode: "pentix", score: 2400 },
+      { mode: "attack", score: 1600 }, { mode: "practice", score: 1000 },
+      { mode: "sprint", score: 9999, elapsedMs: 20000, complete: false },
+      { mode: "sprint", elapsedMs: 125000, complete: true },
+      { mode: "daily", elapsedMs: 140000, complete: true },
+      { mode: "daily", elapsedMs: 135000, complete: true },
+    ] } }));
+    const game = buildRecords(null).find(item => item.id === "brickblocks")!;
+    for (const [modeId, best] of Object.entries({
+      arcade_marathon: 3200, arcade_pentix: 2400, arcade_attack: 1600, arcade_practice: 1000,
+      arcade_sprint: 125, arcade_daily: 135,
+    })) expect(game.modes.find(mode => mode.modeId === modeId)).toMatchObject({ best, deviceOnly: true, timesPlayed: 0 });
+  });
   it("preserves older cache snapshots locally without inventing synced matches or overwriting account bests", () => {
     const old = archived("handcricket", { t20: scorecard("t20", 200), international_t20: scorecard("international_t20", 180) });
     const synced = archived("handcricket", { international_t20: scorecard("international_t20", 140) });

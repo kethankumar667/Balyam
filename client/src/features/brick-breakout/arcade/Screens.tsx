@@ -38,7 +38,7 @@ export function ModeMenu({ data, start }: { data: ArcadeSave; start: (mode: Mode
     </div>
     <section className="mt-8 rounded-2xl border border-white/15 bg-slate-900/80 p-4 text-xs leading-6 text-slate-300">
       <p className="font-semibold text-slate-100">Personal competition, honestly labelled</p>
-      <p>These are device-local records, not verified global rankings. Daily runs are repeatable and pausable; this is not a ranked tournament.</p>
+      <p>Finished runs save to your account and keep a device best when storage is allowed. These are client-reported scores, not verified global rankings. Daily runs are repeatable and pausable; this is not a ranked tournament.</p>
       {data.legacyBest > 0 && <p className="mt-2">Historical classic best: <strong className="tabular-nums text-amber-200">{data.legacyBest.toLocaleString()}</strong>. Preserved separately because the old game used different rules.</p>}
     </section>
   </main>;
@@ -76,11 +76,11 @@ export function FieldGuide() {
 export function RunResults({ state, replay, menu }: { state: ArcadeState; replay: () => void; menu: () => void }) {
   return <section aria-labelledby="breakout-result-title" className="mx-auto max-w-lg space-y-5 rounded-3xl border border-cyan-200/30 bg-slate-900 p-6 text-center">
     <Trophy aria-hidden="true" className="mx-auto h-10 w-10 text-cyan-200" />
-    <p className="text-xs uppercase tracking-widest text-cyan-200">{MODE_TITLES[state.mode]} / Device result</p>
+    <p className="text-xs uppercase tracking-widest text-cyan-200">{MODE_TITLES[state.mode]} / Solo result</p>
     <h2 id="breakout-result-title" className="font-display text-3xl">{state.result === "cleared" ? "All sectors cleared" : state.result === "time" ? "Time's up. Nice flight." : "One more flight?"}</h2>
     <p className="text-4xl font-semibold tabular-nums text-cyan-100">{state.score.toLocaleString()} <span className="text-sm text-slate-300">pts</span></p>
     <dl className="grid grid-cols-3 gap-3 text-sm">{[["Bricks", state.destroyed], ["Best combo", `${state.bestCombo}\u00d7`], ["Returns", state.returns]].map(([label, value]) => <div key={label}><dt className="text-xs text-slate-400">{label}</dt><dd className="mt-1 font-semibold tabular-nums">{value}</dd></div>)}</dl>
-    <p className="text-xs leading-6 text-slate-400">Saved locally when optional storage is allowed. No coins, XP or global rank are awarded.</p>
+    <p className="text-xs leading-6 text-slate-400">Finished results save automatically to your account, with a local best when optional storage is allowed. No coins or XP are awarded; scores are client-reported, not verified competition.</p>
     <div className="flex flex-wrap justify-center gap-2"><button type="button" className={primaryClass} onClick={replay}>Play again</button><button type="button" className={buttonClass} onClick={menu}>Choose mode</button></div>
   </section>;
 }

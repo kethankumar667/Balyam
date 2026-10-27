@@ -51,6 +51,11 @@ export const BREAKOUT_ARCADE_MODE_IDS = {
 } as const;
 export type BreakoutArcadeMode = keyof typeof BREAKOUT_ARCADE_MODE_IDS;
 
+export const BRICK_BLOCKS_ARCADE_MODE_IDS = {
+  marathon: "arcade_marathon", pentix: "arcade_pentix", sprint: "arcade_sprint",
+  attack: "arcade_attack", daily: "arcade_daily", practice: "arcade_practice",
+} as const;
+
 /**
  * Retro Cricket's two match types (the menu's "CLASSIC MATCH" and "CHASE TARGET") crossed with the
  * four over lengths its menu offers. The labels are the ones the menu shows (`StateMachine.overOptions`).
@@ -325,8 +330,14 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
     category: "retro_arcade",
     defaultModeId: "classic",
     modes: [
-      { modeId: "classic", displayName: "Classic Marathon", description: "Standard falling blocks line-clear run", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
-      { modeId: "pentix", displayName: "Pentix 5-Block", description: "Challenging 5-block polyominoes", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "classic", displayName: "Classic Marathon (Historical)", description: "Earlier falling-block rules; kept apart from the current arcade", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
+      { modeId: "pentix", displayName: "Pentix 5-Block (Historical)", description: "Earlier five-cell rules; kept apart from the current arcade", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "arcade_marathon", displayName: "Arcade Marathon", description: "Current colorful endless line-clear run", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "arcade_pentix", displayName: "Arcade Pentix", description: "Current colorful five-cell challenge", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "arcade_sprint", displayName: "40-line Sprint", description: "Fastest completed 40-line run", scoringDirection: "LOWER_IS_BETTER", unit: "s", minPlausibleScore: 1 },
+      { modeId: "arcade_attack", displayName: "Score Attack", description: "Two-minute line-clear score attack", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "arcade_daily", displayName: "Daily Circuit", description: "Fastest completed 40-line daily run across UTC dates; client-reported, repeatable", scoringDirection: "LOWER_IS_BETTER", unit: "s", minPlausibleScore: 1 },
+      { modeId: "arcade_practice", displayName: "Free Play (Practice)", description: "Practice score at a player-chosen fall speed; separate from other formats", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
     ],
   },
   breakout: {
@@ -336,9 +347,9 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
     defaultModeId: "classic",
     modes: [
       { modeId: "classic", displayName: "Classic Wall (Historical)", description: "Historical grid-based rules, kept separate from Neon arcade scores", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
-      { modeId: "neon_campaign", displayName: "Neon Campaign", description: "Device-local eight-sector campaign; not a verified ranking", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
-      { modeId: "neon_score_attack", displayName: "Neon Score Attack", description: "Device-local two-minute score attack", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
-      { modeId: "neon_daily", displayName: "Neon Daily Challenge", description: "Best device-local daily run; each date is tracked separately in the game", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "neon_campaign", displayName: "Neon Campaign", description: "Eight-sector campaign; client-reported account score, not verified competition", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "neon_score_attack", displayName: "Neon Score Attack", description: "Two-minute score attack with automatic account saving", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "neon_daily", displayName: "Neon Daily Challenge", description: "Best daily run across dates; each date is also tracked separately on this device", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
     ],
   },
   sudoku: {

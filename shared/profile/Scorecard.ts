@@ -61,7 +61,7 @@ export interface PlayerScorecardArchive {
   updatedAt: number;
   /**
    * Bests the player chose to bring from a device's own storage. Kept apart from `games` on purpose: a
-   * browser's save can be edited, so these are shown in My Records but never feed a ranking.
+   * browser's save can be edited, so these are labeled in My Records and Profile Scorecards but never feed a ranking.
    */
   deviceImports?: Partial<Record<AllGameSlug, Record<string, ImportedBest>>>;
 }

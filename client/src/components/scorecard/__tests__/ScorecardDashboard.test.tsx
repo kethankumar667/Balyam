@@ -5,7 +5,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PlayerScorecardArchive } from "@shared/profile/Scorecard";
 import ScorecardDashboard from "../ScorecardDashboard";
 import { RecentBattles } from "../ScorecardDashboardPanels";
-import { scorecardArt, scorecardCoverage, scorecardModes } from "../scorecardDashboardModel";
+import { scorecardArt, scorecardBest, scorecardCoverage, scorecardModes } from "../scorecardDashboardModel";
+import { GAME_MODE_REGISTRY } from "@shared/profile/GameModes";
+import { buildRecords } from "../../../features/myrecords/records";
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); localStorage.clear(); vi.restoreAllMocks(); });
 
@@ -103,9 +105,68 @@ describe.each(["mobile", "desktop"] as const)("scorecards %s dashboard", layout 
     expect(screen.getByRole("img", { name: /Recent scores/ }).querySelectorAll("circle[data-score]")).toHaveLength(1);
     expect(screen.getByText("One score saved. Play again to build a trend.")).toBeVisible();
   });
+
+  it("shows imported Breakout bests without inventing match history or a performance grade", () => {
+    draw({ ...dashboardArchive, deviceImports: { breakout: {
+      neon_campaign: { score: 33600, importedAt: 1 },
+      neon_score_attack: { score: 12500, importedAt: 1 },
+      neon_daily: { score: 5100, importedAt: 1 },
+    } } });
+    fireEvent.click(screen.getByRole("button", { name: "Select game Brick Breakout" }));
+    const card = screen.getByRole("region", { name: "Personal best" });
+    expect(within(card).getByText("33,600", { selector: "strong" })).toBeVisible();
+    expect(within(card).getByText("Imported from your device")).toBeVisible();
+    expect(within(card).queryByText("Matches played")).not.toBeInTheDocument();
+    expect(within(card).queryByText(/-RANK/)).not.toBeInTheDocument();
+    expect(within(card).queryByRole("button", { name: "Share scorecard" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /Recent scores/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Select Neon Daily Challenge" })).toHaveTextContent("5,100");
+    fireEvent.click(screen.getByRole("button", { name: "Select Classic Wall (Historical)" }));
+    expect(screen.getByText("Your next record starts here")).toBeVisible();
+  });
+
+  it("shows local solo saves using the same source labels as My Records", () => {
+    localStorage.setItem("bhalyam_brick_racer_v1", JSON.stringify({ highScore: 760 }));
+    draw();
+    fireEvent.click(screen.getByRole("button", { name: "Select game Brick Racer" }));
+    const card = screen.getByRole("region", { name: "Personal best" });
+    expect(within(card).getByText("760", { selector: "strong" })).toBeVisible();
+    expect(within(card).getByText("Saved on this device")).toBeVisible();
+  });
 });
 
 describe("dashboard persistence and layout", () => {
+  it.each(Object.values(GAME_MODE_REGISTRY).flatMap(config => config.modes.map(mode => ({ game: config.game, mode }))))(
+    "counts imported $game/$mode.modeId in coverage without mutating recorded games", ({ game, mode }) => {
+      const archive = { playerId: "test", games: {}, updatedAt: 1, totalPersonalBestsBeaten: 0,
+        deviceImports: { [game]: { [mode.modeId]: { score: 100, importedAt: 1 } } } };
+      expect(scorecardCoverage(archive).recorded).toBe(1);
+      expect(scorecardBest(buildRecords(archive, false).find(item => item.id === game), mode.modeId))
+        .toMatchObject({ score: 100, source: "imported", record: undefined });
+      expect(archive.games).toEqual({});
+    },
+  );
+
+  it("uses the registered comparison direction and keeps recorded statistics separate from a better import", () => {
+    const saved = { ...dashboardArchive.games.handcricket!.modes.international_t20, modeId: "race", bestScore: 125, scoringDirection: "LOWER_IS_BETTER" as const };
+    const archive = { ...dashboardArchive, games: { "2048": {
+      game: "2048" as const, gameDisplayName: "2048", lastPlayedAt: 1, totalModesPlayed: 1, modes: { race: saved },
+    } }, deviceImports: { "2048": { race: { score: 90, importedAt: 1 } } } };
+    const game = buildRecords(archive, false).find(item => item.id === "2048");
+    expect(scorecardBest(game, "race")).toMatchObject({ score: 90, source: "imported", record: { bestScore: 125, timesPlayed: 12 } });
+    archive.deviceImports["2048"].race.score = 200;
+    expect(scorecardBest(buildRecords(archive, false).find(item => item.id === "2048"), "race"))
+      .toMatchObject({ score: 125, source: "recorded" });
+  });
+
+  it("preserves an unknown-rules device best without assigning it to a current mode", () => {
+    localStorage.setItem("bhalyam_nokia_cricket_data_v1", JSON.stringify({ highScore: 140 }));
+    const game = buildRecords(null).find(item => item.id === "nokiacricket")!;
+    expect(scorecardModes({ ...dashboardArchive, games: {} }, "nokiacricket", game))
+      .toContainEqual(expect.objectContaining({ modeId: "device_previous_overall" }));
+    expect(scorecardBest(game, "device_previous_overall")).toEqual({ score: 140, source: "device" });
+    expect(game.modes.every(mode => scorecardBest(game, mode.modeId) === undefined)).toBe(true);
+  });
   it("keeps historical records available without counting them as current-mode coverage", () => {
     const base = dashboardArchive.games.handcricket!;
     const historical = { ...base.modes.international_t20, modeId: "t20", modeDisplayName: "Legacy T20" };

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { GAME_MODE_REGISTRY } from "@shared/profile/GameModes.js";
+import { BRICK_BLOCKS_ARCADE_MODE_IDS, GAME_MODE_REGISTRY } from "@shared/profile/GameModes.js";
 import {
   MAX_DEVICE_IMPORT_ENTRIES,
   type AllGameSlug,
@@ -37,6 +37,15 @@ function archiveWithBest(score: number, target = HIGHER): PlayerScorecardArchive
 const emptyArchive = (): PlayerScorecardArchive => ({ playerId: PLAYER, games: {}, totalPersonalBestsBeaten: 0, updatedAt: 0 });
 
 describe("applyDeviceImports", () => {
+  it("keeps six current Brick Blocks imports private without replacing historical formats", () => {
+    const entries = Object.values(BRICK_BLOCKS_ARCADE_MODE_IDS).map(modeId => ({ game: "brickblocks", modeId, score: 125 }));
+    const result = applyDeviceImports(emptyArchive(), entries, NOW);
+    expect(result.accepted).toEqual(entries);
+    expect(result.archive.games).toEqual({});
+    expect(Object.keys(result.archive.deviceImports?.brickblocks ?? {})).toEqual(entries.map(entry => entry.modeId));
+    expect(result.archive.deviceImports?.brickblocks?.classic).toBeUndefined();
+    expect(result.archive.deviceImports?.brickblocks?.pentix).toBeUndefined();
+  });
   it("keeps all Neon Breakout imports private and separate from historical classic", () => {
     const entries = ["neon_campaign", "neon_score_attack", "neon_daily"].map(modeId => ({ game: "breakout", modeId, score: 1200 }));
     const result = applyDeviceImports(emptyArchive(), entries, NOW);

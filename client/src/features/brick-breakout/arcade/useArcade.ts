@@ -3,6 +3,8 @@ import { advance, createRun, launch, moveTo, nextSector, pauseRun, resumeRun, ST
 import { defaultSave, loadArcade, recordRun, saveArcade, type ArcadeSave } from "./storage";
 import { breakoutAudio } from "../services/audioService";
 import { readConsent, subscribeConsent } from "../../../lib/privacy/consent";
+import { BREAKOUT_ARCADE_MODE_IDS } from "@shared/profile/GameModes";
+import { useSoloScoreSync } from "../../../hooks/useSoloScoreSync";
 
 const storageAllowed = () => readConsent()?.choice !== "essential-only";
 function load() {
@@ -16,6 +18,7 @@ export function useArcade() {
   const [data, setData] = useState(loaded.data);
   const dataRef = useRef(data);
   const [error, setError] = useState(loaded.error);
+  const { syncStatus, reset: resetSync, save: saveScore } = useSoloScoreSync();
   const canSave = useSyncExternalStore(subscribeConsent, storageAllowed, () => false);
   const [state, setState] = useState(() => createRun("campaign"));
   const stateRef = useRef(state);
@@ -42,10 +45,11 @@ export function useArcade() {
   const start = useCallback((mode: Mode) => {
     const date = new Date().toISOString().slice(0, 10);
     const seed = mode === "daily" ? 0 : crypto.getRandomValues(new Uint32Array(1))[0];
+    resetSync();
     recorded.current = false; keys.current.clear(); menuRef.current = false; setMenu(false);
     commit(createRun(mode, date, seed));
-  }, [commit]);
-  const returnToMenu = useCallback(() => { keys.current.clear(); menuRef.current = true; setMenu(true); }, []);
+  }, [commit, resetSync]);
+  const returnToMenu = useCallback(() => { resetSync(); keys.current.clear(); menuRef.current = true; setMenu(true); }, [resetSync]);
   const next = useCallback(() => commit(nextSector(stateRef.current)), [commit]);
   useEffect(() => { breakoutAudio.setMuted(!data.sound); }, [data.sound]);
 
@@ -76,6 +80,10 @@ export function useArcade() {
           recorded.current = true;
           breakoutAudio.playGameOver();
           persist(recordRun(dataRef.current, current));
+          saveScore("breakout", BREAKOUT_ARCADE_MODE_IDS[current.mode], current.score, {
+            date: current.date, sector: current.level, bricks: current.destroyed,
+            bestCombo: current.bestCombo, elapsedMs: Math.round(current.elapsed),
+          });
         }
         if (now - lastPublish >= 50 || current.status !== before.status) { setState(current); lastPublish = now; }
       } else accumulator = 0;
@@ -83,7 +91,7 @@ export function useArcade() {
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [pause, persist]);
+  }, [pause, persist, saveScore]);
 
   useEffect(() => {
     const blur = () => { keys.current.clear(); if (!menuRef.current) pause(); };
@@ -113,5 +121,5 @@ export function useArcade() {
       window.removeEventListener("blur", blur); document.removeEventListener("visibilitychange", hidden);
     };
   }, [fire, pause, resume]);
-  return { state, stateRef, data, error, canSave, menu, keys, inputBlocked, start, pause, resume, move, fire, next, returnToMenu, persist };
+  return { state, stateRef, data, error, syncStatus, canSave, menu, keys, inputBlocked, start, pause, resume, move, fire, next, returnToMenu, persist };
 }

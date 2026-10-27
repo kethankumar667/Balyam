@@ -18,6 +18,8 @@ import { useTheme } from "../../lib/useTheme";
 import { useHaptics } from "../../hooks/useHaptics";
 import Modal from "../../components/Modal";
 import { readConsent, subscribeConsent } from "../../lib/privacy/consent";
+import { BRICK_BLOCKS_ARCADE_MODE_IDS } from "@shared/profile/GameModes";
+import { useSoloScoreSync } from "../../hooks/useSoloScoreSync";
 
 const canSave = () => readConsent()?.choice !== "essential-only";
 const LANDSCAPE_QUERY = "(min-width: 480px) and (max-width: 1023px) and (max-height: 600px)";
@@ -38,6 +40,7 @@ export default function BrickTetrisGame() {
   const [loaded] = useState(loadSave);
   const [data, setData] = useState(loaded.data);
   const [error, setError] = useState(loaded.error);
+  const { syncStatus, reset: resetSync, save: saveScore } = useSoloScoreSync();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
@@ -85,10 +88,19 @@ export default function BrickTetrisGame() {
       recorded.current = true;
       tetrisAudio.playGameOver();
       const current = latest.current;
-      const record = recordRun(current.state);
+      const run = current.state;
+      const record = recordRun(run);
       persist({ ...current.data, run: null, records: retainRecords([record, ...current.data.records]) });
+      const timedFinish = run.challenge === "sprint" || run.challenge === "daily";
+      if (!timedFinish || (run.outcome === "complete" && run.linesCleared >= 40 && run.elapsedMs >= 1000)) {
+        saveScore("brickblocks", BRICK_BLOCKS_ARCADE_MODE_IDS[run.challenge],
+          timedFinish ? run.elapsedMs / 1000 : run.score, {
+            elapsedMs: run.elapsedMs, lines: run.linesCleared, level: run.level,
+            practiceSpeed: run.practiceSpeed, date: run.dailyDate ?? record.date,
+          });
+      } else resetSync();
     }
-  }, [state.status, haptics, persist]);
+  }, [state.status, haptics, persist, saveScore, resetSync]);
 
   useEffect(() => {
     const save = () => {
@@ -103,6 +115,7 @@ export default function BrickTetrisGame() {
   }, [persist]);
 
   const start = (mode: Challenge) => {
+    resetSync();
     recorded.current = false;
     const date = new Date().toISOString().slice(0, 10);
     dispatch({ type: "START_GAME", payload: { challenge: mode, practiceSpeed: speed, seed: mode === "daily" ? dailySeed(date) : undefined, dailyDate: mode === "daily" ? date : undefined } });
@@ -114,6 +127,7 @@ export default function BrickTetrisGame() {
     if (which === "settings") setSettingsOpen(true); else setHelpOpen(true);
   };
   const menu = () => {
+    resetSync();
     if (!isTimed(state.challenge) && ["playing", "line-clearing", "paused"].includes(state.status)) persist({ ...data, run: state });
     dispatch({ type: "BACK_TO_MENU" });
     setExitOpen(false);
@@ -159,7 +173,7 @@ export default function BrickTetrisGame() {
       </nav>
     </header>
     {error && <div role="alert" className="mx-auto mb-4 max-w-3xl rounded-xl border border-danger/40 bg-danger/10 p-3 text-sm text-ink-hi">{error}{loaded.error && <p>Saving is disabled to protect your existing data. Reload after resolving the storage problem.</p>}</div>}
-    {!storageAllowed && !inRun && <p role="status" className="mx-auto mb-4 max-w-3xl px-4 text-center text-xs text-ink-mid">Privacy is set to essential only. New records, settings and saved runs last only for this visit.</p>}
+    {!storageAllowed && !inRun && <p role="status" className="mx-auto mb-4 max-w-3xl px-4 text-center text-xs text-ink-mid">Privacy is set to essential only. Local records, settings and saved runs last only for this visit; finished results still save to your account.</p>}
     {state.status === "menu" && <ModeMenu onStart={start} saved={data.run !== null} onResume={() => { if (data.run) { recorded.current = false; dispatch({ type: "RESTORE_GAME", payload: data.run }); } }} records={data.records} legacyBest={legacy.bestClassicScore} legacyPentix={legacy.bestPentixScore} speed={speed} setSpeed={setSpeed} />}
     {inRun && <>
       {mobileLayout ? <MobileArena {...arenaProps} landscape={landscape} /> : <DesktopArena {...arenaProps} />}
@@ -175,6 +189,7 @@ export default function BrickTetrisGame() {
       </div>}
     </>}
     {state.status === "game-over" && <RunResults state={state} onAgain={() => start(state.challenge)} onMenu={menu} />}
+    {state.status === "game-over" && syncStatus ? <p role="status" className="mx-auto max-w-xl px-4 pb-5 text-center text-sm text-ink-mid">{syncStatus}</p> : null}
     <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} data={data} onChange={persist} haptics={haptics.enabled} toggleHaptics={haptics.toggle} bindingError={bindingError} onBind={bind} />
     <Modal open={helpOpen} onClose={() => setHelpOpen(false)} mobileSheet ariaLabel="How to play Brick Blocks" panelClassName="max-w-lg">
       <div className="rounded-3xl bg-surface-1 p-6 text-ink-hi"><h2 className="font-[Fredoka] text-3xl">A little room to think.</h2>

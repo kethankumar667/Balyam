@@ -6,6 +6,7 @@ import { gameLaunch } from "../../lib/gameLaunch";
 import { useResolvedCosmetics } from "../../lib/cosmeticsResolver";
 import SeatAvatar from "../profile/SeatAvatar";
 import Modal from "../Modal";
+import { scorecardValue } from "./scorecardDashboardModel";
 
 interface HoloPassShareModalProps {
   game: AllGameSlug;
@@ -30,6 +31,8 @@ export default function HoloPassShareModal({
   useEffect(() => () => clearTimeout(copyTimer.current), []);
 
   const gameConfig = getGameModeConfig(game);
+  const mode = gameConfig.modes.find(item => item.modeId === scorecard.modeId);
+  const score = mode ? scorecardValue(game, mode, scorecard.bestScore) : scorecard.bestScore.toLocaleString();
   // A link someone else opens must land on a page that exists. A browser-only game has its own page;
   // a room game has no URL that opens its create-room sheet, so its link lands on the games page.
   // (This used to be `/games/<slug>`, which is not a route, so every shared link was a 404.)
@@ -57,7 +60,7 @@ export default function HoloPassShareModal({
       try {
         await navigator.share({
           title: `BHALYAM Record: ${playerName} at ${gameConfig.displayName}`,
-          text: `My personal best in ${gameConfig.displayName} (${scorecard.modeDisplayName}) is ${scorecard.bestScore}. Can you beat it?`,
+          text: `My personal best in ${gameConfig.displayName} (${scorecard.modeDisplayName}) is ${score}. Can you beat it?`,
           url: challengeUrl,
         });
       } catch (error) {
@@ -72,7 +75,7 @@ export default function HoloPassShareModal({
 
   const handleWhatsAppShare = () => {
     const text = encodeURIComponent(
-      `My personal best in ${gameConfig.displayName} (${scorecard.modeDisplayName}) on BHALYAM is ${scorecard.bestScore}.\n\nCan you beat it? Play here: ${challengeUrl}`
+      `My personal best in ${gameConfig.displayName} (${scorecard.modeDisplayName}) on BHALYAM is ${score}.\n\nCan you beat it? Play here: ${challengeUrl}`
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, "_blank");
   };
@@ -124,7 +127,7 @@ export default function HoloPassShareModal({
               {scorecard.modeDisplayName}
             </div>
             <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-800 dark:from-cyan-300 via-slate-900 dark:via-white to-cyan-800 dark:to-cyan-200 font-mono tracking-tight">
-              {scorecard.bestScore}
+              {score}
             </div>
           </div>
 

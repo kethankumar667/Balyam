@@ -40,9 +40,14 @@ Keyboard bindings, sound volume, haptics, landing guide and reduced-motion-aware
 are configurable. Sprint/Daily clocks and the Attack countdown continue during pauses, including
 time spent in a hidden tab; a hidden tab pauses piece movement. Untimed modes save one resumable
 run every five seconds and on page hide, under the existing `bhalyam_brick_tetris_save_v1` key.
-Classic/Pentix device bests remain compatible with My Records; new-mode records are device-local
-and do not grant coins, XP or ranked results. Essential-only privacy keeps new progress in
-memory for the visit instead of writing it to local storage.
+Classic/Pentix bests remain available as historical formats. The six current modes use
+separate `arcade_*` account records. Finished Marathon, Pentix, Score Attack and Free Play
+runs save points automatically through the shared solo recorder; Free Play is explicitly
+practice. Sprint and Daily Circuit save elapsed seconds only after completing all 40 lines.
+They never mint a best time for a top-out. Existing device bests can be explicitly imported
+as private bests, never retroactive match history. No coins or XP are granted; these are
+client-reported results, not verified competition. Essential-only privacy keeps optional
+local progress in memory while account result saving still applies.
 
 **Brick Breakout Neon Arcade** (`/breakout`, with the existing `/brickbreakout`,
 `/brick-breakout` and `/blockbreakout` aliases) is a local solo paddle game.
@@ -69,9 +74,20 @@ daily best if it is older (at most 63 entries). My Records
 and the sign-out guard see these through `neon_campaign`, `neon_score_attack` and
 `neon_daily`; the last summarizes the best daily score, while the game distinguishes dates.
 An explicit account import remains private `deviceImports`, never a ranked result.
-New runs do not automatically submit account scores, create identities or grant coins/XP.
-Essential-only consent keeps new records in tab memory; unreadable saves are not overwritten,
+Finished Neon runs automatically submit once through the shared solo score saver and
+its offline outbox, using those three separate modes. They are client-reported account
+results, not verified competition, and grant no coins/XP. Existing local bests are not
+silently backfilled as matches: explicit imports remain separate and unranked.
+Essential-only consent keeps optional local records in tab memory; account result saving
+still applies. Unreadable local saves are not overwritten,
 and saving failures are shown explicitly. Unfinished runs are not resumable after reload.
+
+My Records and Profile Scorecards use the same cross-game record read model:
+recorded match bests, private imported bests, labeled device-only scores and historical
+formats. Imported/device bests never invent dates, match counts, grades or history.
+Both pages refresh account results on focus; an unavailable account read does not hide
+local bests. Daily Challenge's account best spans dates; its in-game device list keeps
+each UTC date separate.
 
 Arcade Racing validates proposed traffic against the whole visible/approaching
 car field, not just the new wave. A route must remain collision-free using the
