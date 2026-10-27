@@ -261,7 +261,31 @@ turn/choice changes, inspection and loss of connectivity clear the outline.
 Choice buttons are disabled with an explanation during magnifier inspection
 or reconnection. There are no choices when waiting, spectating, rolling, finished,
 or when the server lists none. This is input presentation, not a second source
-of move rules; the server remains authoritative, and 2–4-seat layouts stay unchanged.
+of move rules; the server remains authoritative, and 2–4-seat layouts retain
+their existing token controls.
+
+### Ludo turns and interrupted actions
+
+Every seat count shares `LudoTurnStatus`: a wrapping status beside the mobile
+controls and in the desktop right rail. It distinguishes roll, choose, waiting,
+dice animation, sending, inspection, reconnection and finished states. The timer
+reads the server's current turn deadline and sits outside the live announcement
+so screen readers do not announce every second. Expiry says it is waiting for
+the server; it does not claim that a timeout always skips the turn. No-move and
+three-sixes explanations come only from the server's last outcome.
+
+All roll/token paths, including keyboard shortcuts and direct board taps, share
+an immediate in-flight lock and the existing action ID contract. They do not
+buffer moves while offline. Authoritative gameplay progress, a rejection,
+disconnect or remount releases the lock; a slow response alone does not.
+After eight seconds the status offers **Restore room**, using the room's
+existing recovery owner, never replaying an unconfirmed action. A rejected
+optimistic token animation snaps back to the current authoritative snapshot.
+Inspection and reconnection do not pause the match or change its rules.
+If recovery/outcome copy exhausts a small portrait viewport, the play column
+scrolls internally while the bottom navigation stays reachable. Short landscape
+keeps the board and navigation in place and scrolls the right-hand controls.
+Both scroll regions are keyboard reachable; no control may overlap another.
 
 ### Trophy vault
 

@@ -3,7 +3,7 @@ import type { LudoState } from "@shared/types";
 import type { LudoBoardModel } from "./useLudoBoard";
 
 type ChoiceModel = Pick<LudoBoardModel,
-  "selfId" | "rolling" | "inspectingBoard" | "move" | "previewToken" | "clearTokenPreview"
+  "selfId" | "rolling" | "inputBlocked" | "pendingAction" | "deadlineExpired" | "inspectingBoard" | "move" | "previewToken" | "clearTokenPreview"
 >;
 
 export function LudoTokenChoices({ state, m, isOnline }: {
@@ -18,9 +18,11 @@ export function LudoTokenChoices({ state, m, isOnline }: {
       state.phase !== "playing" || state.turnPhase !== "moving" || m.rolling ||
       !m.selfId || state.turnPlayerId !== m.selfId || choices.length === 0) return null;
 
-  const unavailable = !isOnline || m.inspectingBoard;
+  const unavailable = !isOnline || m.inputBlocked || m.inspectingBoard;
   const help = !isOnline ? "Reconnecting. Token moves are unavailable."
     : m.inspectingBoard ? "Disable the magnifier to move."
+    : m.pendingAction ? "Waiting for the server."
+    : m.deadlineExpired ? "Time is up. Waiting for the server."
     : "Or tap a token on the board.";
   return (
     <div role="group" aria-label="Choose a token" aria-describedby={helpId} className="w-full min-w-0 max-w-xs">

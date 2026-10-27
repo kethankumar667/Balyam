@@ -11,6 +11,7 @@ import { Dice } from "./Dice";
 import { Token } from "./Token";
 import { LudoMagnifier } from "./LudoMagnifier";
 import { LudoTokenChoices } from "./LudoTokenChoices";
+import { LudoTurnStatus } from "./LudoTurnStatus";
 import InstructionsModal from "./InstructionsModal";
 import Toast from "./Toast";
 import Confetti from "./Confetti";
@@ -1236,16 +1237,6 @@ export function LudoTurnTower({
   m: LudoBoardModel;
   state: LudoState;
 }) {
-  const finished = state.phase === "finished";
-  const activeId = m.displayTurnPlayerId;
-  const color = state.playerColors[activeId] as LudoColor | undefined;
-  const hex = color ? COLOR_HEX[color] : "#9C7A3C";
-  const dark = color ? COLOR_HEX_DARK[color] : "#6D4323";
-  const mine = m.displayMyTurn;
-  const secondsLeft = useTurnSecondsLeft(state.turnDeadline);
-  const ticking = state.turnDeadline != null && secondsLeft > 0 && !finished;
-  const urgent = ticking && secondsLeft <= 5;
-
   return (
     /* Three rows, not a centred stack: turn state pinned to the top of the
        column, the dice held on the board's own centre line where the eye
@@ -1257,57 +1248,7 @@ export function LudoTurnTower({
       {/* ── Whose turn ─────────────────────────────────────────────────
           Keyed on turnPulse so the handover animates instead of silently
           swapping a word — a change you do not see is a change you miss. */}
-      {!finished && (
-        <div
-          key={m.turnPulse}
-          className="ludo-turn-change w-full rounded-2xl px-3 py-2.5 text-center"
-          style={{
-            background: mine ? hex : "var(--ludo-panel-bg, #F7E8C4)",
-            border: `3px solid ${mine ? dark : "var(--ludo-panel-border, #C8A66B)"}`,
-            boxShadow: mine
-              ? `0 0 0 4px ${hex}33, 0 6px 16px rgba(0,0,0,0.18)`
-              : "0 3px 10px rgba(0,0,0,0.10)",
-          }}
-        >
-          <div
-            className="text-[11px] font-black uppercase tracking-[0.18em]"
-            style={{ color: mine ? "#FFFBF0" : "var(--ludo-panel-text, #8A6A45)" }}
-          >
-            {mine ? "Your turn" : "Now playing"}
-          </div>
-          {!mine && (
-            <div
-              className="mt-0.5 truncate text-[15px] font-black leading-tight"
-              style={{ color: dark }}
-              title={m.nameOf(activeId)}
-            >
-              {m.nameOf(activeId)}
-            </div>
-          )}
-          <div
-            className="mt-0.5 text-[12px] font-bold"
-            style={{ color: mine ? "#FFFBF0" : "var(--ludo-panel-text, #8A6A45)" }}
-          >
-            {m.displayTurnPhase === "rolling" ? "Roll the dice" : "Move a token"}
-          </div>
-
-          {/* The clock only appears when it is actually running, and only goes
-              loud in the last five seconds — a countdown that is always red
-              stops meaning anything. */}
-          {ticking && (
-            <div
-              className="mx-auto mt-1.5 w-fit rounded-full px-2.5 py-0.5 text-[13px] font-black tabular-nums"
-              style={{
-                background: urgent ? "#DC2626" : mine ? "rgba(255,255,255,0.9)" : "var(--ludo-chip-bg, #EFE0BC)",
-                color: urgent ? "#fff" : mine ? dark : "var(--ludo-panel-text, #6D4323)",
-              }}
-              aria-label={`${secondsLeft} seconds left`}
-            >
-              {secondsLeft}s
-            </div>
-          )}
-        </div>
-      )}
+      <LudoTurnStatus m={m} state={state} />
 
       <div className="flex w-full items-center">
         <LudoRollTray m={m} state={state} />
@@ -1321,12 +1262,15 @@ export function LudoTurnTower({
 export function LudoRollTray({ m, state, compactChoices = false }: { m: LudoBoardModel; state: LudoState; compactChoices?: boolean }) {
   const streak = state.consecutiveSixes > 0 && state.consecutiveSixes < 3;
   const { isOnline } = useRecovery();
-  const canRoll = m.myTurn && m.canRoll && !m.rolling && isOnline;
+  const canRoll = m.myTurn && m.canRoll && !m.rolling && isOnline && !m.inputBlocked;
   const settleKey = useSettleKey(m.rolling);
   const finished = state.phase === "finished";
-  // Name who we're waiting on — "Waiting…" alone leaves the player guessing,
-  // and on desktop this tray sits far from the header's turn banner.
-  const waitingFor = !finished && !m.displayMyTurn ? m.nameOf(m.displayTurnPlayerId) : null;
+  const trayLabel = finished ? "Game over" : !isOnline ? "Reconnecting"
+    : m.inspectingBoard ? "Inspect only" : m.pendingAction ? "Sending your action"
+    : m.deadlineExpired ? "Waiting for the server" : m.rolling ? "Dice rolling"
+    : canRoll ? "Tap to roll" : m.myTurn
+    ? state.turnPhase === "rolling" ? "Your roll is next" : "Pick a token"
+    : `Waiting for ${m.nameOf(state.turnPlayerId)}`;
 
   /**
    * The cup wears the ACTIVE seat's colour.
@@ -1350,17 +1294,7 @@ export function LudoRollTray({ m, state, compactChoices = false }: { m: LudoBoar
         type="button"
         onClick={canRoll ? m.roll : undefined}
         disabled={!canRoll}
-        aria-label={
-          !isOnline
-            ? "Reconnecting — dice roll unavailable while offline"
-            : finished
-              ? "Game over"
-              : canRoll
-                ? "Roll the dice"
-                : m.myTurn
-                  ? "Pick a token to move"
-                  : `Waiting for ${waitingFor ?? "the next player"}`
-        }
+        aria-label={canRoll ? "Roll the dice" : trayLabel}
         // Outline (not ring): this button sets an inline box-shadow, which
         // would beat the global `*:focus-visible` box-shadow ring.
         className={`relative rounded-2xl flex items-center justify-center active:scale-95 transition disabled:cursor-default focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
@@ -1410,27 +1344,16 @@ export function LudoRollTray({ m, state, compactChoices = false }: { m: LudoBoar
         )}
       </button>
       <div
-        // The desktop shell has no turn callout — this label is its only
-        // whose-turn-is-it text, so the handover has to register here too.
         key={m.turnPulse}
         className="ludo-turn-change px-4 py-0.5 text-[12px] font-black max-w-[11rem] truncate text-center"
         style={{
-          // Now that the mobile turn callout is gone, this label IS the turn
-          // sentence on both shells — so it carries the seat colour too
-          // rather than sitting in neutral parchment beside a coloured cup.
           background: m.displayMyTurn ? cupTint : "var(--ludo-chip-bg, #F7E8C4)",
           border: `2px solid ${m.displayMyTurn ? cupDark : "var(--ludo-chip-border, #C8A66B)"}`,
           color: m.displayMyTurn ? "#FFFFFF" : "var(--ludo-chip-text, #6D4323)",
           borderRadius: 6,
         }}
       >
-        {finished
-          ? "Game over"
-          : m.displayMyTurn
-            ? m.displayTurnPhase === "rolling"
-              ? "Tap to roll"
-              : "Pick a token"
-            : `${waitingFor}…`}
+        {trayLabel}
       </div>
       {!compactChoices && <LudoTokenChoices state={state} m={m} isOnline={isOnline} />}
     </div>
@@ -1651,7 +1574,7 @@ function LudoBoardScene({ m, state, players, readOnly, inLens }: {
               }
               movable={movable}
               highlighted={pid === m.selfId && token.id === m.previewTokenId}
-              onClick={!readOnly && movable ? () => m.move(token.id) : undefined}
+              onClick={!readOnly && !m.inputBlocked && movable ? () => m.move(token.id) : undefined}
               onMouseEnter={readOnly ? undefined : () => m.onHoverToken(pid, token)}
               onMouseLeave={readOnly ? undefined : m.clearHoverPreview}
               label={String(idx + 1)}
@@ -1739,10 +1662,8 @@ export function LudoOverlays({
       {/* Screen-reader turn/result announcements — the visual cues (glow,
           ring, colour) convey this to sighted players; this is their
           non-visual equivalent. */}
-      <div className="sr-only" role="status" aria-live="polite">
-        {srTurn}
-      </div>
-      <TurnTimeWarning deadline={state.turnDeadline} active={m.myTurn && state.phase === "playing"} />
+      {state.phase === "finished" && <div className="sr-only" role="status" aria-live="polite">{srTurn}</div>}
+      <TurnTimeWarning deadline={state.turnDeadline} active={m.myTurn && !m.inputBlocked && state.phase === "playing"} chipless />
       {m.showInstructions && <InstructionsModal onClose={() => m.setShowInstructions(false)} />}
       {m.showSettings && <SettingsMenu onClose={() => m.setShowSettings(false)} />}
       {m.activeLuckySix && <LuckySixBurst />}

@@ -12,6 +12,7 @@ import {
   useLudoTableImpact,
 } from "./ludo-board-composites";
 import { LudoWorldScene } from "./LudoWorldScene";
+import { LudoTurnStatus } from "./LudoTurnStatus";
 
 /** The board is never allowed past this, matching the desktop shell. */
 const MAX_BOARD = 620;
@@ -30,11 +31,9 @@ const SHORT_LANDSCAPE_QUERY = "(orientation: landscape) and (max-height: 520px)"
  * stay mounted strip-less and are driven from the bottom nav via the
  * `bhalyam:open-room-panel` bridge, reclaiming a full row for gameplay.
  *
- * NO-SCROLL INVARIANT. The shell is hard-capped at the visible viewport
- * (`h-`, not `min-h-`) so nothing inside it can ever scroll the page, and the
- * board is MEASURED rather than guessed: a ResizeObserver on the board row
- * reports the real space left after the header/cards/nav, and the board is the
- * largest square that fits it.
+ * The shell is capped at the visible viewport and the board is measured
+ * against the remaining space. Exceptionally tall recovery copy scrolls
+ * inside the play column rather than covering the persistent bottom controls.
  */
 export default function LudoBoardMobile(props: LudoBoardProps) {
   const { state, players, selfId, messages, roomCode, roomPhase } = props;
@@ -50,6 +49,7 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
   const playColRef = useRef<HTMLDivElement>(null);
   const belowBoardRef = useRef<HTMLDivElement>(null);
   const [boardPx, setBoardPx] = useState(320);
+  const [scrollPlay, setScrollPlay] = useState(false);
   useEffect(() => {
     const col = playColRef.current;
     if (!col) return;
@@ -60,13 +60,16 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
       // portrait stack the 120px floor below swallowed the whole screen on a 375px-tall phone and the
       // board, header and dice all drew on top of one another.
       if (root && window.matchMedia(SHORT_LANDSCAPE_QUERY).matches) {
+        setScrollPlay(false);
         const usableH = root.clientHeight - 12;
         setBoardPx(Math.max(120, Math.floor(Math.min(usableH, root.clientWidth * 0.46, MAX_BOARD))));
         return;
       }
       const reserve = belowBoardRef.current?.offsetHeight ?? 0;
-      const usableH = col.clientHeight - reserve;
-      setBoardPx(Math.max(120, Math.floor(Math.min(col.clientWidth + 22, usableH, MAX_BOARD))));
+      const usableH = col.clientHeight - reserve - 8;
+      const needsScroll = usableH < 120;
+      setScrollPlay(needsScroll);
+      setBoardPx(Math.max(120, Math.floor(Math.min(col.clientWidth + (needsScroll ? 0 : 22), usableH, MAX_BOARD))));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -79,7 +82,7 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
   return (
     <div
       ref={camera.cameraRef}
-      className={`theme-${m.world} bhalyam-font relative z-0 rounded-2xl p-1.5 sm:p-4 shadow-2xl flex flex-col gap-2 h-[calc(100svh-0.5rem)] overflow-hidden short-land:grid short-land:grid-cols-[auto_minmax(0,1fr)] short-land:grid-rows-[auto_1fr_auto] short-land:gap-x-3 short-land:gap-y-1 short-land:overflow-y-auto`}
+      className={`theme-${m.world} bhalyam-font relative z-0 rounded-2xl p-1.5 sm:p-4 shadow-2xl flex flex-col gap-2 h-[calc(100svh-0.5rem)] overflow-hidden short-land:grid short-land:grid-cols-[auto_minmax(0,1fr)] short-land:grid-rows-[auto_minmax(0,1fr)_auto] short-land:gap-x-3 short-land:gap-y-1`}
       style={
         {
           background: "var(--ludo-screen-bg)",
@@ -99,16 +102,20 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
 
       {/* `short-land:contents` dissolves this column so its two children join the shell's grid directly:
           the board spans the left column, the cards + dice sit in the right one. */}
-      <div ref={playColRef} className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2 short-land:contents">
+      <div ref={playColRef} tabIndex={scrollPlay ? 0 : undefined}
+        role={scrollPlay ? "region" : undefined} aria-label={scrollPlay ? "Ludo board and controls" : undefined}
+        className={`flex-1 min-h-0 flex flex-col items-center gap-2 short-land:contents ${scrollPlay ? "justify-start overflow-y-auto overflow-x-hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500" : "justify-center"}`}>
         <div
           className="shrink-0 flex items-center justify-center short-land:col-start-1 short-land:row-start-1 short-land:row-span-3 short-land:self-center short-land:!m-0 short-land:!w-[var(--ludo-board-px)]"
-          style={{ width: "calc(100% + 22px)", marginLeft: -11, marginRight: -11 }}
+          style={{ width: scrollPlay ? "100%" : "calc(100% + 22px)", marginLeft: scrollPlay ? 0 : -11, marginRight: scrollPlay ? 0 : -11 }}
         >
           <LudoBoardArea m={m} state={state} players={players} maxWidth={`${boardPx}px`} />
         </div>
 
-        <div ref={belowBoardRef} className="flex w-full flex-col items-center gap-2 short-land:col-start-2 short-land:row-start-2 short-land:self-center">
+        <div ref={belowBoardRef} tabIndex={0} role="region" aria-label="Ludo players and turn controls"
+          className="flex w-full shrink-0 flex-col items-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 short-land:col-start-2 short-land:row-start-2 short-land:min-h-0 short-land:self-stretch short-land:overflow-y-auto">
           <LudoPlayerCards state={state} players={players} row="grid" selfId={selfId} registerCard={m.registerPlayerCard} onTarget={m.targetPlayer} />
+          <LudoTurnStatus m={m} state={state} />
           <LudoRollTray m={m} state={state} compactChoices />
         </div>
       </div>

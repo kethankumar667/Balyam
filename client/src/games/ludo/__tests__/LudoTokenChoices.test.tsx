@@ -20,6 +20,7 @@ function show(overrides: Partial<LudoState> = {}, options: { online?: boolean; i
     selfId: options.selfId === undefined ? "self" : options.selfId,
     inspectingBoard: options.inspecting ?? false,
     rolling: options.rolling ?? false,
+    inputBlocked: false, pendingAction: null, deadlineExpired: false,
     move: vi.fn(), previewToken: vi.fn(), clearTokenPreview: vi.fn(),
   };
   const view = render(<LudoTokenChoices state={{ ...state, ...overrides }} m={model} isOnline={options.online ?? true} />);

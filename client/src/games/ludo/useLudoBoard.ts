@@ -33,6 +33,7 @@ import {
   PLAYER_COLORS_ORDER,
 } from "./board-layout";
 import { cellToPct, fanSlot, type LudoHoverPreview } from "./ludo-board-shared";
+import { useLudoActions } from "./useLudoActions";
 
 /**
  * Shared props for every Ludo shell (picker, mobile, desktop). Identical to
@@ -101,6 +102,10 @@ export interface LudoBoardModel {
   myTurn: boolean;
   canRoll: boolean;
   rolling: boolean;
+  pendingAction: "roll" | "move" | null;
+  actionStalled: boolean;
+  deadlineExpired: boolean;
+  inputBlocked: boolean;
   /** Turn owner/phase for ANNOUNCEMENTS — held at the previous value while
    *  the dice is still tumbling so the banner never names the next player
    *  before you have seen your own result. Never gate controls on these. */
@@ -216,6 +221,8 @@ export function useLudoBoard({
   const { isOnline } = useRecovery();
   const [inspectingBoard, setInspectingBoard] = useState(false);
   const [previewTokenId, setPreviewTokenId] = useState<string | null>(null);
+  const actions = useLudoActions(state, selfId, isOnline, inspectingBoard);
+  const inputBlocked = !isOnline || inspectingBoard || actions.pendingAction !== null || actions.deadlineExpired;
   /**
    * The board ARM a player sits on — the key for ALL geometry (track start,
    * home stretch, yard slots, token ids, board rotation). Distinct from
@@ -245,7 +252,7 @@ export function useLudoBoard({
     myTurn &&
     state.turnPhase === "rolling" &&
     state.phase === "playing" &&
-    !rollCooldown;
+    !rollCooldown && !inputBlocked;
   useTurnHaptics(state.phase === "playing" ? state.turnPlayerId : null, selfId);
   const haptics = useHaptics();
 
@@ -267,6 +274,14 @@ export function useLudoBoard({
     [state.stats?.rollCount],
   );
   const [rolling, setRolling] = useState(false);
+  const rollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (rollTimerRef.current !== null) clearTimeout(rollTimerRef.current); }, []);
+  useEffect(() => {
+    if (!isOnline || actions.rejection > 0) {
+      if (rollTimerRef.current !== null) clearTimeout(rollTimerRef.current);
+      setRolling(false);
+    }
+  }, [isOnline, actions.rejection]);
   const prevRollTick = useRef(rollTick);
   /** When the current tumble began, so the token walk can wait it out. */
   const rollStartedAtRef = useRef(0);
@@ -736,7 +751,7 @@ export function useLudoBoard({
   }
   function previewToken(tokenId: string): void {
     if (!selfId || !myTurn || state.phase !== "playing" || state.turnPhase !== "moving" ||
-        inspectingBoard || !isOnline || !state.movableTokenIds.includes(tokenId)) return;
+        inputBlocked || !state.movableTokenIds.includes(tokenId)) return;
     const token = state.tokens[selfId]?.find(candidate => candidate.id === tokenId);
     if (!token) return;
     setPreviewTokenId(tokenId);
@@ -745,7 +760,7 @@ export function useLudoBoard({
   useEffect(() => {
     setPreviewTokenId(null);
     setHoverPreview(null);
-  }, [state.turnPlayerId, state.turnPhase, state.phase, state.diceValue, state.movableTokenIds, selfId, inspectingBoard, isOnline]);
+  }, [state.turnPlayerId, state.turnPhase, state.phase, state.diceValue, state.movableTokenIds, selfId, inputBlocked]);
 
   // ---- Lucky moment detection ----
   const [luckyBanner, setLuckyBanner] = useState<string | null>(null);
@@ -789,7 +804,7 @@ export function useLudoBoard({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canRoll, rolling, myTurn, state.turnPhase, state.movableTokenIds, selfId, state.playerColors, state.phase, inspectingBoard, isOnline]);
+  }, [canRoll, rolling, myTurn, state.turnPhase, state.movableTokenIds, selfId, state.playerColors, state.phase, inputBlocked, isOnline]);
 
   // ---- Per-player background tint ----
   useEffect(() => {
@@ -838,23 +853,17 @@ export function useLudoBoard({
     return players.find((p) => p.id === id)?.cosmetics?.diceSkin ?? getDefaultCosmetic("DICE_SKIN", "ludo").id;
   }
   function roll() {
-    if (!canRoll) return;
+    if (!canRoll || rolling || !actions.send("roll")) return;
     if (soundOn) sfx.diceRoll();
     haptics.subtle();
     rollStartedAtRef.current = Date.now();
     setRolling(true);
-    // Include playerId so the server can proxy moves when Room.tsx has
-    // overridden `selfId` to a local pass-and-play seat.
-    getSocket().emit("game:move", { type: "roll", playerId: selfId ?? undefined });
-    setTimeout(() => setRolling(false), DICE_ROLL_MS);
+    if (rollTimerRef.current !== null) clearTimeout(rollTimerRef.current);
+    rollTimerRef.current = setTimeout(() => setRolling(false), DICE_ROLL_MS);
   }
   function move(tokenId: string) {
-    if (state.playerOrder.length >= 5 && (
-      inspectingBoard || !isOnline || !myTurn || state.phase !== "playing" ||
-      state.turnPhase !== "moving" || !state.movableTokenIds.includes(tokenId)
-    )) return;
+    if (!actions.send("move", tokenId)) return;
     clearTokenPreview();
-    getSocket().emit("game:move", { type: "move", data: { tokenId }, playerId: selfId ?? undefined });
 
     /**
      * OPTIMISTIC: start the token moving now, rather than after the round
@@ -913,6 +922,7 @@ export function useLudoBoard({
   const [displayed, setDisplayed] = useState<Record<string, LudoToken>>({});
   const animationTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const initialisedRef = useRef(false);
+  const reconciledRejection = useRef(actions.rejection);
   /** Per-token hop duration for the walk currently in flight. Fed to `Token`,
    *  which must transition in less time than one step or the steps merge into
    *  a single glide. */
@@ -978,7 +988,10 @@ export function useLudoBoard({
       for (const t of state.tokens[pid] ?? []) snapshot.push({ pid, token: t });
     }
 
-    if (!initialisedRef.current) {
+    if (!initialisedRef.current || actions.rejection !== reconciledRejection.current) {
+      reconciledRejection.current = actions.rejection;
+      for (const timer of animationTimersRef.current.values()) clearTimeout(timer);
+      animationTimersRef.current.clear();
       // First load: snap displayed to server state without animation
       const initial: Record<string, LudoToken> = {};
       for (const { token } of snapshot) initial[token.id] = token;
@@ -1012,7 +1025,7 @@ export function useLudoBoard({
       playPathRef.current(id, path, diceHoldMs());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.tokens]);
+  }, [state.tokens, actions.rejection]);
 
   const allTokens = useMemo(() => {
     const arr: { pid: string; token: LudoToken }[] = [];
@@ -1303,6 +1316,10 @@ export function useLudoBoard({
     myTurn,
     canRoll,
     rolling,
+    pendingAction: actions.pendingAction,
+    actionStalled: actions.actionStalled,
+    deadlineExpired: actions.deadlineExpired,
+    inputBlocked,
     displayTurnPlayerId,
     displayTurnPhase,
     displayMyTurn,
