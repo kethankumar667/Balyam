@@ -144,13 +144,21 @@ export function auditSupabaseClientConfig({ renderFrontendSection, clientEnvCont
 
 export function auditRoomSnapshotConfig(backend) {
   const issues = [];
-  const mount = backend.match(/^\s*mountPath:\s*(\/[^\s#]+)\s*$/m)?.[1];
-  const directory = backend.match(/key:\s*ROOM_SNAPSHOT_DIR\s*\r?\n\s*value:\s*(\/[^\s#]+)/)?.[1];
-  if (!/^\s*disk:\s*$/m.test(backend) || !mount || !directory || mount !== directory) {
-    issues.push("ROOM_SNAPSHOT_DIR must match the backend persistent disk mountPath.");
-  }
-  if (!/key:\s*ROOM_SNAPSHOT_STORE\s*\r?\n\s*value:\s*file\b/.test(backend)) {
-    issues.push("Render backend must explicitly select the file snapshot store.");
+  const driver = backend.match(/key:\s*ROOM_SNAPSHOT_STORE\s*\r?\n\s*value:\s*(\w+)\b/)?.[1];
+  if (driver === "supabase") {
+    for (const key of ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]) {
+      if (!new RegExp(`key:\\s*${key}\\s*\\r?\\n\\s*sync:\\s*false\\b`).test(backend)) {
+        issues.push(`Supabase snapshots require server-side ${key} (sync: false).`);
+      }
+    }
+  } else if (driver === "file") {
+    const mount = backend.match(/^\s*mountPath:\s*(\/[^\s#]+)\s*$/m)?.[1];
+    const directory = backend.match(/key:\s*ROOM_SNAPSHOT_DIR\s*\r?\n\s*value:\s*(\/[^\s#]+)/)?.[1];
+    if (!/^\s*disk:\s*$/m.test(backend) || !mount || !directory || mount !== directory) {
+      issues.push("ROOM_SNAPSHOT_DIR must match the backend persistent disk mountPath.");
+    }
+  } else {
+    issues.push("Render backend must explicitly select Supabase snapshots or a persistent file store.");
   }
   if (!/^\s*healthCheckPath:\s*\/ready\s*$/m.test(backend)) {
     issues.push("Render backend healthCheckPath must use /ready, not liveness alone.");

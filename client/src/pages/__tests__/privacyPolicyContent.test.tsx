@@ -69,7 +69,7 @@ describe("PrivacyPolicyPage content", () => {
     it("carries a real effective date and no invented statistics", () => {
       renderPage();
 
-      expect(screen.getByText(/EFFECTIVE: OCTOBER 24, 2026/i)).toBeInTheDocument();
+      expect(screen.getByText(/EFFECTIVE: OCTOBER 27, 2026/i)).toBeInTheDocument();
       expect(document.body.textContent).not.toMatch(/2,400 words|min read/i);
     });
 
@@ -84,6 +84,14 @@ describe("PrivacyPolicyPage content", () => {
       renderPage();
 
       expect(document.body.textContent).not.toMatch(/Sovereignity/);
+    });
+
+    it("discloses private Supabase recovery snapshots, expiry and delayed cleanup while hosting is asleep", () => {
+      renderPage();
+      expect(section("data-retention").getByText(/recovery snapshots.*Supabase/i)).toBeInTheDocument();
+      expect(section("data-retention").getByText(/two hours after their last save/i)).toBeInTheDocument();
+      expect(section("data-retention").getByText(/cleanup resumes when the server is running/i)).toBeInTheDocument();
+      expect(THIRD_PARTIES.find((party) => party.name.startsWith("Supabase"))?.when).toMatch(/guests and members/i);
     });
 
     it("does not claim certifications on behalf of its providers", () => {

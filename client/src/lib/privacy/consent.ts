@@ -41,8 +41,9 @@ export interface ConsentRecord {
  * 4 — records the account ids that acknowledged the notice on this device,
  *     including across sign-out, so guest consent cannot bypass member onboarding.
  * 5 — declares deliberately accepted friend invitations and account referral qualification.
+ * 6 — declares server-side Supabase room recovery for guests and members.
  */
-export const NOTICE_VERSION = 5;
+export const NOTICE_VERSION = 6;
 
 export const CONSENT_KEY = "bhalyam.consent";
 

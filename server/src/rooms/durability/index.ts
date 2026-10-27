@@ -2,6 +2,8 @@ import type { RoomSnapshotRepository } from "./types.js";
 import { InMemoryRoomSnapshotRepository } from "./InMemoryRoomSnapshotRepository.js";
 import { FileRoomSnapshotRepository } from "./FileRoomSnapshotRepository.js";
 import { RedisRoomSnapshotRepository } from "./RedisRoomSnapshotRepository.js";
+import { SupabaseRoomSnapshotRepository } from "./SupabaseRoomSnapshotRepository.js";
+import { readPostgrestConfig } from "../../persistence/postgrest.js";
 import { logger } from "../../lib/logger.js";
 import path from "node:path";
 
@@ -32,17 +34,28 @@ export function setRoomSnapshotStore(next: RoomSnapshotRepository | null): void 
  *
  * Selection priority:
  * Explicit driver wins; otherwise Redis URL selects Redis, and files are the default.
+ * Supabase is explicit and uses server-only PostgREST configuration.
  * Production files require an absolute, existing persistent mount. No driver silently falls back.
  */
 export async function initialiseRoomSnapshotStore(): Promise<RoomSnapshotRepository> {
   const explicitStore = (process.env.ROOM_SNAPSHOT_STORE ?? "").trim().toLowerCase();
   const production = process.env.NODE_ENV?.trim().toLowerCase() === "production";
   persistentFileConfigured = false;
-  if (explicitStore && !["file", "redis", "memory"].includes(explicitStore)) {
+  if (explicitStore && !["file", "redis", "memory", "supabase"].includes(explicitStore)) {
     throw new Error(`Unknown ROOM_SNAPSHOT_STORE: ${explicitStore}`);
   }
   if (production && explicitStore === "memory") {
     throw new Error("Refusing production room snapshots in memory; configure persistent file storage.");
+  }
+
+  if (explicitStore === "supabase") {
+    const config = readPostgrestConfig();
+    if (!config) throw new Error("Supabase room snapshots require SUPABASE_URL and a server-only service key.");
+    const repository = new SupabaseRoomSnapshotRepository(config);
+    await repository.ping();
+    store = repository;
+    logger.info({ message: "Room snapshot store initialized with SUPABASE (durable PostgreSQL).", module: "DURABILITY" });
+    return store;
   }
 
   if (explicitStore === "memory" || process.env.NODE_ENV === "test") {
@@ -85,7 +98,10 @@ export async function initialiseRoomSnapshotStore(): Promise<RoomSnapshotReposit
   return store;
 }
 
-export function roomSnapshotStoreStatus(): { durable: boolean; driver: "memory" | "file" | "redis" } {
+export function roomSnapshotStoreStatus(): { durable: boolean; driver: "memory" | "file" | "redis" | "supabase" } {
+  if (store instanceof SupabaseRoomSnapshotRepository) {
+    return { durable: true, driver: "supabase" };
+  }
   if (store instanceof RedisRoomSnapshotRepository) {
     return { durable: true, driver: "redis" };
   }
@@ -97,7 +113,7 @@ export function roomSnapshotStoreStatus(): { durable: boolean; driver: "memory" 
 
 export async function pingRoomSnapshotStore(): Promise<void> {
   const current = roomSnapshotStore();
-  if (current instanceof FileRoomSnapshotRepository || current instanceof RedisRoomSnapshotRepository) {
+  if (current instanceof FileRoomSnapshotRepository || current instanceof RedisRoomSnapshotRepository || current instanceof SupabaseRoomSnapshotRepository) {
     await current.ping();
   }
 }
@@ -106,3 +122,4 @@ export * from "./types.js";
 export { InMemoryRoomSnapshotRepository } from "./InMemoryRoomSnapshotRepository.js";
 export { FileRoomSnapshotRepository } from "./FileRoomSnapshotRepository.js";
 export { RedisRoomSnapshotRepository } from "./RedisRoomSnapshotRepository.js";
+export { SupabaseRoomSnapshotRepository } from "./SupabaseRoomSnapshotRepository.js";

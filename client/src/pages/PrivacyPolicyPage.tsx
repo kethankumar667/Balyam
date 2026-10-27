@@ -36,7 +36,7 @@ import { THIRD_PARTIES } from "../lib/privacy/dataInventory";
 import { downloadMyData } from "../lib/privacy/exportData";
 
 /** Change this whenever the policy's wording changes — the policy promises as much (section 13). */
-const POLICY_EFFECTIVE_DATE = "October 24, 2026";
+const POLICY_EFFECTIVE_DATE = "October 27, 2026";
 /** Where the app lives today. Update it, and the Google consent screen's links, when the custom domain arrives. */
 const SITE_ADDRESS = "bhalyam.onrender.com";
 
@@ -391,7 +391,7 @@ export default function PrivacyPolicyPage() {
 
                 {sec.id === "data-retention" && (
                   <div className="space-y-2"><p>
-                    In-memory game rooms are purged immediately after matches conclude and players leave. Member profiles and career badges persist until you delete your account. Mandali chat messages are removed after one year. Records of reward checks (an account's standing and the events behind it) are kept for one year and then deleted, or sooner on request. Reward and coin records are kept as a financial record and hold only an anonymous account identifier. A guest who has not returned for about a week is deleted or, if they have a coin wallet, has their personal data erased while the anonymous coin record is kept. To stop guest accounts being re-made over and over to collect welcome coins, the network address of a new guest is turned into a one-way scrambled code the moment it arrives, held only in the server's memory for at most 7 days, and never stored or logged in readable form.
+                    Live game rooms are removed when the last human leaves. For restart recovery, the server can keep private recovery snapshots in Supabase, including room names, player identifiers, display names, avatars, game state and stake information. These are not available through browser database access. Snapshots expire two hours after their last save and are deleted on room closure or during periodic server cleanup; if hosting is asleep, cleanup resumes when the server is running. Member profiles and career badges persist until you delete your account. Mandali chat messages are removed after one year. Records of reward checks (an account's standing and the events behind it) are kept for one year and then deleted, or sooner on request. Reward and coin records are kept as a financial record and hold only an anonymous account identifier. A guest who has not returned for about a week is deleted or, if they have a coin wallet, has their personal data erased while the anonymous coin record is kept. To stop guest accounts being re-made over and over to collect welcome coins, the network address of a new guest is turned into a one-way scrambled code the moment it arrives, held only in the server's memory for at most 7 days, and never stored or logged in readable form.
                   </p><p>Friend invitations must qualify within 30 days of acceptance. Attribution and earned cosmetic ownership remain with the account until deletion so qualification cannot pay twice. Deleting either account removes the associated attribution; an already earned pack is not taken away from the other player.</p></div>
                 )}
 

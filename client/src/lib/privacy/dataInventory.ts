@@ -589,9 +589,9 @@ export const THIRD_PARTIES: readonly ThirdParty[] = [
   {
     name: "Supabase (the account service)",
     receives:
-      "Your email address, a scrambled form of your password, your display name, avatar, bio and region, and the IP address you signed in from. Google sign-in also passes them the name and email on your Google account.",
+      "For accounts: your email address, a scrambled form of your password, your display name, avatar, bio and region, and the IP address you signed in from. Google sign-in also passes them the name and email on your Google account. When server persistence is configured, Supabase also holds gameplay and coin records, and private room-recovery snapshots containing player identifiers, display names, avatars, game state and stake information.",
     when:
-      "Only if you create an account. Guests never reach them. Configured by the VITE_SUPABASE_* keys — a build without those has no account service at all.",
+      "Account sign-in is used only if you create an account. Server-side gameplay storage can include guests and members, independently of the browser's account configuration. Recovery snapshots expire two hours after their last save and are removed on room closure or server cleanup.",
   },
   {
     name: "Google (Sign in with Google)",

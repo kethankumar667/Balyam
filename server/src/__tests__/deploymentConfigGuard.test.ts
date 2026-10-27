@@ -55,6 +55,22 @@ describe("persistent snapshot deployment contract", () => {
   it("accepts a matching mount and readiness path", () => {
     expect(auditRoomSnapshotConfig(blueprint)).toEqual([]);
   });
+  it("accepts Supabase with server credentials and no disk, but refuses ephemeral or incomplete configuration", () => {
+    const cloud = `
+    healthCheckPath: /ready
+    envVars:
+      - key: ROOM_SNAPSHOT_STORE
+        value: supabase
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+    `;
+    expect(auditRoomSnapshotConfig(cloud)).toEqual([]);
+    expect(auditRoomSnapshotConfig(cloud.replace("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY"))).not.toEqual([]);
+    expect(auditRoomSnapshotConfig(cloud.replace("value: supabase", "value: memory"))).not.toEqual([]);
+    expect(auditRoomSnapshotConfig(cloud.replace("/ready", "/health"))).not.toEqual([]);
+  });
   it("rejects a missing or mismatched mount and liveness-only deployment", () => {
     expect(auditRoomSnapshotConfig(blueprint.replace("disk:", "missingDisk:"))).not.toEqual([]);
     expect(auditRoomSnapshotConfig(blueprint.replace("mountPath:", "missingMount:"))).not.toEqual([]);

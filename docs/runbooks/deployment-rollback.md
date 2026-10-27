@@ -107,10 +107,12 @@ no way to hot-patch a live frontend's env).
    `/health` counters before declaring the backend rollback complete.
    A pre-readiness build has no `/ready`; use its documented dependency checks
    explicitly rather than treating a liveness response as equivalent.
-5. Preserve the snapshot disk and stable `SESSION_SECRET`. A build predating
-   `ROOM_SNAPSHOT_DIR` reads `.room_snapshots` in its checkout instead of the
-   mounted path. Do not roll back across this storage-path boundary with active
-   tables without an approved copy/drain plan. See [persistence](persistence.md).
+5. Preserve snapshots and the stable `SESSION_SECRET`. Render Free now uses
+   `ROOM_SNAPSHOT_STORE=supabase` after migration `20261109000000`; a build without
+   that driver cannot read its recovery table. File-store deployments instead
+   require preserving the mounted disk. Do not cross a driver/path boundary
+   with active tables without an approved copy/drain plan, and never run the
+   snapshot rollback SQL while this driver is in use. See [persistence](persistence.md).
 
 ## 6. Environment-variable rollback
 

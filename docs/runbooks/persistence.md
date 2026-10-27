@@ -209,7 +209,7 @@ older than 7 days, and disbanded or day-old parties.
 ## 6. Reading the posture at runtime
 
 `GET /health` is liveness and diagnostic counters, **not dependency readiness**.
-`GET /ready` returns 200 with `status: "ready"` only when snapshot read/write/rename,
+`GET /ready` returns 200 with `status: "ready"` only when the configured snapshot probe,
 progression, economy, rewards and reviews probes pass. A failure or shutdown returns 503.
 Probes are coalesced and cached for five seconds, with a two-second response deadline.
 Only named booleans are public; probe failures/recovery are logged without exposing credentials.
@@ -237,14 +237,69 @@ These probes do not certify every migration, a successful settlement, or a zero 
 
 ### Room snapshots and deployment storage
 
-The Render blueprint selects `ROOM_SNAPSHOT_STORE=file`, mounts a 1 GB persistent
-disk at `/var/data/room-snapshots`, and sets `ROOM_SNAPSHOT_DIR` to that exact path.
-This is a **single-instance** arrangement: do not scale multiple independent room
-servers against this directory. Persistent disks can introduce deploy downtime
-and additional billing; provisioning or applying the blueprint requires operator approval.
+The Render blueprint uses the **Free** backend plan with
+`ROOM_SNAPSHOT_STORE=supabase`. It needs no Render persistent disk. Supabase
+storage and request quotas still apply; free hosting can sleep or restart, and
+neither this setting nor snapshots promise unlimited capacity or uninterrupted play.
+All game/economy features retain their existing gates; no stake mode is disabled.
+
+**Apply only with separate authorization**, in this order:
+
+1. Drain active tables or preserve their old snapshots under an approved
+   maintenance procedure. Changing drivers never imports old files or Redis keys.
+2. Apply [`20261109000000_room_snapshots.sql`](../../supabase/migrations/20261109000000_room_snapshots.sql)
+   to the intended Supabase project. This creates `room_snapshots` and two
+   service-only RPCs; it does not change wallets, ledgers or game rules.
+3. Keep `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` on the **server only**.
+   Never use an anon key or put the service key in `VITE_*`.
+4. Deploy this server and set `ROOM_SNAPSHOT_STORE=supabase`. Remove the obsolete
+   `ROOM_SNAPSHOT_DIR` setting on Render Free; it is ignored by this driver.
+   Keep `SESSION_SECRET` stable. Set the health check to `/ready`.
+5. Confirm the `SUPABASE (durable PostgreSQL)` snapshot boot message and a ready
+   response. The migration/credential probe must pass or startup fails; there
+   is no local-file fallback.
+
+The table contains private hands/engine state and player data, not public room
+state. RLS is enabled and forced; `anon` and `authenticated` have no table or RPC
+access. Only `service_role` can access it. The privacy notice (version 6) declares
+this guest/member recovery storage. Saves retain the existing two-hour expiry
+from their last write; closed rooms are deleted, and the existing startup and
+periodic purge removes expired rows. Expiry is enforced on reads even before
+physical cleanup. While the backend is stopped, cleanup waits until it starts;
+database backups follow the provider's separate retention policy. Never publish
+snapshot payloads or credentials in logs or verification receipts.
+
+The readiness probe writes, reads and deletes a unique test row in one database
+transaction (never visible to hydration), verifying table/function availability
+and service-role privileges. Recovery reads use keyset pagination to avoid
+silently dropping rooms at the PostgREST response-size limit. Each room still has
+one in-flight write and a coalesced latest-state follow-up, not a blocking database
+call in the move handler. Watch database latency, quotas and failed snapshot logs.
+
+This remains a **single-server** architecture, not shared live room management:
+do not start two backend instances against the same snapshot table. Use a separate
+Supabase project per environment. Stable room codes, hidden information, signed
+seat reclaim and terminal-intent settlement remain governed by `RoomManager`.
+
+Local regression checks (no hosted access):
+
+```powershell
+npm --prefix server test -- src/rooms/__tests__/supabaseSnapshots.test.ts src/persistence/__tests__/roomSnapshotsSql.test.ts src/rooms/__tests__/roomDurability.test.ts src/rooms/__tests__/roomDurabilityHardening.test.ts src/rooms/__tests__/snapshotConfiguration.test.ts src/__tests__/deploymentConfigGuard.test.ts --maxWorkers=1 --minWorkers=1
+```
+
+Embedded PostgreSQL tests execute the real migration, reopen persisted data and
+verify service/client permissions, retention and rollback. HTTP tests use mocked
+PostgREST responses; neither proves the hosted project's PostgREST/schema cache.
+After authorization, run the staging restart drill below, including seat reclaim,
+private state, stake metadata, finished-room cleanup and `/ready` failure/recovery.
+
+**Alternative: paid persistent file storage.** Set `ROOM_SNAPSHOT_STORE=file`,
+attach a persistent disk, and set `ROOM_SNAPSHOT_DIR` to its absolute mount path
+(for example `/var/data/room-snapshots`). Render Free cannot attach that disk.
+Provisioning incurs separate billing/approval; do not restore it on Free.
 
 Production refuses memory snapshots, unknown driver names, a missing/relative
-directory, or a directory that is absent or fails read/write/atomic-rename probes.
+file directory, or a directory that is absent or fails read/write/atomic-rename probes.
 It never creates a missing production directory, and never silently falls back
 from a configured Redis driver to files. Development retains local `.room_snapshots`.
 The health field `durability.durable` means persistent storage was **configured**,
@@ -258,15 +313,19 @@ old files. Keep `SESSION_SECRET` stable so saved seats remain reclaimable.
 On staging, create a match, make moves, restart the process, reclaim signed seats,
 and verify state and stakes. Then replace/redeploy the instance and repeat: a
 same-process or same-filesystem test alone does not prove hosting durability.
-Never delete the disk during rollback. Older builds that still read the checkout's
-`.room_snapshots` will not automatically read the new disk path.
+Never delete snapshots during rollback. A build without the Supabase driver
+cannot read this table; an older file-only build may read `.room_snapshots`
+instead. Drain/copy recovery state under an approved plan before crossing that
+boundary. The [rollback SQL](../../supabase/rollbacks/20261109000000_room_snapshots_rollback.sql)
+is destructive and removes only the new objects: do not run it against an active
+server. In production, a schema reversal should be an authorized forward migration.
 
 Engine restoration remains conditional: an unresumable saved match is closed and
 refunded through the existing terminal-intent path. A lost snapshot with a
 `COMMITTED` stake and no terminal intent is **not** automatically guessed or refunded;
-use the operator stale-settlement/reconciliation workflow. Files are still
-write-behind and atomic rename is not a guarantee against every hard-crash or
-storage-loss window. `/ready` is not a replacement for the hosted restart drill.
+use the operator stale-settlement/reconciliation workflow. Snapshots are still
+write-behind; neither a database commit nor atomic file rename protects a change
+not yet written. `/ready` is not a replacement for the hosted restart drill.
 
 ---
 

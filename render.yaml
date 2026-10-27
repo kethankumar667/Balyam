@@ -3,12 +3,8 @@ services:
   - type: web
     name: bhalyam-backend
     runtime: node
-    plan: starter
+    plan: free
     rootDir: server
-    disk:
-      name: room-snapshots
-      mountPath: /var/data/room-snapshots
-      sizeGB: 1
     # `--include=dev` is required: NODE_ENV=production (set below, and needed at runtime) also applies
     # during the build, and then a plain `npm install` skips devDependencies — typescript's
     # @types/express and @types/node, vitest, tsc-alias — so `tsc` fails to compile the server.
@@ -21,9 +17,7 @@ services:
       - key: PORT
         value: 4000
       - key: ROOM_SNAPSHOT_STORE
-        value: file
-      - key: ROOM_SNAPSHOT_DIR
-        value: /var/data/room-snapshots
+        value: supabase # Apply 20261109000000_room_snapshots.sql before deploying.
       - key: CLIENT_ORIGIN
         sync: false # Set to frontend URL (e.g. https://bhalyam.onrender.com)
       - key: TRUST_PROXY_HOPS

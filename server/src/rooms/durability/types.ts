@@ -50,10 +50,10 @@ export interface RoomSnapshot {
 
 /**
  * Storage repository interface for room state snapshots.
- * Supports in-memory, local file, Redis, and PostgreSQL implementations.
+ * Supports in-memory, local file, Redis, and Supabase PostgreSQL implementations.
  */
 export interface RoomSnapshotRepository {
-  readonly kind: "memory" | "file" | "redis" | "postgres";
+  readonly kind: "memory" | "file" | "redis" | "postgres" | "supabase";
   saveSnapshot(snapshot: RoomSnapshot): Promise<void>;
   getSnapshot(code: string): Promise<RoomSnapshot | null>;
   deleteSnapshot(code: string): Promise<void>;

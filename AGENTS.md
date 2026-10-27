@@ -496,12 +496,20 @@ These are **mandatory** for any AI working in this repo.
 
 ## 18. Repository-Specific Rules
 
-- **Room snapshot hosting and readiness:** production file snapshots require
-  `ROOM_SNAPSHOT_DIR` to name an absolute, existing persistent mount. The Render
-  blueprint mounts `/var/data/room-snapshots` and selects `ROOM_SNAPSHOT_STORE=file`;
-  applying it requires separate authorization. Development may use local files,
+- **Room snapshot hosting and readiness:** the Render Free blueprint selects
+  `ROOM_SNAPSHOT_STORE=supabase`, backed by the service-only `room_snapshots`
+  table and probe/purge RPCs (migration `20261109000000`). Apply the migration
+  before deploying; both require separate authorization. Snapshots contain
+  hidden game state and player data: never expose the table to browser roles.
+  The existing per-room ordered/coalesced writes, two-hour expiry and server
+  purge remain; stopped hosting delays physical cleanup. This remains a
+  single-server architecture and does not guarantee uninterrupted/free-unlimited
+  capacity. Privacy notice version 6 declares guest/member recovery storage.
+  Production file storage remains supported only with `ROOM_SNAPSHOT_DIR`
+  naming an absolute, existing persistent mount (not available on Render Free).
+  Development may use local files,
   but they are not reported as durable hosting storage. `/health` is liveness and
-  counters; `/ready` checks snapshot read/write/rename plus progression, economy,
+  counters; `/ready` checks the selected snapshot store plus progression, economy,
   rewards and reviews, returns 503 on failure/shutdown, and is the deployment
   health check. Never claim these probes prove host-replacement durability or
   eliminate write-behind hard-crash windows. See `docs/runbooks/persistence.md`.
