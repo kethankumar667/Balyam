@@ -13,6 +13,16 @@ function show(playerCount = 8, label = "Live pawn") {
 }
 
 describe("Ludo board magnifier", () => {
+  it("reports inspection to sibling move controls and resets it on unmount", () => {
+    const change = vi.fn();
+    const view = render(<LudoMagnifier playerCount={8} world="classic" onInspectionChange={change}>{() => <span>Board</span>}</LudoMagnifier>);
+    expect(change).toHaveBeenLastCalledWith(false);
+    fireEvent.click(screen.getByRole("button", { name: "Enable board magnifier" }));
+    expect(change).toHaveBeenLastCalledWith(true);
+    view.unmount();
+    expect(change).toHaveBeenLastCalledWith(false);
+  });
+
   it.each([2, 3, 4])("leaves %i-player gameplay unchanged without a magnifier", (count) => {
     const { move } = show(count);
     expect(screen.queryByRole("button", { name: /magnifier/i })).toBeNull();

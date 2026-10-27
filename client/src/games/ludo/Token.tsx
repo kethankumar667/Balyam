@@ -33,6 +33,7 @@ export function Token({
   cbMode = false,
   golden = false,
   celebrating = false,
+  highlighted = false,
   skin,
   hex,
   hexDark,
@@ -51,6 +52,7 @@ export function Token({
   cbMode?: boolean;
   golden?: boolean;
   celebrating?: boolean;
+  highlighted?: boolean;
   /** Cosmetic token skin identifier (e.g. token_classic_pawn, token_imperial_sovereign, token_draco_inferno) */
   skin?: string;
   /** Optional flat-palette override (print boards recolor seats by sector). */
@@ -80,6 +82,7 @@ export function Token({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       disabled={!onClick}
+      data-highlighted={highlighted || undefined}
       style={{
         position: "absolute",
         left: `${left}%`,
@@ -116,6 +119,8 @@ export function Token({
         border: "none",
         padding: 0,
         zIndex: movable ? 30 : 10,
+        borderRadius: highlighted ? "50%" : undefined,
+        boxShadow: highlighted ? "0 0 0 3px #fff, 0 0 0 6px #0f172a" : undefined,
         filter: movable
           ? `drop-shadow(0 0 6px ${main}) drop-shadow(0 4px 4px rgba(0,0,0,0.5))`
           : "drop-shadow(0 3px 3px rgba(0,0,0,0.5))",

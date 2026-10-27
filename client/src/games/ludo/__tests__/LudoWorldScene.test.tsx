@@ -3,6 +3,16 @@ import "@testing-library/jest-dom/vitest";
 import { describe, expect, it } from "vitest";
 import { LudoWorldDefs, LudoWorldScene } from "../LudoWorldScene";
 
+async function expectToyFloor(container: HTMLElement) {
+  await waitFor(() => {
+    const floor = container.querySelector('svg[viewBox="0 0 100 100"]');
+    expect(floor).not.toBeNull();
+    expect(floor?.querySelectorAll('rect[opacity="0.55"]')).toHaveLength(12);
+    expect(floor?.querySelectorAll("polygon")).toHaveLength(4);
+    expect(floor?.querySelectorAll("path")).toHaveLength(24);
+  });
+}
+
 /**
  * What a world puts behind a Ludo table. The classic table keeps its own backdrop and draws nothing here; the toy box
  * and the palace each draw a scene, the paint their tiles are filled with, and (on the wide layout only) the things
@@ -20,10 +30,11 @@ describe("LudoWorldScene", () => {
   });
 
   it("draws each of the five other worlds' own scene once it has arrived", async () => {
-    const MARK: Record<string, string> = { neon: "bvw-twinkle", toy: "bt-dots", zen: "cy=\"46\"", reef: "rgba(220,255,250,0.55)", palace: "bp-carpet" };
+    const MARK: Record<string, string> = { neon: "bvw-twinkle", zen: "cy=\"46\"", reef: "rgba(220,255,250,0.55)", palace: "bp-carpet" };
     for (const id of ["neon", "toy", "zen", "reef", "palace"] as const) {
       const view = render(<LudoWorldScene world={id} />);
-      await waitFor(() => expect(view.container.innerHTML, id).toContain(MARK[id]));
+      if (id === "toy") await expectToyFloor(view.container);
+      else await waitFor(() => expect(view.container.innerHTML, id).toContain(MARK[id]));
       view.unmount();
     }
   });
@@ -45,7 +56,7 @@ describe("LudoWorldScene", () => {
 
   it("draws the toy box's scene once it has arrived", async () => {
     const { container } = render(<LudoWorldScene world="toy" />);
-    await waitFor(() => expect(container.innerHTML).toContain("bt-dots"));
+    await expectToyFloor(container);
   });
 
   it("draws the palace's scene once it has arrived", async () => {
@@ -58,7 +69,7 @@ describe("LudoWorldScene", () => {
     await waitFor(() => expect(wide.container.innerHTML).toContain(">C<"));
     wide.unmount();
     const narrow = render(<LudoWorldScene world="toy" />);
-    await waitFor(() => expect(narrow.container.innerHTML).toContain("bt-dots"));
+    await expectToyFloor(narrow.container);
     expect(narrow.container.innerHTML).not.toContain(">C<");
   });
 

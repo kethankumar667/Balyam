@@ -33,11 +33,12 @@ function viewportBounds(): Viewport {
   };
 }
 
-export function LudoMagnifier({ playerCount, world, highContrast = false, onEnable, children }: {
+export function LudoMagnifier({ playerCount, world, highContrast = false, onEnable, onInspectionChange, children }: {
   playerCount: number;
   world: WorldId;
   highContrast?: boolean;
   onEnable?: () => void;
+  onInspectionChange?: (active: boolean) => void;
   /** Render the same current board state; read-only copies must have no input or effect handlers. */
   children: (readOnly: boolean, inLens: boolean) => ReactNode;
 }) {
@@ -55,6 +56,9 @@ export function LudoMagnifier({ playerCount, world, highContrast = false, onEnab
   const hasPoint = point !== null;
   // Pointer movement changes only the lens transform, not the board subtree.
   const enlargedBoard = useMemo(() => hasPoint ? children(true, true) : null, [children, hasPoint]);
+
+  useEffect(() => { onInspectionChange?.(active); }, [active, onInspectionChange]);
+  useEffect(() => () => { onInspectionChange?.(false); }, [onInspectionChange]);
 
   const hideLens = () => {
     if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);

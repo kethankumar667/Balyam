@@ -109,7 +109,7 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
 
         <div ref={belowBoardRef} className="flex w-full flex-col items-center gap-2 short-land:col-start-2 short-land:row-start-2 short-land:self-center">
           <LudoPlayerCards state={state} players={players} row="grid" selfId={selfId} registerCard={m.registerPlayerCard} onTarget={m.targetPlayer} />
-          <LudoRollTray m={m} state={state} />
+          <LudoRollTray m={m} state={state} compactChoices />
         </div>
       </div>
 

@@ -10,6 +10,7 @@ function chipVars(tint: string, dark: string): CSSProperties {
 import { Dice } from "./Dice";
 import { Token } from "./Token";
 import { LudoMagnifier } from "./LudoMagnifier";
+import { LudoTokenChoices } from "./LudoTokenChoices";
 import InstructionsModal from "./InstructionsModal";
 import Toast from "./Toast";
 import Confetti from "./Confetti";
@@ -1308,7 +1309,7 @@ export function LudoTurnTower({
         </div>
       )}
 
-      <div className="flex items-center">
+      <div className="flex w-full items-center">
         <LudoRollTray m={m} state={state} />
       </div>
 
@@ -1317,7 +1318,7 @@ export function LudoTurnTower({
   );
 }
 
-export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState }) {
+export function LudoRollTray({ m, state, compactChoices = false }: { m: LudoBoardModel; state: LudoState; compactChoices?: boolean }) {
   const streak = state.consecutiveSixes > 0 && state.consecutiveSixes < 3;
   const { isOnline } = useRecovery();
   const canRoll = m.myTurn && m.canRoll && !m.rolling && isOnline;
@@ -1339,8 +1340,12 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
   const activeColor = state.playerColors[m.displayTurnPlayerId] as LudoColor | undefined;
   const cupTint = !finished && activeColor ? COLOR_HEX[activeColor] : "#57B65B";
   const cupDark = !finished && activeColor ? COLOR_HEX_DARK[activeColor] : "#1B5E20";
+  const choosing = m.playerCount >= 5 && m.playerCount <= 8 && state.phase === "playing" &&
+    state.turnPhase === "moving" && m.myTurn && !m.rolling &&
+    (state.tokens[m.selfId ?? ""] ?? []).some(token => state.movableTokenIds.includes(token.id));
+  if (compactChoices && choosing) return <LudoTokenChoices state={state} m={m} isOnline={isOnline} />;
   return (
-    <div className="flex flex-col items-center gap-1.5">
+    <div className="flex w-full min-w-0 flex-col items-center gap-1.5">
       <button
         type="button"
         onClick={canRoll ? m.roll : undefined}
@@ -1427,6 +1432,7 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
               : "Pick a token"
             : `${waitingFor}…`}
       </div>
+      {!compactChoices && <LudoTokenChoices state={state} m={m} isOnline={isOnline} />}
     </div>
   );
 }
@@ -1534,7 +1540,8 @@ export function LudoBoardArea({
         playerCount={m.playerCount}
         world={m.world}
         highContrast={m.settings.highContrast}
-        onEnable={() => { m.clearHoverPreview(); m.onBoardMouseLeave(); }}
+        onEnable={() => { m.clearTokenPreview(); m.onBoardMouseLeave(); }}
+        onInspectionChange={m.setInspectingBoard}
       >
         {(readOnly, inLens) => <LudoBoardScene m={m} state={state} players={players} readOnly={readOnly} inLens={inLens} />}
       </LudoMagnifier>
@@ -1643,6 +1650,7 @@ function LudoBoardScene({ m, state, players, readOnly, inLens }: {
                   : 6) * (pos.scale ?? 1)
               }
               movable={movable}
+              highlighted={pid === m.selfId && token.id === m.previewTokenId}
               onClick={!readOnly && movable ? () => m.move(token.id) : undefined}
               onMouseEnter={readOnly ? undefined : () => m.onHoverToken(pid, token)}
               onMouseLeave={readOnly ? undefined : m.clearHoverPreview}

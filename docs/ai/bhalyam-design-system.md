@@ -241,6 +241,28 @@ allowed by the inspection surface. The match and its server-controlled timer
 continue: inspection does not pause play or change engine/socket contracts.
 Boards with 2–4 seats retain their existing controls without a magnifier.
 
+### Ludo token choices
+
+On 5–8-seat boards, the active player's server-listed movable tokens also
+appear as numbered buttons, each at least 44px square. Their numbers match
+the pawns on the board, including when a seat's tokens arrive in a different
+array order. Direct board taps and existing keyboard shortcuts remain available.
+There is no automatic move or extra confirmation when only one choice exists.
+
+On mobile, after the dice animation settles, a compact dice-result label and
+one row of choices replace the large roll cup while choosing a move. This
+preserves space for the measured board, including in short landscape. Desktop
+keeps the dice and places the same choices underneath it in the right rail.
+Both reuse `LudoTokenChoices` and the existing shared move action.
+
+Hovering or keyboard-focusing a choice outlines its matching pawn; the existing
+destination preview still respects the player's preview setting. Selection,
+turn/choice changes, inspection and loss of connectivity clear the outline.
+Choice buttons are disabled with an explanation during magnifier inspection
+or reconnection. There are no choices when waiting, spectating, rolling, finished,
+or when the server lists none. This is input presentation, not a second source
+of move rules; the server remains authoritative, and 2–4-seat layouts stay unchanged.
+
 ### Trophy vault
 
 `/profile/achievements` retains the shared profile shell and uses scoped

@@ -10,6 +10,7 @@ import type {
   CursorRecvPayload,
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
+import { useRecovery } from "../../core/recovery/useRecovery";
 import { useHaptics, useTurnHaptics } from "../../hooks/useHaptics";
 import { type RemoteCursor } from "./CursorLayer";
 import { useLudoSettings, prefersReducedMotion, type LudoSettings } from "./settings";
@@ -147,6 +148,11 @@ export interface LudoBoardModel {
   activeHomeEntries: { id: string; left: number; top: number; color: LudoColor }[];
   activeLuckySix: boolean;
   hoverPreview: LudoHoverPreview | null;
+  inspectingBoard: boolean;
+  setInspectingBoard: (enabled: boolean) => void;
+  previewTokenId: string | null;
+  previewToken: (tokenId: string) => void;
+  clearTokenPreview: () => void;
   onHoverToken: (pid: string, token: LudoToken) => void;
   clearHoverPreview: () => void;
   luckyBanner: string | null;
@@ -207,6 +213,9 @@ export function useLudoBoard({
   // messages/roomCode/roomPhase are forwarded to InlineRoomRail by the shells.
 }: LudoBoardProps): LudoBoardModel {
   const world = drawnWorld("ludo", tableWorld);
+  const { isOnline } = useRecovery();
+  const [inspectingBoard, setInspectingBoard] = useState(false);
+  const [previewTokenId, setPreviewTokenId] = useState<string | null>(null);
   /**
    * The board ARM a player sits on — the key for ALL geometry (track start,
    * home stretch, yard slots, token ids, board rotation). Distinct from
@@ -721,6 +730,23 @@ export function useLudoBoard({
     setHoverPreview(null);
   }
 
+  function clearTokenPreview(): void {
+    setPreviewTokenId(null);
+    clearHoverPreview();
+  }
+  function previewToken(tokenId: string): void {
+    if (!selfId || !myTurn || state.phase !== "playing" || state.turnPhase !== "moving" ||
+        inspectingBoard || !isOnline || !state.movableTokenIds.includes(tokenId)) return;
+    const token = state.tokens[selfId]?.find(candidate => candidate.id === tokenId);
+    if (!token) return;
+    setPreviewTokenId(tokenId);
+    onHoverToken(selfId, token);
+  }
+  useEffect(() => {
+    setPreviewTokenId(null);
+    setHoverPreview(null);
+  }, [state.turnPlayerId, state.turnPhase, state.phase, state.diceValue, state.movableTokenIds, selfId, inspectingBoard, isOnline]);
+
   // ---- Lucky moment detection ----
   const [luckyBanner, setLuckyBanner] = useState<string | null>(null);
   const lastSixTurnRef = useRef<{ pid: string; ts: number } | null>(null);
@@ -763,7 +789,7 @@ export function useLudoBoard({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canRoll, rolling, myTurn, state.turnPhase, state.movableTokenIds, selfId, state.playerColors]);
+  }, [canRoll, rolling, myTurn, state.turnPhase, state.movableTokenIds, selfId, state.playerColors, state.phase, inspectingBoard, isOnline]);
 
   // ---- Per-player background tint ----
   useEffect(() => {
@@ -823,6 +849,11 @@ export function useLudoBoard({
     setTimeout(() => setRolling(false), DICE_ROLL_MS);
   }
   function move(tokenId: string) {
+    if (state.playerOrder.length >= 5 && (
+      inspectingBoard || !isOnline || !myTurn || state.phase !== "playing" ||
+      state.turnPhase !== "moving" || !state.movableTokenIds.includes(tokenId)
+    )) return;
+    clearTokenPreview();
     getSocket().emit("game:move", { type: "move", data: { tokenId }, playerId: selfId ?? undefined });
 
     /**
@@ -1310,6 +1341,11 @@ export function useLudoBoard({
     activeHomeEntries,
     activeLuckySix,
     hoverPreview,
+    inspectingBoard,
+    setInspectingBoard,
+    previewTokenId,
+    previewToken,
+    clearTokenPreview,
     onHoverToken,
     clearHoverPreview,
     luckyBanner,
