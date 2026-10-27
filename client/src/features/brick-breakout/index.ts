@@ -1,4 +1,4 @@
-export { BrickBreakoutGame } from "./BrickBreakoutGame";
+export { NeonBreakout as BrickBreakoutGame } from "./arcade/NeonBreakout";
 export * from "./types";
 export * from "./engine/gameReducer";
 export * from "./engine/collisionEngine";

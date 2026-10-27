@@ -209,7 +209,7 @@ export const STRUCTURED_DATA_GAMES = [
   {
     slug: "breakout",
     name: "Brick Breakout",
-    description: "Deflect balls, smash rows of bricks, and bounce back for high scores in retro handheld style.",
+    description: "Colorful neon paddle arcade with Campaign, Score Attack, a seeded Daily Challenge, four power-ups and device-local bests.",
     image: `${BASE_URL}/og/breakout.jpg`,
     minPlayers: 1,
     maxPlayers: 1,

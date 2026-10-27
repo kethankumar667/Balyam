@@ -245,11 +245,11 @@ export const BREAKOUT_ACADEMY: GameAcademySpec = {
   tagline: "Deflect the bouncing ball with your paddle to shatter colored brick formations.",
   genre: "retro",
   players: "Solo Play",
-  duration: "5–10 min",
+  duration: "2 min / Campaign",
   difficulty: "Casual",
-  primaryAccent: "#8BAC0F",
-  secondaryAccent: "#306230",
-  glowAura: "from-lime-600/20 via-green-800/15 to-transparent",
+  primaryAccent: "#67E8F9",
+  secondaryAccent: "#A5B4FC",
+  glowAura: "from-cyan-400/20 via-indigo-500/15 to-transparent",
   storageKey: "bhalyam.academy.breakout.v2",
   slides: [
     {
@@ -267,17 +267,20 @@ export const BREAKOUT_ACADEMY: GameAcademySpec = {
       title: "Paddle Control",
       iconName: "ShieldCheck",
       items: [
-        { label: "Serve", detail: "Press Space or Enter to launch the ball from your paddle.", tag: "Start" },
-        { label: "Center Hit", detail: "Sends the ball back up, keeping its current sideways drift.", tag: "Safe" },
+        { label: "Serve", detail: "Press Space or use Launch to send the ball from your paddle.", tag: "Start" },
+        { label: "Center Hit", detail: "Sends the ball almost straight up; edge hits create wider angles.", tag: "Safe" },
         { label: "Side Hit", detail: "Sends the ball back up toward the side of the paddle it struck.", tag: "Steer" },
+        { label: "Modes", detail: "Clear eight Campaign sectors or play two active minutes in Score Attack and the UTC Daily Challenge.", tag: "Solo" },
+        { label: "Powers", detail: "Catch 3 for multiball, W for 12 seconds of wide paddle, S for a one-hit shield, P for 12 seconds of piercing. II/III mark brick strength.", tag: "Catch" },
+        { label: "Records", detail: "Device-local bests are separate by mode. Daily layouts repeat for a UTC date. These are not verified global rankings.", tag: "Personal" },
       ],
     },
   ],
   keybindings: [
     { key: "Arrow Left / Right (A / D)", description: "Move paddle" },
-    { key: "Space / Enter", description: "Launch the ball" },
+    { key: "Space / Launch", description: "Launch the ball" },
     { key: "P / Esc", description: "Pause" },
-    { key: "R", description: "Restart" },
+    { key: "Mouse / Drag", description: "Direct paddle control" },
   ],
 };
 

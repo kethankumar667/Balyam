@@ -44,6 +44,35 @@ Classic/Pentix device bests remain compatible with My Records; new-mode records 
 and do not grant coins, XP or ranked results. Essential-only privacy keeps new progress in
 memory for the visit instead of writing it to local storage.
 
+**Brick Breakout Neon Arcade** (`/breakout`, with the existing `/brickbreakout`,
+`/brick-breakout` and `/blockbreakout` aliases) is a local solo paddle game.
+Campaign has eight increasingly reinforced sectors; Score Attack and Daily Challenge
+run for two minutes of **active** play, including serving and sector-clear screens.
+Pause/help/settings and tab backgrounding freeze the simulation and timer. Daily layouts,
+power-up placements and launch randomness use the UTC date's seed, pinned when a run starts.
+Runs are replayable and pausable, not verified tournament entries.
+
+Catch `3` for up to three balls, `W` for a 12-second wider paddle, `S` for a
+one-hit floor shield, and `P` for 12 seconds of piercing. Timed pickups refresh
+rather than stack; losing the last ball costs one life and resets powers.
+Brick markings show remaining strength independently of color. A destruction chain
+within 2.5 seconds builds up to a 10x multiplier; sector clears pay `500 * sector`.
+Mobile uses a portrait arena, drag control and holdable buttons; desktop adds
+persistent stats and a field guide. Tablet keeps stats beside the arena and moves
+the guide below it. A/D or arrows move, Space launches, P/Escape pauses.
+Trails and bounded hit particles can be disabled and respect reduced motion.
+
+Finished arcade bests and preferences extend the existing `bhalyam_brick_breakout_v1`
+save under `arcade` without altering its legacy `highScore`. Campaign, Score Attack
+and daily dates retain separate device bests: the latest 60 dates plus the all-time
+daily best if it is older (at most 63 entries). My Records
+and the sign-out guard see these through `neon_campaign`, `neon_score_attack` and
+`neon_daily`; the last summarizes the best daily score, while the game distinguishes dates.
+An explicit account import remains private `deviceImports`, never a ranked result.
+New runs do not automatically submit account scores, create identities or grant coins/XP.
+Essential-only consent keeps new records in tab memory; unreadable saves are not overwritten,
+and saving failures are shown explicitly. Unfinished runs are not resumable after reload.
+
 The Samethalu and Telugu Cinema quizzes and Bounce are gone — engines,
 boards, question banks, catalog entries, slugs, icons and wiring have all
 been deleted, along with the "Upcoming" filter that only ever held them.

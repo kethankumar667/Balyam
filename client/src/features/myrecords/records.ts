@@ -1,4 +1,4 @@
-import { GAME_MODE_REGISTRY, getGameModeConfig } from "@shared/profile/GameModes";
+import { BREAKOUT_ARCADE_MODE_IDS, GAME_MODE_REGISTRY, getGameModeConfig } from "@shared/profile/GameModes";
 import type { AllGameSlug, ModeScorecard, PlayerScorecardArchive } from "@shared/profile/Scorecard";
 import { readModeBest } from "../../lib/modeBests";
 import { formatGameMetricValue } from "../../lib/metricFormatters";
@@ -84,6 +84,15 @@ function deviceBestForMode(game: AllGameSlug, mode: string, raw: unknown): numbe
   if (!getGameModeConfig(game).modes.some((entry) => entry.modeId === mode)) return null;
   if (game === "blockblast") return positive(raw);
   const data = object(raw);
+  if (game === "breakout" && mode !== "classic") {
+    const saved = object(data.arcade);
+    const entries: unknown[] = Array.isArray(saved.records) ? saved.records : [];
+    const arcadeMode = Object.entries(BREAKOUT_ARCADE_MODE_IDS).find(([, id]) => id === mode)?.[0];
+    return positive(entries.reduce<number>((best, entry) => {
+      const record = object(entry);
+      return record.mode === arcadeMode ? Math.max(best, positive(record.score) ?? 0) : best;
+    }, 0));
+  }
   if (game === "2048") {
     if (mode === "race") {
       const ms = positive(data.bestRaceTimeMs);

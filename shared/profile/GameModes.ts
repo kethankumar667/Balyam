@@ -44,6 +44,13 @@ export interface GameModeConfig {
   strictModes?: boolean;
 }
 
+export const BREAKOUT_ARCADE_MODE_IDS = {
+  campaign: "neon_campaign",
+  "score-attack": "neon_score_attack",
+  daily: "neon_daily",
+} as const;
+export type BreakoutArcadeMode = keyof typeof BREAKOUT_ARCADE_MODE_IDS;
+
 /**
  * Retro Cricket's two match types (the menu's "CLASSIC MATCH" and "CHASE TARGET") crossed with the
  * four over lengths its menu offers. The labels are the ones the menu shows (`StateMachine.overOptions`).
@@ -328,9 +335,10 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
     category: "retro_arcade",
     defaultModeId: "classic",
     modes: [
-      // The game has one way to play; the "Moving Wall", "Time Attack" and "Endless" rows that used to
-      // sit here had no counterpart in it.
-      { modeId: "classic", displayName: "Classic Wall", description: "Paddle & ball brick clearing", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
+      { modeId: "classic", displayName: "Classic Wall (Historical)", description: "Historical grid-based rules, kept separate from Neon arcade scores", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
+      { modeId: "neon_campaign", displayName: "Neon Campaign", description: "Device-local eight-sector campaign; not a verified ranking", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "neon_score_attack", displayName: "Neon Score Attack", description: "Device-local two-minute score attack", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "neon_daily", displayName: "Neon Daily Challenge", description: "Best device-local daily run; each date is tracked separately in the game", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
     ],
   },
   sudoku: {

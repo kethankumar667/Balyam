@@ -90,6 +90,20 @@ describe("personal records data", () => {
     expect(JSON.stringify(archive)).toBe(unchanged);
   });
 
+  it("keeps arcade Breakout device bests separate from the historical classic score", () => {
+    localStorage.setItem("bhalyam_brick_breakout_v1", JSON.stringify({
+      highScore: 700,
+      arcade: { version: 1, records: [
+        { mode: "campaign", score: 1200 }, { mode: "score-attack", score: 900 },
+        { mode: "daily", date: "2026-10-27", score: 800 }, { mode: "daily", date: "2026-10-28", score: 600 },
+      ] },
+    }));
+    expect(readDeviceBest("breakout", "classic")).toBe(700);
+    expect(readDeviceBest("breakout", "neon_campaign")).toBe(1200);
+    expect(readDeviceBest("breakout", "neon_score_attack")).toBe(900);
+    expect(readDeviceBest("breakout", "neon_daily")).toBe(800);
+  });
+
   it.each([
     ["2048", "bhalyam.2048.stats.v1", { bestScore: { battle: 512, timeattack: 256, zen: 1024 }, dailyBestScore: 128, bestRaceTimeMs: 125000 }, { battle: 512, timeattack: 256, zen: 1024, daily: 128, race: 125 }],
     ["nokiasnake", "bhalyam_retro_snake_v1", { modeBestScores: { classic_walled: 80, borderless_wrap: 90 } }, { classic_walled: 80, borderless_wrap: 90 }],

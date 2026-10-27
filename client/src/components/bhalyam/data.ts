@@ -504,8 +504,8 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
   {
     slug: "breakout",
     tags: ["retro", "solo"],
-    theme: "9999-in-1 🧱",
-    badge: "🧱 Block Breakout",
+    theme: "Neon Arcade",
+    badge: "Neon Breakout",
     nostalgiaQuote: "Angle the paddle, smash the bricks, clear the wall!",
     title: "Brick Breakout",
     playerRange: "1 Player",
@@ -514,7 +514,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     paperBorder: "rgba(34, 211, 238, 0.55)",
     btnGradient: { from: "#0E7490", to: "#155E75", shadow: "#164E63" },
     blurb:
-      "Authentic 9999-in-1 Brick Game Block Breaker. 10x20 LCD matrix, 3-cell paddle deflection, normal & reinforced steel blocks, combo multiplier scoring, and retro chiptune audio.",
+      "Neon paddle arcade with an eight-sector Campaign, two-minute Score Attack and seeded Daily Challenge. Multiball, shields, piercing shots, colorful reinforced bricks and device-local personal bests.",
     accent: { from: "#22D3EE", to: "#0E7490" },
   },
   {

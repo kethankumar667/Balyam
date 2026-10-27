@@ -37,6 +37,14 @@ function archiveWithBest(score: number, target = HIGHER): PlayerScorecardArchive
 const emptyArchive = (): PlayerScorecardArchive => ({ playerId: PLAYER, games: {}, totalPersonalBestsBeaten: 0, updatedAt: 0 });
 
 describe("applyDeviceImports", () => {
+  it("keeps all Neon Breakout imports private and separate from historical classic", () => {
+    const entries = ["neon_campaign", "neon_score_attack", "neon_daily"].map(modeId => ({ game: "breakout", modeId, score: 1200 }));
+    const result = applyDeviceImports(emptyArchive(), entries, NOW);
+    expect(result.accepted).toEqual(entries);
+    expect(result.archive.games).toEqual({});
+    expect(Object.keys(result.archive.deviceImports?.breakout ?? {})).toEqual(entries.map(e => e.modeId));
+    expect(result.archive.deviceImports?.breakout?.classic).toBeUndefined();
+  });
   it("keeps an imported best apart from the ranked records", () => {
     const result = applyDeviceImports(emptyArchive(), [entry(500)], NOW);
 
