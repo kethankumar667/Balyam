@@ -208,6 +208,13 @@ older than 7 days, and disbanded or day-old parties.
 
 ## 6. Reading the posture at runtime
 
+`GET /health` is liveness and diagnostic counters, **not dependency readiness**.
+`GET /ready` returns 200 with `status: "ready"` only when snapshot read/write/rename,
+progression, economy, rewards and reviews probes pass. A failure or shutdown returns 503.
+Probes are coalesced and cached for five seconds, with a two-second response deadline.
+Only named booleans are public; probe failures/recovery are logged without exposing credentials.
+These probes do not certify every migration, a successful settlement, or a zero write-behind backlog.
+
 `GET /health` is public and reports it:
 
 ```json
@@ -225,6 +232,41 @@ older than 7 days, and disbanded or day-old parties.
 - A rising `failed` count means the store has started refusing writes. That is
   otherwise invisible until a restart throws the data away, which is why it is
   on the health endpoint rather than only in the logs.
+
+---
+
+### Room snapshots and deployment storage
+
+The Render blueprint selects `ROOM_SNAPSHOT_STORE=file`, mounts a 1 GB persistent
+disk at `/var/data/room-snapshots`, and sets `ROOM_SNAPSHOT_DIR` to that exact path.
+This is a **single-instance** arrangement: do not scale multiple independent room
+servers against this directory. Persistent disks can introduce deploy downtime
+and additional billing; provisioning or applying the blueprint requires operator approval.
+
+Production refuses memory snapshots, unknown driver names, a missing/relative
+directory, or a directory that is absent or fails read/write/atomic-rename probes.
+It never creates a missing production directory, and never silently falls back
+from a configured Redis driver to files. Development retains local `.room_snapshots`.
+The health field `durability.durable` means persistent storage was **configured**,
+not that the application proved a host's mount survives replacement. Operators
+must verify the actual disk attachment; an existing ephemeral directory can also
+pass a filesystem probe.
+
+Before the first rollout, drain active tables or preserve their existing snapshots
+under an approved maintenance procedure. Merely switching the path does not copy
+old files. Keep `SESSION_SECRET` stable so saved seats remain reclaimable.
+On staging, create a match, make moves, restart the process, reclaim signed seats,
+and verify state and stakes. Then replace/redeploy the instance and repeat: a
+same-process or same-filesystem test alone does not prove hosting durability.
+Never delete the disk during rollback. Older builds that still read the checkout's
+`.room_snapshots` will not automatically read the new disk path.
+
+Engine restoration remains conditional: an unresumable saved match is closed and
+refunded through the existing terminal-intent path. A lost snapshot with a
+`COMMITTED` stake and no terminal intent is **not** automatically guessed or refunded;
+use the operator stale-settlement/reconciliation workflow. Files are still
+write-behind and atomic rename is not a guarantee against every hard-crash or
+storage-loss window. `/ready` is not a replacement for the hosted restart drill.
 
 ---
 

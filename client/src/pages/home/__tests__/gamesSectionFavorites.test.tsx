@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, act, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { GamesSection, GameTile } from "../GamesSection";
 import CategoryFilter from "../../../components/bhalyam/CategoryFilter";
@@ -193,13 +193,15 @@ describe("GamesSection — End-to-End Home Page Favourites", () => {
     });
 
     // MockGame should be shown
-    expect(screen.getByText(mockGame.title)).not.toBeNull();
+    const matchingGames = within(screen.getByRole("region", { name: "Matching games" }));
+    const visibleGames = matchingGames.getAllByRole("article").map((card) => card.dataset.game);
+    expect(visibleGames.filter((slug) => slug === mockGame.slug)).toHaveLength(1);
 
     // Unfavorited game should not be shown
-    expect(screen.queryByText(mockSecondGame.title)).toBeNull();
+    expect(visibleGames).not.toContain(mockSecondGame.slug);
 
     // Clicking heart on the displayed game removes it from favourites
-    const removeBtn = screen.getByRole("button", {
+    const removeBtn = matchingGames.getByRole("button", {
       name: `Remove ${mockGame.title} from favourites`,
     });
     act(() => {

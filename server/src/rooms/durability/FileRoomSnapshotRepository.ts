@@ -7,22 +7,51 @@ import { logger } from "../../lib/logger.js";
 /**
  * File-backed Room Snapshot Repository.
  * Stores room snapshots on disk as atomic JSON files.
- * Provides durability across Node.js restarts and dyno recycling without requiring
- * an external Redis or database server.
+ * Survives host replacement only when storageDir is on an operator-provisioned persistent disk.
  */
 export class FileRoomSnapshotRepository implements RoomSnapshotRepository {
   readonly kind = "file" as const;
   private readonly storageDir: string;
   private dirInitialized = false;
 
-  constructor(storageDir?: string) {
+  constructor(storageDir?: string, private readonly requireExistingDirectory = false) {
     this.storageDir = storageDir ?? path.resolve(process.cwd(), ".room_snapshots");
+  }
+
+  async initialise(): Promise<void> {
+    await this.ensureDir();
+    await this.ping();
+  }
+
+  async ping(): Promise<void> {
+    // Never create a missing production mount: that would silently write to ephemeral storage.
+    const stat = await fs.stat(this.storageDir);
+    if (!stat.isDirectory()) throw new Error("Room snapshot path is not a directory");
+    const probe = path.join(this.storageDir, `.probe-${crypto.randomUUID()}`);
+    const renamed = `${probe}.renamed`;
+    try {
+      await fs.writeFile(probe, "ready", { flag: "wx" });
+      await fs.rename(probe, renamed);
+      if (await fs.readFile(renamed, "utf8") !== "ready") throw new Error("Snapshot read-back failed");
+    } finally {
+      await Promise.all([probe, renamed].map(async (file) => {
+        try {
+          await fs.unlink(file);
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        }
+      }));
+    }
   }
 
   private async ensureDir(): Promise<void> {
     if (this.dirInitialized) return;
     try {
-      await fs.mkdir(this.storageDir, { recursive: true });
+      if (this.requireExistingDirectory) {
+        if (!(await fs.stat(this.storageDir)).isDirectory()) throw new Error("Snapshot mount is not a directory");
+      } else {
+        await fs.mkdir(this.storageDir, { recursive: true });
+      }
       this.dirInitialized = true;
     } catch (err) {
       logger.error({
@@ -131,6 +160,7 @@ export class FileRoomSnapshotRepository implements RoomSnapshotRepository {
         message: `Failed to list room snapshots: ${err instanceof Error ? err.message : String(err)}`,
         module: "DURABILITY",
       });
+      throw err;
     }
 
     return active;

@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import React from "react";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act, within } from "@testing-library/react";
 import OfflineBanner from "../../components/games/OfflineBanner";
 import RecoveryBanner from "../../core/recovery/RecoveryBanner";
 import GameCard from "../../components/games/GameCard";
@@ -48,6 +48,7 @@ const mockApiJson = vi.fn();
 vi.mock("../../lib/playerIdentity", () => ({
   apiFetch: (...args: unknown[]) => mockApiFetch(...args),
   apiJson: (...args: unknown[]) => mockApiJson(...args),
+  peekPlayerCredential: () => ({ playerId: "p_test_123", token: "mock-member-token", kind: "member" }),
   usePlayerId: () => ({ playerId: "p_test_123", ready: true, kind: "member" }),
   currentGuestToken: () => null,
   ensureGuestToken: () => Promise.resolve(undefined),
@@ -602,26 +603,26 @@ describe("Production UX Resilience Audit Suite", () => {
       const viewDetailBtn = screen.getByRole("button", { name: /^Open Ludo match/i });
       fireEvent.click(viewDetailBtn);
 
-      // Must display modal with real metadata and error alert
+      const scorecard = within(await screen.findByRole("dialog", { name: "Ludo scorecard" }));
       await waitFor(() => {
-        expect(screen.getByText("Ludo scorecard")).toBeInTheDocument();
-        expect(screen.getByRole("alert")).toHaveTextContent(/Detailed timeline could not be loaded/i);
+        expect(scorecard.getByRole("alert")).toHaveTextContent(/Detailed timeline could not be loaded/i);
       });
 
       // Verify no fabricated numbers are injected. Exact, standalone values: a
       // regex for "24" also matched any date on the 24th ("Sep 24, 2026") and made
       // this fail for one day of every month.
-      expect(screen.queryByText("24")).not.toBeInTheDocument();
-      expect(screen.queryByText("42")).not.toBeInTheDocument();
+      expect(scorecard.queryByText("24")).not.toBeInTheDocument();
+      expect(scorecard.queryByText("42")).not.toBeInTheDocument();
 
-      const retryDetailBtn = screen.getByRole("button", { name: /^retry$/i });
-      fireEvent.click(retryDetailBtn);
-
-      await waitFor(() => {
-        expect(screen.getByText("Timeline events")).toBeInTheDocument();
-        expect(screen.getByText("18")).toBeInTheDocument();
-        expect(screen.getByText("30")).toBeInTheDocument();
+      const retryDetailBtn = scorecard.getByRole("button", { name: /^retry$/i });
+      await act(async () => {
+        fireEvent.click(retryDetailBtn);
       });
+
+      expect(detailFetchAttempts).toBe(2);
+      expect(scorecard.getByText("Timeline events")).toBeInTheDocument();
+      expect(scorecard.getByText("18")).toBeInTheDocument();
+      expect(scorecard.getByText("30")).toBeInTheDocument();
     });
   });
 

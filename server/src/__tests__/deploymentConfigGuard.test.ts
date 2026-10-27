@@ -12,6 +12,7 @@ import {
   isActivelyDeclared,
   isDocumented,
   auditSupabaseClientConfig,
+  auditRoomSnapshotConfig,
   runDeploymentConfigGuard,
 } from "../../../scripts/quality-gates/deploymentConfigGuard.mjs";
 
@@ -38,7 +39,39 @@ import {
 
 const ROOT_DIR = path.resolve(__dirname, "../../..");
 
+describe("persistent snapshot deployment contract", () => {
+  const blueprint = `
+    healthCheckPath: /ready
+    disk:
+      name: room-snapshots
+      mountPath: /var/data/room-snapshots
+      sizeGB: 1
+    envVars:
+      - key: ROOM_SNAPSHOT_STORE
+        value: file
+      - key: ROOM_SNAPSHOT_DIR
+        value: /var/data/room-snapshots
+  `;
+  it("accepts a matching mount and readiness path", () => {
+    expect(auditRoomSnapshotConfig(blueprint)).toEqual([]);
+  });
+  it("rejects a missing or mismatched mount and liveness-only deployment", () => {
+    expect(auditRoomSnapshotConfig(blueprint.replace("disk:", "missingDisk:"))).not.toEqual([]);
+    expect(auditRoomSnapshotConfig(blueprint.replace("mountPath:", "missingMount:"))).not.toEqual([]);
+    expect(auditRoomSnapshotConfig(blueprint.replace("value: /var/data/room-snapshots", "value: /tmp/snapshots"))).not.toEqual([]);
+    expect(auditRoomSnapshotConfig(blueprint.replace("/ready", "/health"))).not.toEqual([]);
+  });
+});
+
 describe("release quality gate dependencies", () => {
+  it("installs the client dependency used by live-socket server tests before running them", () => {
+    const workflow = fs.readFileSync(path.join(ROOT_DIR, ".github/workflows/ci.yml"), "utf8");
+    const serverJob = workflow.slice(workflow.indexOf("  server:"), workflow.indexOf("  client:"));
+    const install = serverJob.indexOf("run: npm --prefix ../client ci");
+    expect(install).toBeGreaterThan(0);
+    expect(serverJob.indexOf("run: npm test -- --coverage")).toBeGreaterThan(install);
+  });
+
   it("installs root dependencies before running persistence verification", () => {
     const workflow = fs.readFileSync(path.join(ROOT_DIR, ".github/workflows/ci.yml"), "utf8");
     const qualityJob = workflow.slice(workflow.indexOf("  quality-gates:"));

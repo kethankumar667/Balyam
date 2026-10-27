@@ -1,0 +1,65 @@
+{
+  "timestamp": "2026-10-27T08:48:21.470Z",
+  "serverUrl": "http://127.0.0.1:53153",
+  "scope": "Isolated loopback Socket.IO, auth off, no economy. No browser viewport or hosted persistence certification.",
+  "scenarios": [
+    {
+      "id": "SCENARIO_A",
+      "name": "Room Creation, Host Ownership & Ready Transition",
+      "status": "PASS",
+      "details": "Room QKUPPE created with Host p_1793090901598_d45tpr and Guest p_1793090901629_61ypbf"
+    },
+    {
+      "id": "SCENARIO_B",
+      "name": "Multi-Participant State Synchronization",
+      "status": "PASS",
+      "details": "3 simultaneous clients (Host, Guest, Member) synchronized"
+    },
+    {
+      "id": "SCENARIO_C",
+      "name": "Gameplay Lifecycle",
+      "status": "PASS",
+      "details": "SnL started; a separate two-client RPS match finished via 10 real winning rounds, with winner and score verified. No state was forced."
+    },
+    {
+      "id": "SCENARIO_D",
+      "name": "Chat under Load & Multilingual Delivery",
+      "status": "PASS",
+      "details": "5 burst messages verified across clients with zero drops"
+    },
+    {
+      "id": "SCENARIO_E",
+      "name": "Browser Refresh & Seat Token Recovery",
+      "status": "PASS",
+      "details": "Player p_1793090901629_61ypbf restored to original seat without ghost duplications"
+    },
+    {
+      "id": "SCENARIO_F",
+      "name": "Network Interruption & Grace Period Resumption",
+      "status": "PASS",
+      "details": "Grace period initiated on disconnect and cleared upon seamless re-attachment"
+    },
+    {
+      "id": "SCENARIO_G",
+      "name": "Host Disconnect & Room Continuation",
+      "status": "PASS",
+      "details": "Room integrity maintained when host disconnects; remaining players continue"
+    },
+    {
+      "id": "SCENARIO_H",
+      "name": "Mixed Mobile / Desktop Session Synchronization",
+      "status": "PASS",
+      "details": "Simulated orientation metadata propagated between two socket clients; no browser/device layout was tested."
+    }
+  ],
+  "allPassed": true,
+  "failures": [],
+  "evidence": {
+    "schemaVersion": 1,
+    "gitCommit": "31f52cd3dec1a6dde2e31a7f73182f351456a158",
+    "sourceClean": false,
+    "environment": "local",
+    "startedAt": "2026-10-27T08:48:21.466Z",
+    "completedAt": "2026-10-27T08:48:25.927Z"
+  }
+}

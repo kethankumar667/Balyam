@@ -142,6 +142,22 @@ export function auditSupabaseClientConfig({ renderFrontendSection, clientEnvCont
   return issues;
 }
 
+export function auditRoomSnapshotConfig(backend) {
+  const issues = [];
+  const mount = backend.match(/^\s*mountPath:\s*(\/[^\s#]+)\s*$/m)?.[1];
+  const directory = backend.match(/key:\s*ROOM_SNAPSHOT_DIR\s*\r?\n\s*value:\s*(\/[^\s#]+)/)?.[1];
+  if (!/^\s*disk:\s*$/m.test(backend) || !mount || !directory || mount !== directory) {
+    issues.push("ROOM_SNAPSHOT_DIR must match the backend persistent disk mountPath.");
+  }
+  if (!/key:\s*ROOM_SNAPSHOT_STORE\s*\r?\n\s*value:\s*file\b/.test(backend)) {
+    issues.push("Render backend must explicitly select the file snapshot store.");
+  }
+  if (!/^\s*healthCheckPath:\s*\/ready\s*$/m.test(backend)) {
+    issues.push("Render backend healthCheckPath must use /ready, not liveness alone.");
+  }
+  return issues;
+}
+
 export function runDeploymentConfigGuard() {
   const issues = [];
 
@@ -153,6 +169,8 @@ export function runDeploymentConfigGuard() {
     return { ok: false, issues };
   }
   const renderContent = fs.readFileSync(RENDER_YAML, "utf8");
+  const backend = renderContent.match(/name:\s*bhalyam-backend\b([\s\S]*?)(?=\r?\n  - type:|$)/)?.[1] ?? "";
+  issues.push(...auditRoomSnapshotConfig(backend));
 
   // The backend service must exist: it is what the rest of this guard reads its section of.
   if (!/name:\s*bhalyam-backend/.test(renderContent)) {
@@ -275,6 +293,8 @@ export function runDeploymentConfigGuard() {
   issues.push(...supabaseEnvIssues);
 
   const requiredActiveServerVars = [
+    "ROOM_SNAPSHOT_STORE",
+    "ROOM_SNAPSHOT_DIR",
     "NODE_ENV",
     "PORT",
     "CLIENT_ORIGIN",

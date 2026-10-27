@@ -39,6 +39,10 @@ export interface SubmitReviewRequest {
 export class ReviewsService {
   constructor(private readonly repository: ReviewsRepository) {}
 
+  ping(): Promise<void> {
+    return this.repository.ping();
+  }
+
   private normalizeGameId(gameId: string | null | undefined): string | null {
     if (gameId === undefined || gameId === null) return null;
     const trimmed = gameId.trim();

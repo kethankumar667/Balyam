@@ -52,6 +52,10 @@ export class RedisRoomSnapshotRepository implements RoomSnapshotRepository {
     this.keyPrefix = this.config.prefix ?? "bhalyam:room:";
   }
 
+  async ping(): Promise<void> {
+    if (await this.executeCommand(["PING"]) !== "PONG") throw new Error("Redis snapshot probe failed");
+  }
+
   private formatCommand(...args: string[]): string {
     let out = `*${args.length}\r\n`;
     for (const arg of args) {
@@ -74,6 +78,7 @@ export class RedisRoomSnapshotRepository implements RoomSnapshotRepository {
       );
 
       let buffer = "";
+      let awaitingAuth = !!this.config.password;
       const timeout = setTimeout(() => {
         client.destroy();
         reject(new Error(`Redis command timed out: ${args[0]}`));
@@ -81,6 +86,18 @@ export class RedisRoomSnapshotRepository implements RoomSnapshotRepository {
 
       client.on("data", (chunk) => {
         buffer += chunk.toString("utf8");
+        if (awaitingAuth && buffer.startsWith("+")) {
+          const end = buffer.indexOf("\r\n");
+          if (end < 0) return;
+          if (buffer.slice(1, end) !== "OK") {
+            clearTimeout(timeout);
+            client.destroy();
+            reject(new Error("Redis authentication was not acknowledged"));
+            return;
+          }
+          awaitingAuth = false;
+          buffer = buffer.slice(end + 2);
+        }
         // Quick parse for basic single response
         if (buffer.startsWith("-")) {
           clearTimeout(timeout);
@@ -91,6 +108,7 @@ export class RedisRoomSnapshotRepository implements RoomSnapshotRepository {
         }
 
         if (buffer.startsWith("+")) {
+          if (!buffer.includes("\r\n")) return;
           clearTimeout(timeout);
           client.end();
           const line = buffer.slice(1, buffer.indexOf("\r\n"));

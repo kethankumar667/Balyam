@@ -17,3 +17,4 @@ export function auditSupabaseClientConfig(params: {
   clientEnvContent?: string;
 }): string[];
 export function runDeploymentConfigGuard(): GuardResult;
+export function auditRoomSnapshotConfig(backend: string): string[];

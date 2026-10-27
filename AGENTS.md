@@ -496,6 +496,16 @@ These are **mandatory** for any AI working in this repo.
 
 ## 18. Repository-Specific Rules
 
+- **Room snapshot hosting and readiness:** production file snapshots require
+  `ROOM_SNAPSHOT_DIR` to name an absolute, existing persistent mount. The Render
+  blueprint mounts `/var/data/room-snapshots` and selects `ROOM_SNAPSHOT_STORE=file`;
+  applying it requires separate authorization. Development may use local files,
+  but they are not reported as durable hosting storage. `/health` is liveness and
+  counters; `/ready` checks snapshot read/write/rename plus progression, economy,
+  rewards and reviews, returns 503 on failure/shutdown, and is the deployment
+  health check. Never claim these probes prove host-replacement durability or
+  eliminate write-behind hard-crash windows. See `docs/runbooks/persistence.md`.
+
 Inferred from the actual code:
 
 - **Personal records are account-based and durable when progression uses Supabase.** `server/src/profile/scorecardPersistence.ts` reads revisioned archives on demand and commits through the service-only `commit_player_scorecard` RPC (migration `20261106000000_account_scorecards.sql`), with durable game/mode/match receipts. Solo HTTP submissions await commit; finished rooms use `ProgressionSync` and retain its pre-flush hard-crash window. Device-only saves are never silently imported. Hand Cricket saves whole played innings, including losses, separately for International/franchise T20/ODI/Test and the three Galli lengths; old format-only modes remain historical, never assigned a guessed category. Rummy saves positive final winning-round points for all three modes through shared `rummyRoundPoints`, never cumulative penalties. Legacy penalty modes remain separate. The dev-only `@electric-sql/pglite` tests execute real PostgreSQL migration/concurrency/reopen/permissions/cascade checks without production access. See `docs/runbooks/persistence.md`; migration and deployment require separate authorization. **A record must never vanish silently (2026-10-24).** A solo result the server could not take is queued in `bhalyam.scorecards.outbox` (`lib/scoreOutbox.ts`, same `matchId`, so the server counts it once) and resent by `scorecardStore.flushPendingScores` before every account read, on `online`, and from My Records; only 400/422 are dropped. Sign-out clears local storage, so a member's sign-out (`useSignOut`) first runs `lib/signOutGuard.ts` and, if anything exists only on the device, asks through `SignOutGuardDialog` (save to the account / sign out and delete / cancel); a guest's sign-out is not wiped and not checked. "Add to my account" (`POST /scorecards/import-device`, `profile/deviceImport.ts`) brings device bests into `archive.deviceImports`, **a field kept apart from `games` on purpose: it is shown in My Records as "Imported from your device" and never feeds a leaderboard, play count or reward**, because a browser's save can be edited. Any new solo game that keeps its own local best must be added to `readDeviceData`/`deviceBestForMode` in `features/myrecords/records.ts` or the guard cannot see it.

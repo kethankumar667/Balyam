@@ -6,6 +6,8 @@ import type { RoomSnapshot } from "../durability/types.js";
 import { makeIo, createRoomAs, joinRoomAs } from "./roomTestKit.js";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 
 describe("Room Durability & Snapshot Persistence", () => {
   let inMemoryRepo: InMemoryRoomSnapshotRepository;
@@ -255,6 +257,16 @@ describe("FileRoomSnapshotRepository", () => {
     };
 
     await fileRepo.saveSnapshot(snapshot);
+
+    const moduleUrl = pathToFileURL(path.resolve("src/rooms/durability/FileRoomSnapshotRepository.ts")).href;
+    const child = spawnSync(process.execPath, ["--import", "tsx", "--input-type=module", "-e", `
+      const { FileRoomSnapshotRepository } = await import(${JSON.stringify(moduleUrl)});
+      const repo = new FileRoomSnapshotRepository(${JSON.stringify(testDir)}, true);
+      await repo.ping();
+      console.log(JSON.stringify(await repo.getSnapshot("TEST99")));
+    `], { encoding: "utf8", timeout: 10_000 });
+    expect(child.status, child.stderr).toBe(0);
+    expect(JSON.parse(child.stdout)).toEqual(snapshot);
 
     const loaded = await fileRepo.getSnapshot("TEST99");
     expect(loaded).not.toBeNull();

@@ -188,7 +188,7 @@ describe("Admin Users — Inspect opens the player's own page", () => {
 
     expect(await screen.findByText("Player 10")).toBeDefined();
     expect(here()).toBe("/admin/users?kind=guest&page=2");
-    const calls = vi.mocked(fetch).mock.calls;
+    const calls = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes("/api/admin/users?"));
     expect(String(calls[calls.length - 1]?.[0])).toContain("page=2&pageSize=10&search=&kind=guest&role=all");
   });
 });

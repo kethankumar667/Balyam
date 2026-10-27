@@ -19,8 +19,9 @@ do not wait for all of them:
 
 - Frontend unavailable (Render shows the static site down, or `/` returns a
   non-200 from every region you can check).
-- Backend unhealthy (`/health` times out, returns non-200, or `status` is not
-  `"healthy"`).
+- Backend unavailable (`/health` times out) or dependencies not ready (`/ready`
+  times out, returns non-200, or `status` is not `"ready"`). `/health` is liveness
+  and counters only; its `"healthy"` label does not prove dependencies work.
 - Authentication unavailable (sign-in/sign-up fails for every user, not an
   isolated account — check `/health`'s `auth` field first, since a paused
   Supabase project reads as `auth-api` failing, not the server being down).
@@ -102,8 +103,14 @@ no way to hot-patch a live frontend's env).
    boot gates; a rollback to an OLDER build that predates one of those gates
    will simply not have it, which is fine — the newer build's stricter
    requirement doesn't retroactively apply).
-4. Confirm `/health` returns `"status": "healthy"` before declaring the
-   backend rollback complete.
+4. Confirm `/ready` returns HTTP 200 with `"status": "ready"`, and inspect
+   `/health` counters before declaring the backend rollback complete.
+   A pre-readiness build has no `/ready`; use its documented dependency checks
+   explicitly rather than treating a liveness response as equivalent.
+5. Preserve the snapshot disk and stable `SESSION_SECRET`. A build predating
+   `ROOM_SNAPSHOT_DIR` reads `.room_snapshots` in its checkout instead of the
+   mounted path. Do not roll back across this storage-path boundary with active
+   tables without an approved copy/drain plan. See [persistence](persistence.md).
 
 ## 6. Environment-variable rollback
 

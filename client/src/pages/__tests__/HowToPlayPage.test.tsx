@@ -31,7 +31,8 @@ describe("HowToPlayPage", () => {
     const distinctSpecs = new Set(getAllAcademySpecs().map((spec) => spec.slug));
     const titles = cardTitles().filter((title) => getAllAcademySpecs().some((spec) => spec.title === title));
     expect(titles).toHaveLength(distinctSpecs.size);
-    expect(new Set(titles).size).toBe(titles.length);
+    // Distinct games can share a title (the solo and multiplayer Brick Blocks).
+    expect(titles.sort()).toEqual(getAllAcademySpecs().map((spec) => spec.title).sort());
   });
 
   it("has a search box with an accessible name", () => {

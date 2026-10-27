@@ -8,7 +8,7 @@
  * - Scenario C: Full Gameplay Lifecycle (start, move, finish)
  * - Scenario D: High-Concurrency Chat under Load (Emoji, Multilingual Telugu/Hindi, 500-char max)
  * - Scenario E: Browser Refresh & Seat Token Recovery
- * - Scenario F: Network Interruption & 90s Grace Period Resumption
+ * - Scenario F: Network Interruption & Active-Match Grace Period Resumption
  * - Scenario G: Host Disconnect & Seat Migration Handling
  * - Scenario H: Mixed Mobile / Desktop Synchronization
  */
@@ -31,13 +31,14 @@ const express = serverRequire("express");
 const { Server } = serverRequire("socket.io");
 const { io: ClientIO } = clientRequire("socket.io-client");
 
-import { RoomManager } from "../../server/dist/server/src/rooms/RoomManager.js";
-import { registerSocketHandlers } from "../../server/dist/server/src/sockets/index.js";
-
-const PORT = 4055;
-const SERVER_URL = `http://127.0.0.1:${PORT}`;
-
 async function runMultiplayerResilienceSuite() {
+  if (process.env.NODE_ENV === "production" || Object.entries(process.env).some(
+    ([key, value]) => /SUPABASE_(URL|JWT_SECRET|ANON_KEY|PUBLISHABLE_KEY|SERVICE_ROLE_KEY)$/.test(key) && value,
+  )) {
+    throw new Error("This local verifier requires a non-production shell with no Supabase configuration.");
+  }
+  const { RoomManager } = await import("../../server/dist/server/src/rooms/RoomManager.js");
+  const { registerSocketHandlers } = await import("../../server/dist/server/src/sockets/index.js");
   const evidence = captureEvidence(ROOT_DIR);
   console.log("==========================================================");
   console.log("🎮 BHALYAM MULTIPLAYER RESILIENCE & CLOSED BETA SUITE");
@@ -45,7 +46,8 @@ async function runMultiplayerResilienceSuite() {
 
   const results = {
     timestamp: new Date().toISOString(),
-    serverUrl: SERVER_URL,
+    serverUrl: null,
+    scope: "Isolated loopback Socket.IO, auth off, no economy. No browser viewport or hosted persistence certification.",
     scenarios: [],
     allPassed: false,
     failures: [],
@@ -62,6 +64,24 @@ async function runMultiplayerResilienceSuite() {
   });
 
   const roomManager = new RoomManager(ioServer);
+  const sockets = [];
+  const socketIds = new Set();
+  function connectClient() {
+    const socket = ClientIO(SERVER_URL, { transports: ["websocket"], forceNew: true });
+    sockets.push(socket);
+    socket.on("connect", () => socketIds.add(socket.id));
+    socket.on("room:startPreflight", (payload) => {
+      socket.emit("room:acknowledgeStart", {
+        startAttemptId: payload.startAttemptId, roomRevision: payload.roomRevision,
+        visible: true, orientationSatisfied: true,
+      }, (response) => {
+        if (!response.accepted) results.failures.push("Preflight acknowledgement refused");
+      });
+    });
+    socket.on("room:error", (error) => results.failures.push(`room:error: ${error}`));
+    socket.on("game:error", (error) => results.failures.push(`game:error: ${error}`));
+    return socket;
+  }
   ioServer.on("connection", (socket) => {
     registerSocketHandlers(ioServer, socket, roomManager);
     socket.on("disconnect", () => {
@@ -69,7 +89,9 @@ async function runMultiplayerResilienceSuite() {
     });
   });
 
-  await new Promise((resolve) => httpServer.listen(PORT, "127.0.0.1", resolve));
+  await new Promise((resolve) => httpServer.listen(0, "127.0.0.1", resolve));
+  const SERVER_URL = `http://127.0.0.1:${httpServer.address().port}`;
+  results.serverUrl = SERVER_URL;
   console.log(`   ✅ Server active on ${SERVER_URL}\n`);
 
   try {
@@ -77,13 +99,13 @@ async function runMultiplayerResilienceSuite() {
     // SCENARIO A: Room Creation, Host Ownership & Join/Ready Flow
     // ──────────────────────────────────────────────────────────────────────────
     console.log("1️⃣ Executing Scenario A: Room Creation & Host Ownership...");
-    const hostSocket = ClientIO(SERVER_URL, { transports: ["websocket"], forceNew: true });
+    const hostSocket = connectClient();
     await waitForConnect(hostSocket);
 
     const createRes = await emitAck(hostSocket, "room:create", {
       name: "Alice_Host",
       game: "snl",
-      hostKind: "guest",
+      hostKind: "member",
     });
 
     assert(createRes.ok === true, "Room creation failed");
@@ -95,7 +117,7 @@ async function runMultiplayerResilienceSuite() {
     const hostSeatToken = createRes.seatToken;
 
     // Connect Guest Bob
-    const guestSocket = ClientIO(SERVER_URL, { transports: ["websocket"], forceNew: true });
+    const guestSocket = connectClient();
     await waitForConnect(guestSocket);
 
     const joinRes = await emitAck(guestSocket, "room:join", {
@@ -126,7 +148,7 @@ async function runMultiplayerResilienceSuite() {
     // SCENARIO B: Multi-Participant State Synchronization
     // ──────────────────────────────────────────────────────────────────────────
     console.log("2️⃣ Executing Scenario B: Multi-Participant State Synchronization...");
-    const memberSocket = ClientIO(SERVER_URL, { transports: ["websocket"], forceNew: true });
+    const memberSocket = connectClient();
     await waitForConnect(memberSocket);
 
     const memberJoinRes = await emitAck(memberSocket, "room:join", {
@@ -160,7 +182,7 @@ async function runMultiplayerResilienceSuite() {
     await sleep(100);
 
     hostSocket.emit("room:startGame");
-    await sleep(200);
+    await waitUntil(() => roomManager.getRoomStateByCode(roomCode)?.phase === "playing", "SnL match did not start");
 
     let playingState = roomManager.getRoomStateByCode(roomCode);
     assert(playingState.phase === "playing", "Room did not transition to playing phase");
@@ -169,17 +191,36 @@ async function runMultiplayerResilienceSuite() {
     hostSocket.emit("game:move", { type: "roll" });
     await sleep(300);
 
-    // A finished room takes no new players: one match per room, no rematch.
-    const roomObj = roomManager.rooms.get(roomCode);
-    if (roomObj) roomObj.phase = "finished";
-    const finishedState = roomManager.getRoomStateByCode(roomCode);
-    assert(finishedState.phase === "finished", "Room did not report the finished phase");
+    // RPS completes predictably through real moves; SnL stays live for recovery checks below.
+    const first = connectClient();
+    const second = connectClient();
+    await Promise.all([waitForConnect(first), waitForConnect(second)]);
+    let rpsState;
+    first.on("game:state", (state) => { if (state.kind === "rps") rpsState = state; });
+    const rps = await emitAck(first, "room:create", { name: "RpsHost", game: "rps", hostKind: "member" });
+    assert(rps.ok, "RPS creation failed");
+    const opponent = await emitAck(second, "room:join", { code: rps.code, name: "RpsGuest", accountKind: "guest" });
+    assert(opponent.ok, "RPS join failed");
+    first.emit("room:setReady", true);
+    second.emit("room:setReady", true);
+    await waitUntil(() => roomManager.getRoomStateByCode(rps.code)?.players.every((p) => p.isReady), "RPS ready state missing");
+    first.emit("room:startGame");
+    await waitUntil(() => rpsState?.kind === "rps", "RPS initial game state missing");
+    const target = rpsState.target;
+    for (let round = 1; round <= target; round++) {
+      first.emit("game:move", { type: "choose", data: { choice: "rock" } });
+      second.emit("game:move", { type: "choose", data: { choice: "scissors" } });
+      await waitUntil(() => rpsState.isOver || rpsState.round > round, `RPS round ${round} did not resolve`);
+      await sleep(150);
+    }
+    await waitUntil(() => roomManager.getRoomStateByCode(rps.code)?.phase === "finished", "RPS did not finish");
+    assert(rpsState.winnerId === rps.playerId && rpsState.scores[rps.playerId] === target, "RPS winner/score not confirmed");
 
     results.scenarios.push({
       id: "SCENARIO_C",
       name: "Gameplay Lifecycle",
       status: "PASS",
-      details: "Game started, moves processed, room reached the finished phase",
+      details: `SnL started; a separate two-client RPS match finished via ${target} real winning rounds, with winner and score verified. No state was forced.`,
     });
     console.log("   ✅ Scenario C: PASS (Game lifecycle completed)");
 
@@ -227,7 +268,7 @@ async function runMultiplayerResilienceSuite() {
     await sleep(200);
 
     // Reconnect as Bob using same seatToken
-    const reconnectedGuestSocket = ClientIO(SERVER_URL, { transports: ["websocket"], forceNew: true });
+    const reconnectedGuestSocket = connectClient();
     await waitForConnect(reconnectedGuestSocket);
 
     const reattachRes = await emitAck(reconnectedGuestSocket, "room:join", {
@@ -267,7 +308,7 @@ async function runMultiplayerResilienceSuite() {
     assert(typeof charlieSeat.awayUntil === "number", "Grace period awayUntil deadline not set");
 
     // Reconnect within grace period
-    const reconnectedMemberSocket = ClientIO(SERVER_URL, { transports: ["websocket"], forceNew: true });
+    const reconnectedMemberSocket = connectClient();
     await waitForConnect(reconnectedMemberSocket);
 
     const charlieResume = await emitAck(reconnectedMemberSocket, "room:join", {
@@ -289,7 +330,7 @@ async function runMultiplayerResilienceSuite() {
       status: "PASS",
       details: "Grace period initiated on disconnect and cleared upon seamless re-attachment",
     });
-    console.log("   ✅ Scenario F: PASS (90s Grace period preserved seat and resumed seamlessly)");
+    console.log("   ✅ Scenario F: PASS (Active-match grace preserved seat and resumed seamlessly)");
 
     // ──────────────────────────────────────────────────────────────────────────
     // SCENARIO G: Host Disconnect & Lifecycle Handling
@@ -314,21 +355,23 @@ async function runMultiplayerResilienceSuite() {
     // SCENARIO H: Mixed Mobile / Desktop Multi-User Session
     // ──────────────────────────────────────────────────────────────────────────
     console.log("8️⃣ Executing Scenario H: Mixed Mobile / Desktop Session Sync...");
-    const mobileClient = ClientIO(SERVER_URL, { transports: ["websocket"], forceNew: true });
-    const desktopClient = ClientIO(SERVER_URL, { transports: ["websocket"], forceNew: true });
+    const mobileClient = connectClient();
+    const desktopClient = connectClient();
     await Promise.all([waitForConnect(mobileClient), waitForConnect(desktopClient)]);
 
     const mixedRoom = await emitAck(mobileClient, "room:create", {
       name: "Mobile_User",
       game: "ludo",
-      hostKind: "guest",
+      hostKind: "member",
     });
+    assert(mixedRoom.ok, "Mixed-session room creation failed");
 
     const deskJoin = await emitAck(desktopClient, "room:join", {
       code: mixedRoom.code,
       name: "Desktop_User",
       accountKind: "member",
     });
+    assert(deskJoin.ok, "Mixed-session join failed");
 
     // Mobile emits orientation change
     const deskStatePromise = waitForEvent(desktopClient, "room:state", (s) => s.players.some((p) => p.name === "Mobile_User" && p.needsRotation === true));
@@ -340,18 +383,22 @@ async function runMultiplayerResilienceSuite() {
       id: "SCENARIO_H",
       name: "Mixed Mobile / Desktop Session Synchronization",
       status: "PASS",
-      details: "Mobile device metadata and actions propagated in real time to desktop client",
+      details: "Simulated orientation metadata propagated between two socket clients; no browser/device layout was tested.",
     });
-    console.log("   ✅ Scenario H: PASS (Mobile & Desktop viewports synchronized in real time)");
+    console.log("   ✅ Scenario H: PASS (Simulated orientation metadata synchronized between sockets)");
 
+    assert(results.failures.length === 0, results.failures.join("; "));
     results.allPassed = true;
   } catch (err) {
     console.error(`\n❌ Error during multiplayer resilience suite: ${err.message}`);
     results.failures.push(err.message);
     results.allPassed = false;
   } finally {
-    ioServer.close();
-    httpServer.close();
+    for (const id of socketIds) roomManager.leaveRoom(id);
+    for (const socket of sockets) socket.disconnect();
+    await roomManager.flushSnapshots();
+    await new Promise((resolve) => ioServer.close(resolve));
+    if (httpServer.listening) await new Promise((resolve) => httpServer.close(resolve));
   }
 
   console.log("\n==========================================================");
@@ -368,9 +415,21 @@ async function runMultiplayerResilienceSuite() {
 }
 
 function emitAck(socket, event, payload) {
-  return new Promise((resolve) => {
-    socket.emit(event, payload, (res) => resolve(res));
+  return new Promise((resolve, reject) => {
+    socket.timeout(4000).emit(event, payload, (error, res) => {
+      if (error) reject(new Error(`${event} acknowledgement timed out`));
+      else resolve(res);
+    });
   });
+}
+
+async function waitUntil(predicate, message, timeoutMs = 5000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (predicate()) return;
+    await sleep(20);
+  }
+  throw new Error(message);
 }
 
 function waitForConnect(socket) {
@@ -412,16 +471,21 @@ function assert(condition, message) {
 function generateMarkdownReport(results, filePath) {
   const content = `# MULTIPLAYER-RESILIENCE-REPORT.md — Multi-User Closed Beta Resilience Report
 
-> **Audited by:** Multiplayer Systems Architect, QA Lead, SRE, Principal Engineer  
-> **Date:** ${new Date().toISOString()}  
-> **Target:** BHALYAM Closed Beta Engine & Live Realtime Service  
-> **Result:** **${results.allPassed ? "100% VERIFIED (8/8 SCENARIOS PASSED)" : "FAILED"}**
+> **Verifier:** Automated local Socket.IO scenarios
+>
+> **Date:** ${new Date().toISOString()}
+>
+> **Target:** Isolated loopback realtime service
+>
+> **Result:** **${results.allPassed ? "8/8 LOCAL SCENARIOS PASSED" : "FAILED"}**
 
 ---
 
 ## 1. Executive Summary
 
-This report documents the live execution of realistic multi-user validation across 8 business-critical scenarios (Scenarios A through H) against the live BHALYAM Socket.IO server on \`${results.serverUrl}\`.
+This report documents eight local scenarios against \`${results.serverUrl}\`.
+Scope: ${results.scope}
+This is not hosted authentication, economy, persistent-storage, physical-device, or cross-browser evidence.
 
 ---
 
@@ -440,29 +504,29 @@ ${results.scenarios.map((s) => `| **${s.id}** | ${s.name} | **${s.status}** | ${
 - Verified guest join assigns distinct \`playerId\` and triggers \`room:state\` with \`ready: true\` on readiness toggle.
 
 ### Scenario B: Multi-Participant Synchronization
-- Verified 3 concurrent sockets (Host, Guest, Member) maintain identical player order and room state on every update.
+- Verified three concurrent sockets receive the expected three-seat room state.
 
 ### Scenario C: Gameplay Lifecycle
 - Verified \`room:startGame\` transitions phase to \`playing\`.
 - Verified in-game moves are authoritatively evaluated by the server.
-- Verified the room reaches the \`finished\` phase (one match per room; there is no rematch).
+- Verified a separate two-client RPS match reaches \`finished\` through real winning rounds, with the expected winner and score; no state is forced.
 
 ### Scenario D: High-Concurrency Chat under Load
-- Verified burst transmission of 5 messages (Emoji, Telugu Unicode \`శుభోదయం!\`, Hindi Unicode \`नमस्ते!\`, and a boundary 500-char payload).
-- 0 drops, 0 sequence corruption, exact string length preserved across all clients.
+- Verified a five-message burst including emoji, Telugu text, and a 500-character boundary payload at the host.
 
 ### Scenario E: Browser Refresh & Seat Token Recovery
 - Verified disconnected guest reconnecting with valid \`seatToken\` is rehydrated into their existing seat without duplicate player creation.
 
-### Scenario F: Network Interruption & 90s Grace Period
-- Disconnected member socket enters 90s grace period.
+### Scenario F: Network Interruption & Active-Match Grace Period
+- Disconnected member socket receives an \`awayUntil\` deadline.
 - Reconnected member within grace period successfully resumes without penalty or seat loss.
 
 ### Scenario G: Host Disconnect & Room Continuation
 - Verified room does not collapse when host disconnects; game state and player seats remain intact.
 
 ### Scenario H: Mixed Mobile / Desktop Session Synchronization
-- Verified mobile client viewport orientation change (\`needsRotation: true\`) is broadcast to desktop client in real time.
+- Verified simulated orientation metadata (\`needsRotation: true\`) is broadcast between socket clients.
+- No viewport was rendered and no physical device was used.
 `;
 
   fs.writeFileSync(filePath, content, "utf8");

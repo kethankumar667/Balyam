@@ -150,7 +150,7 @@ describe("RummyWorldScene", () => {
   });
 
   it("draws each world's own scene once it has arrived", async () => {
-    const MARK: Record<string, string> = { neon: "bvw-twinkle", toy: "bt-dots", zen: "cy=\"46\"", reef: "rgba(220,255,250,0.55)", palace: "bp-carpet" };
+    const MARK: Record<string, string> = { neon: "bvw-twinkle", toy: "rgba(40,18,4,0.22)", zen: "cy=\"46\"", reef: "rgba(220,255,250,0.55)", palace: "bp-carpet" };
     for (const id of RUMMY_WORLDS) {
       const view = render(<RummyWorldScene world={id} />);
       await waitFor(() => expect(view.container.innerHTML, id).toContain(MARK[id]));

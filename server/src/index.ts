@@ -11,6 +11,7 @@ import { globalRateLimiter, machineRateLimiter } from "./lib/rateLimiter.js";
 import { turnStatus } from "./lib/iceServers.js";
 import { verificationMode } from "./lib/supabaseAuth.js";
 import { redactLastErrors } from "./lib/healthRedaction.js";
+import { createReadinessCheck, readinessHandler } from "./lib/readiness.js";
 import { readTrustProxyHops } from "./lib/trustProxy.js";
 import { serverResourceTracker } from "./reliability/ResourceTracker.js";
 import { memoryMonitor } from "./reliability/MemoryMonitor.js";
@@ -29,12 +30,12 @@ import { attachPlayerIdentity } from "./auth/identity.js";
 import { authRouter } from "./auth/AuthController.js";
 import { assertGuestTokenDurabilityConfigured } from "./auth/guestToken.js";
 import { assertSeatTokenConfigured } from "./lib/seatToken.js";
-import { initialiseProgressionStore, persistenceStatus } from "./persistence/index.js";
+import { initialiseProgressionStore, persistenceStatus, progressionRepository } from "./persistence/index.js";
 import { initialiseEconomyStore, economyStoreStatus } from "./economy/index.js";
 import { createEconomyRouter } from "./economy/EconomyController.js";
 import type { EconomyService } from "./economy/EconomyService.js";
 import { initialiseReviewsStore, reviewsStoreStatus } from "./reviews/index.js";
-import { initialiseRoomSnapshotStore, roomSnapshotStoreStatus } from "./rooms/durability/index.js";
+import { initialiseRoomSnapshotStore, roomSnapshotStoreStatus, pingRoomSnapshotStore } from "./rooms/durability/index.js";
 import { createReviewsRouter, createAdminReviewsRouter } from "./reviews/ReviewsController.js";
 import { createAdminFeedbackRouter } from "./admin/AdminFeedbackController.js";
 import { hydrateProgression } from "./persistence/hydrate.js";
@@ -344,6 +345,15 @@ await cosmeticsService.assertCatalogIntegrity();
 await cosmeticsService.assertRarityPricing();
 
 const snapshotStore = await initialiseRoomSnapshotStore();
+let shuttingDown = false;
+const checkReadiness = createReadinessCheck({
+  snapshots: pingRoomSnapshotStore,
+  progression: () => progressionRepository().ping(),
+  economy: async () => { if (economyService) await economyService.getRepository().ping(); },
+  rewards: () => rewardStore.ping(),
+  reviews: () => reviewsService.ping(),
+});
+app.get("/ready", readinessHandler(checkReadiness, () => shuttingDown));
 const roomManager = new RoomManager(io, economyService, cosmeticsService, snapshotStore);
 await roomManager.hydrateSnapshots();
 
@@ -796,6 +806,8 @@ startKeepAlive();
  * finish; it is still short enough for any orchestrator's grace period.
  */
 function shutdown(signal: string): void {
+  if (shuttingDown) return;
+  shuttingDown = true;
   logger.warn({ message: `Received ${signal}, starting graceful shutdown...`, module: "SERVER" });
   globalRateLimiter.destroy();
   stopMandaliRetention?.();

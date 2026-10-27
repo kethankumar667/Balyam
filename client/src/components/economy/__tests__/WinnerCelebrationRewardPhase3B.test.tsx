@@ -18,7 +18,7 @@ vi.mock("../../../lib/socket", () => ({
 vi.mock("../../../store/roomStore", () => ({
   useRoomStore: vi.fn((selector) =>
     selector({
-      roomState: { hostId: "p_1", game: "rummy" },
+      roomState: { hostId: "p_1", game: "rummy", players: [] },
     }),
   ),
 }));

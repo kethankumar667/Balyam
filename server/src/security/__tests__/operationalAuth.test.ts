@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import crypto from "crypto";
 import { spawn } from "child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
 import path from "path";
 import { fileURLToPath } from "url";
 import {
@@ -450,6 +452,15 @@ describe("P0-1 — production startup guard", () => {
 describe("P0-1 — the real server refuses to boot misconfigured", () => {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const serverRoot = path.resolve(here, "../../..");
+  let snapshotDirectory: string;
+
+  beforeEach(async () => {
+    snapshotDirectory = await mkdtemp(path.join(os.tmpdir(), "operational-boot-snapshots-"));
+  });
+
+  afterEach(async () => {
+    await rm(snapshotDirectory, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+  });
   /**
    * The tsx CLI as a plain JS entry, run by this same node binary.
    *
@@ -479,6 +490,8 @@ describe("P0-1 — the real server refuses to boot misconfigured", () => {
           ALLOW_EPHEMERAL_PROGRESSION: "true",
           ALLOW_EPHEMERAL_ECONOMY: "true",
           ALLOW_EPHEMERAL_REVIEWS: "true",
+          ROOM_SNAPSHOT_STORE: "file",
+          ROOM_SNAPSHOT_DIR: snapshotDirectory,
           ...env,
         },
       });
