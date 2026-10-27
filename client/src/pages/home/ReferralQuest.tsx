@@ -56,7 +56,7 @@ export function ReferralQuest({ isMember }: { isMember: boolean }) {
       <ul className="grid grid-cols-3 gap-2">
         {NOSTALGIA_PACK.map((item, index) => <li key={item.id} className="min-w-0 text-center">
           <PackCollectible index={index} /><span className="mt-2 block text-[10px] font-semibold leading-relaxed text-journey-gold">{item.name}</span>
-          <span className="block text-[9px] text-journey-soft">{index === 0 ? "Avatar aura" : index === 1 ? "Podium title" : "Rummy theme"}</span>
+          <span className="block text-[9px] text-journey-soft">{index === 0 ? "Avatar aura" : index === 1 ? "Podium title" : "Theme · 6 games"}</span>
         </li>)}
       </ul>
     </div>
