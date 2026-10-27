@@ -66,23 +66,23 @@ interface NavigatorProps {
 export function ScorecardNavigator(props: NavigatorProps) {
   return (
     <Panel title="Game navigator">
-      <div className="px-3 pb-2">
+      <div className="px-4 pb-3">
         <label className="relative block">
           <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-score-soft" aria-hidden="true" />
           <input type="search" aria-label="Search games" placeholder="Search games..." value={props.search}
             onChange={event => props.onSearch(event.target.value)}
-            className="min-h-11 w-full rounded-xl border border-score-edge bg-score-inset pl-9 pr-3 text-xs text-score-ink placeholder:text-score-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-score-cyan" />
+            className="min-h-11 w-full rounded-xl border border-score-edge bg-score-inset pl-9 pr-3 text-sm text-score-ink placeholder:text-score-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-score-cyan" />
         </label>
-        <div role="group" aria-label="Game categories" className="mt-2 flex flex-wrap gap-1">
+        <div role="group" aria-label="Game categories" className="mt-3 flex flex-wrap gap-1.5">
           {SCORECARD_CATEGORIES.map(category => <button key={category.id} type="button"
             aria-pressed={props.category === category.id} onClick={() => props.onCategory(category.id)}
-            className={`min-h-11 min-w-11 rounded-lg border px-2.5 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-score-cyan ${
+            className={`min-h-11 min-w-11 rounded-lg border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-score-cyan ${
               props.category === category.id ? "border-score-cyan bg-score-cyan text-score-on-cyan"
                 : "border-score-edge bg-score-inset text-score-soft hover:border-score-cyan hover:text-score-ink"
             }`}>{category.label}</button>)}
         </div>
       </div>
-      <div className="flex gap-2 overflow-x-auto px-3 pb-3 xl:max-h-[710px] xl:flex-col xl:overflow-y-auto xl:overflow-x-hidden" aria-label="Games">
+      <div className="flex gap-2 overflow-x-auto px-4 pb-4 pt-1 xl:max-h-[710px] xl:flex-col xl:overflow-y-auto xl:overflow-x-hidden xl:[scrollbar-gutter:stable]" aria-label="Games">
         {props.games.map(game => {
           const config = getGameModeConfig(game);
           const records = props.records.find(item => item.id === game);
@@ -90,15 +90,15 @@ export function ScorecardNavigator(props: NavigatorProps) {
           const pinned = props.pinnedGames.includes(game);
           const selected = props.selectedGame === game;
           return (
-            <div key={game} className={`flex min-w-44 shrink-0 items-center rounded-xl border xl:min-w-0 ${
-              selected ? "border-score-cyan bg-score-active shadow-[inset_0_0_14px_rgba(6,182,212,0.1)]" : "border-transparent hover:border-score-edge"
+            <div key={game} className={`flex min-w-60 shrink-0 items-center rounded-xl border pr-1 xl:min-w-0 ${
+              selected ? "border-score-cyan bg-score-active shadow-[inset_0_0_14px_rgba(6,182,212,0.1)]" : "border-score-edge bg-score-inset hover:border-score-cyan"
             }`}>
               <button type="button" onClick={() => props.onSelect(game)} aria-label={`Select game ${config.displayName}`} aria-pressed={selected}
-                className="flex min-h-14 min-w-0 flex-1 items-center gap-2 rounded-lg p-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-score-cyan">
-                <GameArt game={game} className="h-9 w-9 shrink-0" />
-                <span className="min-w-0">
-                  <span className="block text-xs font-bold leading-snug text-score-ink">{config.displayName}</span>
-                  <span className="mt-0.5 block text-[10px] text-score-soft">{count} {count === 1 ? "saved best" : "saved bests"}</span>
+                className="flex min-h-20 min-w-0 flex-1 items-center gap-3 rounded-lg p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-score-cyan">
+                <GameArt game={game} className="h-11 w-11 shrink-0" />
+                <span className="min-w-0 flex-1">
+                  <span className="block break-words text-sm font-bold leading-snug text-score-ink">{config.displayName}</span>
+                  <span className="mt-1 block whitespace-nowrap text-[11px] leading-relaxed text-score-soft">{count} {count === 1 ? "saved best" : "saved bests"}</span>
                 </span>
               </button>
               <button type="button" onClick={() => props.onPin(game)} aria-label={`${pinned ? "Unpin" : "Pin"} ${config.displayName}`}
