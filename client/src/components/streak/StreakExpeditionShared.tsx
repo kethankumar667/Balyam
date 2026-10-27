@@ -167,10 +167,10 @@ export function TodayRewardCard({ model, compact = false }: TodayRewardCardProps
   return (
     <section className={`streak-paper relative flex w-full flex-1 flex-col overflow-hidden ${compact ? "p-5" : "p-6"}`}>
       <div className="flex items-center gap-4">
-        <div className="streak-day-seal relative grid h-[100px] w-[100px] shrink-0 place-content-center rounded-full text-center">
+        <div role="group" aria-label={`${model.currentStreak}-day streak`} className="streak-day-seal relative flex h-[100px] w-[100px] shrink-0 flex-col items-center justify-center gap-1 rounded-full px-2 text-center font-sans">
           <Flame aria-hidden="true" className="mx-auto h-6 w-6 fill-orange-400 text-orange-600" />
-          <span className="font-display text-3xl leading-none text-[#194b3b]">{model.currentStreak}</span>
-          <span className="text-[10px] font-black uppercase tracking-widest text-[#315348]">Day streak</span>
+          <span className="text-3xl font-semibold leading-none tracking-tight text-[#194b3b] tabular-nums">{model.currentStreak}</span>
+          <span className="whitespace-nowrap text-[10px] font-semibold leading-[14px] tracking-normal text-[#315348]">Day streak</span>
         </div>
         <div className="min-w-0">
           <p className="text-[10px] font-black uppercase tracking-[.15em] text-[#725633]">Your daily reward</p>

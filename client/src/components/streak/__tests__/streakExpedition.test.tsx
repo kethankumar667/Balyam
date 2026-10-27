@@ -22,6 +22,17 @@ function seed(overrides: Partial<DailyStreakState> = {}) {
 afterEach(() => { useStreakStore.getState().resetTransientState(); });
 
 describe("reference-style rewards expedition", () => {
+  it.each([0, 1, 16, 365])("keeps the %i-day badge readable in both layouts", (currentStreak) => {
+    seed({ currentStreak });
+    for (const Layout of [DailyStreakModalMobile, DailyStreakModalDesktop]) {
+      const { unmount } = render(<Layout onClose={vi.fn()} />);
+      const badge = screen.getByRole("group", { name: `${currentStreak}-day streak` });
+      expect(badge).toHaveTextContent(`${currentStreak}Day streak`);
+      expect(badge.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+      unmount();
+    }
+  });
+
   it("shows today's real day-16 grant, milestone progress, reward preview and shield balance", () => {
     seed();
     render(<DailyStreakModalDesktop onClose={vi.fn()} />);

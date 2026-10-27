@@ -32,6 +32,23 @@ beforeEach(() => {
 });
 
 describe("wallet drawer state consistency", () => {
+  it.each([
+    ["1600", "MATCH_PRIZE_CREDIT", "Credit", "+1,600"],
+    ["-1000", "ROOM_ENTRY_DEBIT", "Debit", "-1,000"],
+    ["9007199254740993", "MATCH_PRIZE_CREDIT", "Credit", "+9,007,199,254,740,993"],
+  ])("keeps the full %s coin delta in an unbroken badge", (amount, entryType, direction, formatted) => {
+    mocks.ledger.mockReturnValue({
+      entries: [{ ...entry, amount, entryType }], isLoading: false, hasMore: false,
+      error: null, refetch: vi.fn(), loadMore: vi.fn(),
+    });
+    render(<WalletDrawer isOpen onClose={vi.fn()} />);
+    const badge = screen.getByLabelText(new RegExp(`^${direction} of .* coins$`));
+    expect(badge.textContent).toBe(formatted);
+    expect(badge.className).toContain("whitespace-nowrap");
+    expect(badge.parentElement?.className).not.toContain("break-all");
+    expect(badge.parentElement?.parentElement?.className).toContain("shrink-0");
+  });
+
   it("uses readable fixed-dark error ink even in the light theme", () => {
     render(<WalletDrawer isOpen onClose={vi.fn()} />);
     expect(screen.getByText("Wallet Unavailable").parentElement?.className).toContain("text-red-300");

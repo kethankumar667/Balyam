@@ -455,9 +455,9 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                             type="button"
                             key={entry.id}
                             onClick={() => setSelectedEntry(entry)}
-                            className="relative min-h-16 w-full p-2 rounded-xl border border-transparent hover:border-amber-500/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-600 transition flex items-center justify-between gap-2 text-left cursor-pointer group"
+                            className="relative min-h-16 w-full p-2 rounded-xl border border-transparent hover:border-amber-500/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-600 transition flex flex-wrap items-center justify-between gap-2 text-left cursor-pointer group"
                           >
-                            <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex min-w-0 flex-1 basis-40 items-center gap-3">
                               <div className={`relative w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isGrant ? "bg-purple-100 text-purple-700" : type === "DEBIT" ? "bg-orange-100 text-orange-800" : "bg-emerald-100 text-emerald-800"}`}>
                                 {isGrant ? <Gift className="h-4 w-4" aria-hidden="true" /> : type === "DEBIT" ? (
                                   <ArrowUpRight className="w-4 h-4 text-amber-500" />
@@ -475,12 +475,12 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                               </div>
                             </div>
 
-                            <div className="flex min-w-0 max-w-[50%] items-center gap-2">
-                              <div className="min-w-0 text-right [&_span]:min-w-0 [&_span]:break-all">
-                                <CoinDelta delta={entry.amount} type={type} size="sm" showIcon={false} showBadgeText={false} />
+                            <div className="ml-auto flex shrink-0 items-center gap-2">
+                              <div className="text-right">
+                                <CoinDelta delta={entry.amount} type={type} size="sm" showIcon={false} showBadgeText={false} className="whitespace-nowrap" />
                                 <span className={`mt-1 block text-[8px] font-bold tracking-wider ${isGrant ? "text-purple-700 dark:text-purple-300" : "text-stone-600 dark:text-stone-300"}`}>{isGrant ? "GRANT" : type}</span>
                               </div>
-                              <ChevronRight className="w-3.5 h-3.5 text-ink-lo dark:text-text-lo group-hover:translate-x-0.5 transition" />
+                              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-ink-lo dark:text-text-lo group-hover:translate-x-0.5 transition" />
                             </div>
                           </button>
                         );

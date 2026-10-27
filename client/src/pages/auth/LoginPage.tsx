@@ -148,6 +148,15 @@ export default function LoginPage() {
           RIGHT FULL-SCREEN PAGE: SPIRAL NOTEBOOK LOGIN FORM
          ════════════════════════════════════════════════════════════ */}
       <div className="w-full lg:w-[52%] xl:w-[52%] min-h-screen bg-[#FAF6EE] dark:bg-[#0B0F17] flex flex-col items-center p-6 sm:p-10 lg:p-12 xl:p-16 relative overflow-y-auto">
+        <nav aria-label="Login navigation" className="relative z-30 mb-8 w-full shrink-0">
+          <Link
+            to="/"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-[#E0CCAC] bg-[#FAF6EE] px-3 text-sm font-bold text-[#5C4A32] transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp-500 focus-visible:ring-offset-2 dark:border-slate-600 dark:bg-[#0B0F17] dark:text-slate-100 dark:hover:bg-slate-800"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Back to home
+          </Link>
+        </nav>
         {/* Top Right Taped Sticky Note */}
         <div className="absolute top-4 right-4 sm:top-6 sm:right-8 bg-[#FBF0B5] px-3.5 py-2.5 rounded-md border border-[#E6DC9E] shadow-sm rotate-2 z-20 max-w-[200px] text-right pointer-events-none hidden sm:block">
           <div className="w-10 h-3 bg-[#E0D48A]/80 absolute -top-1.5 left-1/2 -translate-x-1/2 shadow-2xs" />
@@ -164,6 +173,7 @@ export default function LoginPage() {
         <div className="my-auto w-full">
           {/* Bhalyam Logo */}
           <div className="flex justify-center -mt-6 pb-2">
+            <Link to="/" aria-label="Bhalyam home" className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp-500 focus-visible:ring-offset-2">
             <picture>
               <source type="image/avif" srcSet="/FooterBhalyamlogo.avif" />
               <source type="image/webp" srcSet="/FooterBhalyamlogo.webp" />
@@ -177,6 +187,7 @@ export default function LoginPage() {
                 className="h-24 sm:h-28 w-auto object-contain"
               />
             </picture>
+            </Link>
           </div>
 
           {/* Top Header */}
