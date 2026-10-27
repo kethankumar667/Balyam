@@ -9,6 +9,7 @@ function chipVars(tint: string, dark: string): CSSProperties {
 }
 import { Dice } from "./Dice";
 import { Token } from "./Token";
+import { LudoMagnifier } from "./LudoMagnifier";
 import InstructionsModal from "./InstructionsModal";
 import Toast from "./Toast";
 import Confetti from "./Confetti";
@@ -1514,6 +1515,7 @@ export function LudoBoardArea({
   players: Player[];
   maxWidth: string;
 }) {
+  // The lens and original share the same presentation model; neither owns gameplay state.
   return (
     <div
       ref={m.boardWrapRef}
@@ -1528,7 +1530,23 @@ export function LudoBoardArea({
       className={`ludo-board relative w-full mx-auto aspect-square select-none rounded-2xl overflow-hidden border-4 border-slate-950 bg-white shadow-[0_24px_60px_rgba(0,0,0,0.45)] theme-${m.world} ${m.settings.highContrast ? "hc" : ""}`}
       style={{ maxWidth }}
     >
-      {/* EGOCENTRIC ORIENTATION. The board spins so the local player's own
+      <LudoMagnifier
+        playerCount={m.playerCount}
+        world={m.world}
+        highContrast={m.settings.highContrast}
+        onEnable={() => { m.clearHoverPreview(); m.onBoardMouseLeave(); }}
+      >
+        {(readOnly, inLens) => <LudoBoardScene m={m} state={state} players={players} readOnly={readOnly} inLens={inLens} />}
+      </LudoMagnifier>
+    </div>
+  );
+}
+
+function LudoBoardScene({ m, state, players, readOnly, inLens }: {
+  m: LudoBoardModel; state: LudoState; players: Player[]; readOnly: boolean; inLens: boolean;
+}) {
+  return (
+      /* EGOCENTRIC ORIENTATION. The board spins so the local player's own
           yard sits at the BOTTOM, nearest their hands — the same reason a card
           game deals your hand toward you. Picking brown on an 8-player board
           previously put your pieces at the far top edge.
@@ -1538,7 +1556,7 @@ export function LudoBoardArea({
           coordinates are percentages of this same box, and rotating the box
           rotates art and pieces as one. Purely presentational — no engine
           index, track position or colour→arm mapping is touched, so it stays
-          per-client and cannot desync players from each other. */}
+          per-client and cannot desync players from each other. */
       <div
         className="absolute inset-0"
         style={{
@@ -1575,13 +1593,13 @@ export function LudoBoardArea({
         />
       )}
       {/* Live opponent cursors */}
-      <CursorLayer
+      {!inLens && <CursorLayer
         cursors={Object.values(m.cursors).filter((c) => c.playerId !== m.selfId)}
         players={players}
         playerColors={state.playerColors}
-      />
+      />}
       {/* Hover-preview glow on destination cell */}
-      {m.hoverPreview && <HoverPreviewMarker preview={m.hoverPreview} geo={m.polygonGeo} />}
+      {!inLens && m.hoverPreview && <HoverPreviewMarker preview={m.hoverPreview} geo={m.polygonGeo} />}
 
       {/* Token overlay */}
       <div className="absolute inset-0">
@@ -1625,9 +1643,9 @@ export function LudoBoardArea({
                   : 6) * (pos.scale ?? 1)
               }
               movable={movable}
-              onClick={movable ? () => m.move(token.id) : undefined}
-              onMouseEnter={() => m.onHoverToken(pid, token)}
-              onMouseLeave={m.clearHoverPreview}
+              onClick={!readOnly && movable ? () => m.move(token.id) : undefined}
+              onMouseEnter={readOnly ? undefined : () => m.onHoverToken(pid, token)}
+              onMouseLeave={readOnly ? undefined : m.clearHoverPreview}
               label={String(idx + 1)}
               // Cancels the board's rotation so the pawn and its number stay
               // upright whichever way the board is turned.
@@ -1643,7 +1661,7 @@ export function LudoBoardArea({
         })}
       </div>
       {/* Capture sad-faces (briefly visible at the victim's last position) */}
-      {m.captureFaces.map((cf) => (
+      {!inLens && m.captureFaces.map((cf) => (
         <span
           key={cf.id}
           className="capture-face"
@@ -1654,7 +1672,7 @@ export function LudoBoardArea({
       ))}
 
       {/* GAL: Gotcha Capture Overlay */}
-      {m.activeCapture && (
+      {!inLens && m.activeCapture && (
         <GotchaCaptureOverlay
           victimName={m.activeCapture.victimName}
           attackerName={m.activeCapture.attackerName}
@@ -1666,25 +1684,24 @@ export function LudoBoardArea({
       )}
 
       {/* GAL: Safe Square Shield Pops */}
-      {m.activeSafePops.map((sp) => (
+      {!inLens && m.activeSafePops.map((sp) => (
         <SafeShieldPop key={sp.id} left={sp.left} top={sp.top} color={sp.color} />
       ))}
 
       {/* GAL: Out of Gate Entry Bursts */}
-      {m.activeOutOfGates.map((og) => (
+      {!inLens && m.activeOutOfGates.map((og) => (
         <OutOfGateBurst key={og.id} left={og.left} top={og.top} color={og.color} />
       ))}
 
       {/* GAL: Home Entry Badges */}
-      {m.activeHomeEntries.map((he) => (
+      {!inLens && m.activeHomeEntries.map((he) => (
         <HomeEntryBurst key={he.id} left={he.left} top={he.top} color={he.color} world={m.world} />
       ))}
 
       {/* Per-home mini confetti bursts */}
-      {m.homeBursts.map((b) => (
+      {!inLens && m.homeBursts.map((b) => (
         <MiniBurst key={b.id} left={b.left} top={b.top} color={b.color} />
       ))}
-      </div>
     </div>
   );
 }

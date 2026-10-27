@@ -223,6 +223,24 @@ saved mode, XP reward or continuation estimate. The earned School Slate
 material is personal, Rummy-only, and applies in both layouts only while the
 host's world is classic. Non-classic host worlds take priority.
 
+### Ludo board inspection
+
+Ludo's 5–8-seat boards offer an optional 44px magnifier toggle in both layout
+shells. Inspection follows the mouse or a primary touch/pen drag with a 2x,
+view-only lens, placed above the contact when there is room and contained
+inside the visual viewport. The lens uses the current rotated board, tokens
+and table-world styling, not a screenshot. It stays out of pointer input and
+the accessibility tree and does not duplicate the original board's SVG IDs.
+
+While inspection is enabled, token selection and gameplay keyboard shortcuts
+are disabled. Chat input remains usable. Focus moves to the labelled inspection
+surface; arrow keys inspect and Escape turns inspection off and returns focus
+to the toggle. Disabling restores normal moves. Touch release/cancellation,
+focus loss and viewport changes hide the lens. Native pinch zoom remains
+allowed by the inspection surface. The match and its server-controlled timer
+continue: inspection does not pause play or change engine/socket contracts.
+Boards with 2–4 seats retain their existing controls without a magnifier.
+
 ### Trophy vault
 
 `/profile/achievements` retains the shared profile shell and uses scoped
