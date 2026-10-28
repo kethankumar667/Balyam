@@ -17,7 +17,7 @@ interface ReferralChipProps {
 
 export function ReferralChip({ tone, prefix, label }: ReferralChipProps) {
   return (
-    <span className={`inline-flex min-h-[28px] max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-snug ${TONE[tone]}`}>
+    <span className={`inline-flex min-h-[28px] max-w-full items-center gap-1.5 rounded-xl border px-2.5 py-1 text-[11px] font-semibold leading-snug ${TONE[tone]}`}>
       {prefix && <span className="font-bold uppercase tracking-wide opacity-80">{prefix}</span>}
       <span className="min-w-0">{label}</span>
     </span>

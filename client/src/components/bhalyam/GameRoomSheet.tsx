@@ -35,6 +35,7 @@ import { useCosmeticsStore } from "../../store/cosmeticsStore";
 import { getPublicPresentationLoadout } from "../../lib/cosmeticsResolver";
 import SignInWall from "../auth/SignInWall";
 import { RecentlyPlayedManager } from "../../services/RecentlyPlayedManager";
+import { rememberInviteFriend } from "../../lib/inviteFriend";
 import { useMandaliStore } from "../../store/mandaliStore";
 import { toast } from "../../hooks/useToast";
 import {
@@ -110,6 +111,8 @@ export interface GameRoomSheetProps {
    * so "start a game with the group" is one step: choose, create, and the friends see where to join.
    */
   shareToMandaliId?: string | null;
+  /** When set, the room is for this one friend (from "Play with <friend>"): its share message names them. */
+  inviteFriendName?: string | null;
 }
 
 const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: string }>> = {
@@ -412,7 +415,7 @@ const VAMANA_BOT_DIFFICULTIES: { id: "easy" | "medium" | "pro"; label: string; b
   { id: "pro",    label: "Master",   blurb: "Looks several relays ahead." },
 ];
 
-export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameRoomSheetProps) {
+export default function GameRoomSheet({ game, onClose, shareToMandaliId, inviteFriendName }: GameRoomSheetProps) {
   const navigate = useNavigate();
   const { playerName, setPlayerName, setPlayerId, rememberSeat, seatFor, avatarId } =
     useRoomStore();
@@ -857,6 +860,7 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
           }
           if (game) RecentlyPlayedManager.recordRecentlyPlayed(game);
           if (shareToMandaliId) void postInviteToMandali(shareToMandaliId, res.code);
+          if (inviteFriendName) rememberInviteFriend(res.code, inviteFriendName);
           navigate(`/room/${res.code}`);
         },
       );

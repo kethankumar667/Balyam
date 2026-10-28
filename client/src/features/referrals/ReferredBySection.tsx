@@ -4,6 +4,7 @@ import type { ReferralAttributionResult, ReferralOverview } from "@shared/referr
 import { REFERRAL_REFUSAL_COPY } from "../../lib/referrals";
 import { ReferralCodeField, useReferralCodeCheck } from "./ReferralCodeField";
 import { ReferralChip } from "./ReferralChip";
+import { PlayTogetherButton } from "./PlayTogetherButton";
 import { describeBonus, formatShortDate } from "./referralCopy";
 
 const PANEL = "rounded-3xl border border-[var(--auth-card-edge)] bg-[var(--auth-card)] p-5 sm:p-6";
@@ -64,6 +65,7 @@ export function ReferredBySection({ overview, redeem, detach }: ReferredBySectio
               : "Finish a match with another person to unlock your bonus. You keep your regular welcome coins either way."}
         </p>
         <div className="mt-3"><ReferralChip tone={bonus.tone} prefix="Your bonus" label={bonus.label} /></div>
+        {referredBy.status === "JOINED" && <PlayTogetherButton friendName={referredBy.displayName} />}
 
         {referredBy.canDetach && (
           <div className="mt-4 border-t border-[var(--auth-field-edge)] pt-4">

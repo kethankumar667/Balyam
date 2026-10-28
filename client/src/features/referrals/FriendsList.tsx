@@ -1,6 +1,7 @@
 import { UserRound, Users } from "lucide-react";
 import type { ReferralFriend, ReferralOverview } from "@shared/referrals";
 import { ReferralChip } from "./ReferralChip";
+import { PlayTogetherButton } from "./PlayTogetherButton";
 import { describeBonus, describeFriendStatus, formatShortDate, FRIEND_STATUS_TONE } from "./referralCopy";
 
 interface FriendsListProps {
@@ -29,6 +30,7 @@ function FriendRow({ friend, campaign, serverNow }: { friend: ReferralFriend; ca
             <ReferralChip tone={yours.tone} prefix="Your bonus" label={yours.label} />
             <ReferralChip tone={theirs.tone} prefix="Their bonus" label={theirs.label} />
           </div>
+          {friend.status === "JOINED" && friend.expiresAt > serverNow && <PlayTogetherButton friendName={friend.displayName} />}
         </div>
       </div>
     </li>

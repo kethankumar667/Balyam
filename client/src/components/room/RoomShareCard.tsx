@@ -6,6 +6,8 @@ import ShareToMandaliSheet from "../mandali/ShareToMandaliSheet";
 import { useAuthStore } from "../../store/authStore";
 import { useHaptics } from "../../hooks/useHaptics";
 import { GAME_DISPLAY_NAMES } from "@shared/catalog";
+import { inviteFriendFor } from "../../lib/inviteFriend";
+import { friendInviteMessage } from "../../features/referrals/playTogether";
 
 export default function RoomShareCard({
   code,
@@ -26,11 +28,14 @@ export default function RoomShareCard({
   const roomUrl = `${window.location.origin}/room/${code}`;
   const gameName = GAME_DISPLAY_NAMES[game] || game;
 
-  const shareText =
-    (name ? `"${name}" — ` : "") +
-    `🎮 Come play ${gameName} on BHALYAM!\n\n` +
-    `Room code: ${code}\n` +
-    `Join here:`;
+  // A room made from "Play with <friend>" names that friend; every other room keeps the usual wording.
+  const friend = inviteFriendFor(code);
+  const shareText = friend
+    ? friendInviteMessage(friend, gameName, code)
+    : (name ? `"${name}" — ` : "") +
+      `🎮 Come play ${gameName} on BHALYAM!\n\n` +
+      `Room code: ${code}\n` +
+      `Join here:`;
 
   async function copyCode() {
     haptics.subtle();
@@ -91,7 +96,7 @@ export default function RoomShareCard({
                 <span>ROOM CODE</span>
               </div>
               <p className="text-xs text-stone-600 dark:text-stone-300 font-medium truncate mb-1.5">
-                Share this code with friends to join
+                {friend ? `Share this with ${friend} to start your match` : "Share this code with friends to join"}
               </p>
 
               {/* Monospace Code Plate */}

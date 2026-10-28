@@ -59,16 +59,21 @@ export default function ReferralsPage() {
             <>
               <InviteCodeCard overview={overview} />
               <StatTiles totals={overview.totals} />
-              {/* grid-cols-1 is minmax(0,1fr): without it a long name or chip widens the track past the phone's width. */}
-              <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
-                <div className="min-w-0 lg:col-start-2 lg:row-start-1 empty:hidden">
+              {/*
+                grid-cols-1 is minmax(0,1fr): without it a long name or chip widens the track past the phone's width.
+                Two columns start at xl, not lg: at 1024px the sidebar leaves the main area about 740px wide, and a
+                380px side column squeezes the friends list to a sliver. The last row takes the spare height, so the
+                side cards hug their content instead of stretching to match a long friends list.
+              */}
+              <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px] xl:grid-rows-[auto_auto_1fr] xl:items-start">
+                <div className="min-w-0 xl:col-start-2 xl:row-start-1 empty:hidden">
                   <ReferredBySection overview={overview} redeem={redeem} detach={detach} />
                 </div>
-                <div className="min-w-0 lg:col-start-1 lg:row-span-3 lg:row-start-1">
+                <div className="min-w-0 xl:col-start-1 xl:row-span-3 xl:row-start-1">
                   <FriendsList friends={overview.friends} campaign={overview.campaign} serverNow={overview.serverNow} />
                 </div>
-                <div className="min-w-0 lg:col-start-2 lg:row-start-2"><PackProgress pack={overview.pack} /></div>
-                <div className="min-w-0 lg:col-start-2 lg:row-start-3"><HowItWorks campaign={overview.campaign} /></div>
+                <div className="min-w-0 xl:col-start-2 xl:row-start-2"><PackProgress pack={overview.pack} /></div>
+                <div className="min-w-0 xl:col-start-2 xl:row-start-3"><HowItWorks campaign={overview.campaign} /></div>
               </div>
             </>
           )}

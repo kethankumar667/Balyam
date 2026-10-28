@@ -116,6 +116,9 @@ describe("ReferralsPage", () => {
     expect(screen.getByText(/2,000 coins received/)).toBeInTheDocument();
     expect(screen.getByText(/waiting for a first match \(29 days left\)/i)).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/@|birth|dob/i);
+    // Only a friend who has joined and not yet played is offered a match.
+    expect(screen.getByRole("button", { name: /play with ravi/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /play with asha/i })).not.toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: /friends who qualified/i })).toHaveAttribute("aria-valuenow", "1");
   });
 
@@ -131,6 +134,7 @@ describe("ReferralsPage", () => {
     });
     open();
     expect(screen.getByText("Meera")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /play with meera/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /wrong code\? remove/i }));
     expect(mocks.detach).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: /yes, remove it/i }));
@@ -148,6 +152,7 @@ describe("ReferralsPage", () => {
     });
     open();
     expect(screen.queryByRole("button", { name: /wrong code/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /play with meera/i })).not.toBeInTheDocument();
     expect(screen.getByText(/welcome bonus is unlocked/i)).toBeInTheDocument();
   });
 

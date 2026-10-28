@@ -114,15 +114,19 @@ export default function AppLayout({
   const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
   // Set when the create sheet was opened from a Mandali's "Start a game": the room is posted there.
   const [sheetShareTo, setSheetShareTo] = useState<string | null>(null);
+  // Set when the create sheet was opened from "Play with <friend>" on the Referrals page: the room's
+  // share message names that friend.
+  const [sheetInviteFriend, setSheetInviteFriend] = useState<string | null>(null);
 
   // Arriving with `state.newRoom` (a finished table's "Create a new room") opens the create-room
   // sheet for that game, once, and clears the state so a refresh or Back does not reopen it.
   useEffect(() => {
-    const handOff = navState as { newRoom?: string; shareToMandali?: string } | null;
+    const handOff = navState as { newRoom?: string; shareToMandali?: string; inviteFriend?: string } | null;
     const slug = handOff?.newRoom;
     if (typeof slug !== "string" || slug === "") return;
     setSheetGame(slug as BhalyamGameSlug);
     setSheetShareTo(typeof handOff?.shareToMandali === "string" && handOff.shareToMandali !== "" ? handOff.shareToMandali : null);
+    setSheetInviteFriend(typeof handOff?.inviteFriend === "string" && handOff.inviteFriend !== "" ? handOff.inviteFriend : null);
     navigate(`${pathname}${search}`, { replace: true, state: null });
   }, [navState, navigate, pathname, search]);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -335,9 +339,11 @@ export default function AppLayout({
             <GameRoomSheet
               game={sheetGame}
               shareToMandaliId={sheetShareTo}
+              inviteFriendName={sheetInviteFriend}
               onClose={() => {
                 setSheetGame(null);
                 setSheetShareTo(null);
+                setSheetInviteFriend(null);
               }}
             />
             <MenuSheet
