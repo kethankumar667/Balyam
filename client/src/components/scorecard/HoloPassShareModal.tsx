@@ -3,7 +3,7 @@ import { Award, CalendarDays, Share2, Copy, Check, MessageCircle, X } from "luci
 import type { ModeScorecard, AllGameSlug } from "@shared/profile/Scorecard";
 import { getGameModeConfig } from "@shared/profile/GameModes";
 import { calculatePerformanceRank } from "@shared/profile/MetricRegistry";
-import { gameLaunch } from "../../lib/gameLaunch";
+import { scorecardChallengePath } from "../../lib/scorecardChallenge";
 import { useResolvedCosmetics } from "../../lib/cosmeticsResolver";
 import SeatAvatar from "../profile/SeatAvatar";
 import Modal from "../Modal";
@@ -40,12 +40,7 @@ export default function HoloPassShareModal({
   const unitLabel = timed ? "best time" : mode?.unit || "score";
   const rank = calculatePerformanceRank(game, scorecard.modeId, scorecard.bestScore, scorecard.scoringDirection);
   const art = scorecardArt(game);
-  // A link someone else opens must land on a page that exists. A browser-only game has its own page;
-  // a room game has no URL that opens its create-room sheet, so its link lands on the games page.
-  // (This used to be `/games/<slug>`, which is not a route, so every shared link was a 404.)
-  const launch = gameLaunch(game);
-  const landingPath = launch.kind === "room-sheet" ? "/games" : launch.to;
-  const challengeUrl = `${window.location.origin}${landingPath}?challengeMode=${encodeURIComponent(scorecard.modeId)}&targetScore=${scorecard.bestScore}`;
+  const challengeUrl = `${window.location.origin}${scorecardChallengePath(game, scorecard.modeId, scorecard.bestScore)}`;
 
   const handleCopyLink = async () => {
     setShareError(null);
@@ -76,7 +71,7 @@ export default function HoloPassShareModal({
         setShareError("Sharing could not be opened. Try Copy Link or WhatsApp.");
       }
     } else {
-      handleCopyLink();
+      await handleCopyLink();
     }
   };
 

@@ -128,6 +128,16 @@ The share card describes a saved personal best, not a verified signature,
 scannable QR or playable ghost. A failed clipboard write shows a selectable
 link and an explicit error instead of reporting success.
 
+Score values use the selected mode's unit exactly once, including averages
+and share text; durations remain formatted times, and historical modes with
+unknown units remain raw numbers without current-mode milestone goals.
+New share links open the public `/challenge` page with a game, mode and
+display-only target. Invalid links show an explicit unavailable state.
+The page labels the target as an unverified player claim, never a saved
+record or reward. Its explicit Play action uses the existing game launcher;
+players choose the displayed mode manually in setup. Opening a challenge
+never provisions a guest, creates a room or starts a match.
+
 ### Profile command center
 
 The `/profile` overview keeps the shared profile header and section navigation.

@@ -4,7 +4,6 @@ import { GAME_MODE_REGISTRY, getGameModeConfig, type ModeDefinition } from "@sha
 import type { RecentMatchItem } from "../../features/profile/CareerMetrics";
 import { TILE_ART_BY_GAME } from "../../pages/home/gameArt";
 import { buildRecords, type RecordGame } from "../../features/myrecords/records";
-import { getGameMetricSchema } from "@shared/profile/MetricRegistry";
 import { formatGameMetricValue } from "../../lib/metricFormatters";
 
 export interface ScorecardDeckProps {
@@ -113,12 +112,12 @@ export function milestoneUnit(mode: ModeDefinition): string {
 
 /** Score plus its unit for sentences ("184 runs", "5m 00s"); timed modes already read as a time. */
 export function scorecardValueWithUnit(game: AllGameSlug, mode: ModeDefinition, score: number): string {
-  const value = scorecardValue(game, mode, score);
-  return mode.unit && mode.unit !== "s" ? `${value} ${mode.unit}` : value;
+  return scorecardValue(game, mode, score);
 }
 
-export function scorecardValue(game: AllGameSlug, mode: ModeDefinition, score: number): string {
-  return formatGameMetricValue(score, mode.unit === "s" ? "duration_seconds" : getGameMetricSchema(game).primaryRankMetric.format);
+export function scorecardValue(_game: AllGameSlug, mode: ModeDefinition, score: number): string {
+  const value = formatGameMetricValue(score, mode.unit === "s" ? "duration_seconds" : "raw_number");
+  return mode.unit && mode.unit !== "s" ? `${value} ${mode.unit}` : value;
 }
 
 /** Averages are fractional; one decimal is enough to read and never prints "52.667". */

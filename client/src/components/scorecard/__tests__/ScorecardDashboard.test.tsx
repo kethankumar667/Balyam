@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PlayerScorecardArchive } from "@shared/profile/Scorecard";
 import ScorecardDashboard from "../ScorecardDashboard";
 import { RecentBattles } from "../ScorecardDashboardPanels";
-import { milestoneUnit, scorecardArt, scorecardBest, scorecardContextLabel, scorecardCoverage, scorecardModes } from "../scorecardDashboardModel";
+import { milestoneUnit, scorecardArt, scorecardAverage, scorecardBest, scorecardContextLabel, scorecardCoverage, scorecardModes, scorecardValue, scorecardValueWithUnit } from "../scorecardDashboardModel";
 import { GAME_MODE_REGISTRY } from "@shared/profile/GameModes";
 import { buildRecords } from "../../../features/myrecords/records";
 
@@ -160,6 +160,18 @@ describe.each(["mobile", "desktop"] as const)("scorecards %s dashboard", layout 
     expect(within(card).getByText("760", { selector: "strong" })).toBeVisible();
     expect(within(card).getByText("Saved on this device")).toBeVisible();
   });
+
+  it("does not apply current-mode milestones or units to a historical record", () => {
+    const base = dashboardArchive.games.handcricket!;
+    const historical = { ...base.modes.international_t20, modeId: "t20", modeDisplayName: "Legacy T20" };
+    draw({ ...dashboardArchive, games: { handcricket: { ...base, modes: { t20: historical } } } });
+    fireEvent.click(screen.getByRole("button", { name: "Select Legacy T20" }));
+    fireEvent.click(screen.getByRole("button", { name: "View scorecard" }));
+    const details = screen.getByRole("dialog", { name: "Hand Cricket scorecard" });
+    expect(within(details).queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(details).not.toHaveTextContent("148 runs");
+    expect(within(details).getByRole("link", { name: "Play current modes" })).toBeVisible();
+  });
 });
 
 describe("dashboard persistence and layout", () => {
@@ -223,7 +235,9 @@ describe("dashboard persistence and layout", () => {
     fireEvent.click(screen.getByRole("button", { name: "Share scorecard" }));
     fireEvent.click(screen.getByRole("button", { name: "Copy Link" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("could not be copied");
-    expect(screen.getByRole("textbox", { name: "Scorecard share link" }).getAttribute("value")).toContain("/games?challengeMode=international_t20");
+    const url = new URL(screen.getByRole("textbox", { name: "Scorecard share link" }).getAttribute("value")!);
+    expect(url.pathname).toBe("/challenge");
+    expect(Object.fromEntries(url.searchParams)).toEqual({ game: "handcricket", mode: "international_t20", score: "184" });
     expect(screen.queryByText("Copied")).not.toBeInTheDocument();
   });
 
@@ -250,6 +264,25 @@ describe("dashboard persistence and layout", () => {
 });
 
 describe("scorecard dossier wording", () => {
+  it.each(Object.values(GAME_MODE_REGISTRY).flatMap(config => config.modes.map(mode => ({ game: config.game, mode }))))(
+    "formats $game/$mode.modeId using the mode unit exactly once", ({ game, mode }) => {
+      const expected = mode.unit === "s" ? "2m 03s" : `123 ${mode.unit}`.trim();
+      expect(scorecardValue(game, mode, 123)).toBe(expected);
+      expect(scorecardValueWithUnit(game, mode, 123)).toBe(expected);
+    },
+  );
+
+  it("uses rolls for SNL averages, carries timed seconds and never guesses historical units", () => {
+    const snl = GAME_MODE_REGISTRY.snl.modes[0];
+    expect(scorecardAverage("snl", snl, 52.6667)).toBe("52.7 rolls to 100");
+    const timed = GAME_MODE_REGISTRY.sudoku.modes[0];
+    expect(scorecardValue("sudoku", timed, 119.5)).toBe("2m 00s");
+    const historical = { ...snl, modeId: "retired", unit: "" };
+    expect(scorecardValue("snl", historical, 42)).toBe("42");
+    expect(scorecardValueWithUnit("snl", historical, 42)).toBe("42");
+    expect(scorecardValue("snl", snl, 0)).toBe("0 rolls to 100");
+  });
+
   it("names every match context and every mode unit in plain words", () => {
     expect(["SOLO", "VS_BOTS", "PVP_MULTIPLAYER", "PASS_AND_PLAY"].map(c => scorecardContextLabel(c as "SOLO")))
       .toEqual(["Solo", "Vs bots", "Online", "Pass & Play"]);

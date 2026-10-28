@@ -214,7 +214,7 @@ export function PersonalBestCard({ game, mode, record, best, onDetails, onShare 
         {record ? <>
           <div className="mb-4 mt-5">
             <strong className="block max-w-full break-words font-display text-5xl leading-none tracking-tight text-score-gold">{mode.unit === "s" ? scorecardValue(game, mode, record.bestScore) : record.bestScore.toLocaleString()}</strong>
-            <span className="mt-1 block font-mono text-xs font-bold uppercase tracking-[0.14em] text-score-gold">{mode.unit || "score"}</span>
+            <span className="mt-1 block font-mono text-xs font-bold uppercase tracking-[0.14em] text-score-gold">{mode.unit === "s" ? "best time" : mode.unit || "score"}</span>
             <p className="mt-3 max-w-[65%] text-xs font-semibold leading-relaxed text-score-ink">{mode.displayName}</p>
           </div>
           <div className="mb-4 inline-flex items-center gap-1 rounded-lg border bg-score-inset px-2 py-1 text-[10px] font-bold">
@@ -417,7 +417,7 @@ export function ScorecardDetails({ open, onClose, game, mode, record }: RecordPr
       </div>)}
     </dl>
 
-    <section aria-labelledby={`${id}-next`} className="mt-4 rounded-xl border border-score-edge bg-score-inset p-4">
+    {!historical ? <section aria-labelledby={`${id}-next`} className="mt-4 rounded-xl border border-score-edge bg-score-inset p-4">
       <p className="text-[11px] font-bold uppercase tracking-wider text-score-cyan">Next target</p>
       {timed ? <>
         <h3 id={`${id}-next`} className="mt-1 flex items-center gap-1.5 text-sm font-bold text-score-gold"><Target className="h-4 w-4 shrink-0" aria-hidden="true" />Beat your best time</h3>
@@ -431,7 +431,7 @@ export function ScorecardDetails({ open, onClose, game, mode, record }: RecordPr
         </div>
         <p className="mt-2 text-xs text-score-soft">{milestone.remainingText}</p>
       </>}
-    </section>
+    </section> : <p className="mt-4 text-xs leading-relaxed text-score-soft">Historical record: original units and current-mode targets do not apply.</p>}
 
     <section aria-labelledby={`${id}-feats`} className="mt-5">
       <header className="mb-3 flex items-center justify-between gap-2">

@@ -32,6 +32,7 @@ const LazyProfileOverviewPage = lazy(() => import("./pages/ProfileOverviewPage")
 const LazyMatchHistoryPage = lazy(() => import("./pages/MatchHistoryPage"));
 const LazyAchievementsPage = lazy(() => import("./pages/AchievementsPage"));
 const LazyScorecardsPage = lazy(() => import("./pages/ScorecardsPage"));
+const LazyScorecardChallengePage = lazy(() => import("./pages/ScorecardChallengePage"));
 const LazyLoginPage = lazy(() => import("./pages/auth/LoginPage"));
 const LazySignUpPage = lazy(() => import("./pages/auth/SignUpPage"));
 const LazyForgotPasswordPage = lazy(() => import("./pages/auth/ForgotPasswordPage"));
@@ -385,6 +386,7 @@ export default function App({ components = {} }: AppProps) {
             <Route path="/" element={<BhalyamHome />} />
             <Route path="/home" element={<BhalyamHome />} />
             <Route path="/invite/:code" element={<LazyInvitePage />} />
+            <Route path="/challenge" element={<LazyScorecardChallengePage />} />
             {/*
               One persistent layout route for the three pages a player
               bounces between constantly (header nav pills go straight
