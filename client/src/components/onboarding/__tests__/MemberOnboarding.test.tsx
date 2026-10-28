@@ -23,9 +23,19 @@ vi.mock("../../profile/ProfileCompletionPrompt", () => ({
     </div>
   ),
 }));
+vi.mock("../ReferralCodePrompt", () => ({
+  default: ({ onFinished }: { onFinished?: () => void }) => (
+    <div role="dialog" aria-label="referral code">
+      <button type="button" onClick={onFinished}>
+        finish referral
+      </button>
+    </div>
+  ),
+}));
 vi.mock("../WelcomeCelebration", () => ({ default: () => <div role="dialog" aria-label="welcome" /> }));
 
 const profile = () => screen.queryByRole("dialog", { name: "profile questions" });
+const referral = () => screen.queryByRole("dialog", { name: "referral code" });
 const welcome = () => screen.queryByRole("dialog", { name: "welcome" });
 
 /** Privacy, then the profile questions, then the welcome: one dialog at a time, each after the one before. */
@@ -126,14 +136,28 @@ describe("MemberOnboarding", () => {
     expect(profile()).toBeInTheDocument();
   });
 
-  it("shows the welcome only after the profile step reports back, and never alongside it", () => {
+  it("offers the referral code only after the profile step reports back, and never alongside it", () => {
     recordConsent("granted");
     render(<MemberOnboarding />);
-    expect(welcome()).not.toBeInTheDocument();
+    expect(referral()).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "finish profile" }));
 
+    expect(referral()).toBeInTheDocument();
+    expect(profile()).not.toBeInTheDocument();
+    expect(welcome()).not.toBeInTheDocument();
+  });
+
+  it("shows the welcome only after the referral step reports back, and never alongside it", () => {
+    recordConsent("granted");
+    render(<MemberOnboarding />);
+    fireEvent.click(screen.getByRole("button", { name: "finish profile" }));
+    expect(welcome()).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "finish referral" }));
+
     expect(welcome()).toBeInTheDocument();
+    expect(referral()).not.toBeInTheDocument();
     expect(profile()).not.toBeInTheDocument();
   });
 

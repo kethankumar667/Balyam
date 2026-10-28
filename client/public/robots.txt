@@ -52,5 +52,8 @@ Disallow: /diagnostics
 Disallow: /preview/
 Disallow: /showcase/
 Disallow: /mandali/
+# A member's own referral page, and the personal invitation links they share.
+Disallow: /referrals
+Disallow: /invite/
 
 Sitemap: https://bhalyam.onrender.com/sitemap.xml

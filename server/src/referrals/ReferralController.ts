@@ -45,5 +45,25 @@ export function createReferralRouter(service: ReferralService | null): Router {
     try { res.json(await service!.sync(req.player!.playerId)); }
     catch (err) { failed(res, err); }
   });
+  // A typed `BHALYAM-XXXXX` code: yes or no only, so the public page never says whose code it is.
+  router.get("/code/:code", publicBudget, async (req, res) => {
+    try {
+      if (!await service!.previewShareCode(req.params.code)) {
+        res.status(404).json({ message: "That code was not found. Check it and try again." });
+      } else res.json({ valid: true });
+    } catch (err) { failed(res, err); }
+  });
+  router.get("/overview", requireIdentity, member, memberBudget, async (req, res) => {
+    try { res.json(await service!.overview(req.player!.playerId)); }
+    catch (err) { failed(res, err); }
+  });
+  router.post("/redeem", requireIdentity, member, memberBudget, async (req, res) => {
+    try { res.json(await service!.redeemCode(req.player!.playerId, req.body?.code)); }
+    catch (err) { failed(res, err); }
+  });
+  router.post("/detach", requireIdentity, member, memberBudget, async (req, res) => {
+    try { res.json(await service!.detach(req.player!.playerId)); }
+    catch (err) { failed(res, err); }
+  });
   return router;
 }

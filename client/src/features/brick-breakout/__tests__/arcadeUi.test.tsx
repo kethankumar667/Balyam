@@ -46,7 +46,7 @@ describe("neon breakout UI", () => {
     expect(screen.queryByRole("heading", { name: "Flight paused" })).not.toBeInTheDocument();
   });
   it("honors essential-only consent without writing optional records or settings", () => {
-    localStorage.setItem("bhalyam.consent", JSON.stringify({ choice: "essential-only", noticeVersion: 6, at: new Date().toISOString() }));
+    localStorage.setItem("bhalyam.consent", JSON.stringify({ choice: "essential-only", noticeVersion: 7, at: new Date().toISOString() }));
     render(<MemoryRouter><NeonBreakout /></MemoryRouter>);
     expect(screen.getByText(/Essential-only storage/i)).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Arcade settings" }));

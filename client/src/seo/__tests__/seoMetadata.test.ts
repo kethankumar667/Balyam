@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, it, expect } from "vitest";
-import { PUBLIC_ROUTES_METADATA, PRERENDER_ROUTES, BASE_URL } from "../metadata";
+import { PUBLIC_ROUTES_METADATA, PRERENDER_ROUTES, NON_PUBLIC_ROUTE_TITLES, BASE_URL } from "../metadata";
 
 describe("SEO Metadata & Route Coverage Registry", () => {
   const REQUIRED_AUDIT_ROUTES = [
@@ -122,5 +122,18 @@ describe("SEO Metadata & Route Coverage Registry", () => {
     // The shop shows a player's own cosmetics and balance: it has a tab title (NON_PUBLIC_ROUTE_TITLES) but must
     // never become a prerendered, sitemap-listed page.
     expect(PRERENDER_ROUTES).not.toContain("/shop");
+    // The referral page is a member's own code and friends; invitation links are personal. Neither is a public page.
+    expect(PRERENDER_ROUTES).not.toContain("/referrals");
+    expect(PRERENDER_ROUTES).not.toContain("/invite");
+    expect(NON_PUBLIC_ROUTE_TITLES["/referrals"]).toBe("Invite Friends · BHALYAM");
+  });
+
+  it("keeps private referral pages out of the sitemap and disallowed for crawlers", () => {
+    const publicDir = path.resolve(__dirname, "../../../public");
+    const robots = fs.readFileSync(path.join(publicDir, "robots.txt"), "utf8");
+    const sitemap = fs.readFileSync(path.join(publicDir, "sitemap.xml"), "utf8");
+    expect(robots).toMatch(/^Disallow: \/referrals$/m);
+    expect(robots).toMatch(/^Disallow: \/invite\/$/m);
+    expect(sitemap).not.toMatch(/\/referrals|\/invite/);
   });
 });

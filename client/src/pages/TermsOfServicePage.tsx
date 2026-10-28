@@ -131,7 +131,7 @@ export default function TermsOfServicePage() {
                 <Clock className="w-3.5 h-3.5" />
                 <span>8 MIN READ • 3,200 WORDS</span>
                 <span>•</span>
-                <span>EFFECTIVE: AUGUST 22, 2026</span>
+                <span>EFFECTIVE: OCTOBER 28, 2026</span>
               </div>
               <h3 className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white">
                 BHALYAM <span className="text-[#EA580C]">Terms of Service</span>
@@ -349,6 +349,9 @@ export default function TermsOfServicePage() {
                       </p>
                       <p>
                         Members of a Mandali may send coins to one another as a gift, within daily limits. Coins may never be sent in exchange for money or anything of value. Buying, selling, trading, auctioning or lending coins, accounts or items for money or other value, on or off BHALYAM, is prohibited and may lead to removal of coins and suspension of the account.
+                      </p>
+                      <p>
+                        A member may share a personal referral code. When a new member who added that code finishes a match with another person, BHALYAM pays both of them a referral bonus in coins, after a short holding period. Matches against bots do not count, a member can be rewarded for a limited number of friends in any 30 days, and BHALYAM may withhold or reverse a bonus that comes from self-referral, duplicate or coordinated accounts, or any other abuse. A referral bonus is a free gift, not a payment, and creates no right to future bonuses.
                       </p>
                       <p>
                         BHALYAM may correct, reverse, adjust or reset coin balances to fix errors, remove abuse or enforce these Terms, and may change or retire coin features at any time.

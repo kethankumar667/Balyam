@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowRight, ShieldCheck, Users } from "lucide-react";
-import { isReferralCode } from "@shared/referrals";
+import { isReferralCode, normalizeReferralCode, REFERRAL_BONUS_COINS } from "@shared/referrals";
 import { useAuthStore } from "../store/authStore";
 import { useReferralProgress } from "../hooks/useReferralProgress";
-import { pendingReferralIntent, referralRequest, REFERRAL_INTENT_KEY } from "../lib/referrals";
+import { pendingReferralIntent, referralRequest, rememberReferralCode, REFERRAL_INTENT_KEY } from "../lib/referrals";
 
 export default function InvitePage() {
   const { code = "" } = useParams();
@@ -18,6 +18,8 @@ export default function InvitePage() {
   const activeCode = useRef(code);
   activeCode.current = code;
   const complete = code === "complete";
+  /** A link that carries the short `BHALYAM-XXXXX` code rather than the long private one. */
+  const shareCode = normalizeReferralCode(code);
   const referral = useReferralProgress(isMember && complete && accepted);
 
   useEffect(() => {
@@ -39,22 +41,28 @@ export default function InvitePage() {
       setLoading(false);
       return;
     }
-    if (!isReferralCode(code)) {
+    if (!isReferralCode(code) && !shareCode) {
       setError("This invitation is no longer available.");
       setLoading(false);
       return;
     }
-    void referralRequest<{ valid: boolean }>(`/invite/${code}`, undefined, true)
+    void referralRequest<{ valid: boolean }>(shareCode ? `/code/${shareCode}` : `/invite/${code}`, undefined, true)
       .then(result => { if (!cancelled) setValid(result.valid); })
       .catch((err: unknown) => { if (!cancelled) setError(err instanceof Error ? err.message : "Could not load this invitation."); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [code, complete, params, setParams, attempt]);
+  }, [code, complete, shareCode, params, setParams, attempt]);
 
   async function accept() {
     setLoading(true);
     setError(null);
     try {
+      if (shareCode) {
+        // A short code needs no signed token: it is typed or carried to the sign-up field and checked there.
+        rememberReferralCode(shareCode);
+        setAccepted(true);
+        return;
+      }
       const result = await referralRequest<{ token: string; expiresAt: number }>("/accept", { code }, true);
       if (activeCode.current !== code) return;
       localStorage.setItem(REFERRAL_INTENT_KEY, result.token);
@@ -69,7 +77,7 @@ export default function InvitePage() {
       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-200">A place for your crew</p>
       <h1 className="mt-3 font-display text-3xl">{complete ? "Your invitation" : "Come play together"}</h1>
       <p className="mt-4 text-sm leading-relaxed text-slate-300">Your friend invited you to BHALYAM. Accept before creating an account, verify your email, then finish a match with another human within 30 days.</p>
-      <p className="mt-3 text-xs leading-relaxed text-slate-300">Your friend earns a cosmetic pack after three friends qualify. Accepting does not award coins or XP. Only qualification counts are shared, not your email or private match details.</p>
+      <p className="mt-3 text-xs leading-relaxed text-slate-300">After that match you and your friend each get {REFERRAL_BONUS_COINS.toLocaleString("en-IN")} coins, on top of your usual welcome coins. Accepting does not award coins or XP by itself. Your friend will see your display name and whether you have played a match with another person, never your email, birthday or what you played.</p>
       <p className="mt-4 flex items-center gap-2 text-xs text-emerald-200"><ShieldCheck size={16} aria-hidden="true" /> No contact upload or device tracking.</p>
       {loading && <p role="status" className="mt-6 text-sm">Checking invitation...</p>}
       {(error || referral.error) && <div className="mt-5"><p role="alert" className="text-sm text-amber-100">{error ?? referral.error}</p><button onClick={() => { setAttempt(n => n + 1); referral.retry(); }} className="mt-2 min-h-[44px] rounded-lg px-3 text-sm underline focus-visible:ring-2 focus-visible:ring-amber-300">Retry invitation</button></div>}

@@ -85,6 +85,9 @@ export interface Capabilities {
   viewProfile: boolean;
   /** Access the Social Hub — friends, parties, shared history. Member-only. */
   viewSocial: boolean;
+  /** See your invitation code, the friends who joined with it, and the bonuses. Member-only:
+   *  a code is tied to an account, and a guest has none to carry it. */
+  viewReferrals: boolean;
   /** Access the Operational Admin Console (/admin/*). Admin/Super Admin only. */
   accessAdminPanel: boolean;
   /** Bypass game maintenance/coming-soon gates to test and play all catalog items. */
@@ -112,6 +115,7 @@ const GUEST: Capabilities = {
   viewLeaderboards: true,
   viewProfile: false,
   viewSocial: false,
+  viewReferrals: false,
   accessAdminPanel: false,
   bypassMaintenance: false,
   unlockAllFeatures: false,
@@ -134,6 +138,7 @@ const MEMBER: Capabilities = {
   viewLeaderboards: true,
   viewProfile: true,
   viewSocial: true,
+  viewReferrals: true,
   accessAdminPanel: false,
   bypassMaintenance: false,
   unlockAllFeatures: false,
@@ -156,6 +161,7 @@ const SUPER_ADMIN: Capabilities = {
   viewLeaderboards: true,
   viewProfile: true,
   viewSocial: true,
+  viewReferrals: true,
   accessAdminPanel: true,
   bypassMaintenance: true,
   unlockAllFeatures: true,

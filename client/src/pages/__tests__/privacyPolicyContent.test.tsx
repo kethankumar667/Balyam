@@ -69,15 +69,19 @@ describe("PrivacyPolicyPage content", () => {
     it("carries a real effective date and no invented statistics", () => {
       renderPage();
 
-      expect(screen.getByText(/EFFECTIVE: OCTOBER 27, 2026/i)).toBeInTheDocument();
+      expect(screen.getByText(/EFFECTIVE: OCTOBER 28, 2026/i)).toBeInTheDocument();
       expect(document.body.textContent).not.toMatch(/2,400 words|min read/i);
     });
 
-    it("discloses deliberate referrals, counts-only sharing, and actual retention", () => {
+    it("discloses deliberate referrals, what each side sees about the other, and actual retention", () => {
       renderPage();
-      expect(section("info-we-collect").getByText(/Only when you accept an invitation/i)).toBeInTheDocument();
-      expect(section("info-we-collect").getByText(/never your email or private match details/i)).toBeInTheDocument();
+      const collected = section("info-we-collect");
+      expect(collected.getByText(/If you accept an invitation, or type or carry a code/i)).toBeInTheDocument();
+      expect(collected.getByText(/sees your display name, when you joined, and whether you have played a match/i)).toBeInTheDocument();
+      expect(collected.getByText(/Neither of you sees the other's email, date of birth or private match details/i)).toBeInTheDocument();
+      expect(collected.getByText(/contains nothing about them/i)).toBeInTheDocument();
       expect(section("data-retention").getByText(/within 30 days.*remain with the account until deletion/i)).toBeInTheDocument();
+      expect(section("data-retention").getByText(/first 7 days of an account/i)).toBeInTheDocument();
     });
 
     it("spells its own heading correctly", () => {

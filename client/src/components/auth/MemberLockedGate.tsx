@@ -10,6 +10,7 @@ import {
   ArrowLeft,
   Crown,
   Flame,
+  Gift,
 } from "lucide-react";
 import AppLayout from "../layout/AppLayout";
 import { FancyLockIcon } from "../../design-system/icons";
@@ -20,7 +21,8 @@ export type LockedFeatureKind =
   | "profile"
   | "personal"
   | "settings"
-  | "social";
+  | "social"
+  | "referrals";
 
 interface MemberLockedGateProps {
   feature: LockedFeatureKind;
@@ -114,6 +116,19 @@ const FEATURE_META: Record<
       { icon: Swords, text: "Challenge friends to direct matches and party games" },
       { icon: Trophy, text: "Compare shared match histories and rivalry stats" },
       { icon: ShieldCheck, text: "Private party rooms with invite-only access" },
+    ],
+  },
+  referrals: {
+    tag: "Members Only • Invite Friends",
+    title: "Invitations are for members",
+    description:
+      "Your invitation code belongs to your account. Create a free account, share your code, and both of you earn a coin bonus once your friend finishes a match with another person.",
+    icon: Gift,
+    perks: [
+      { icon: Gift, text: "A personal BHALYAM-XXXXX code you can share anywhere" },
+      { icon: Users, text: "See who joined with your code and where their bonus stands" },
+      { icon: Trophy, text: "Unlock the Nostalgia Pack when three friends qualify" },
+      { icon: ShieldCheck, text: "No contact upload, no device tracking" },
     ],
   },
 };

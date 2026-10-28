@@ -10,7 +10,8 @@ Local pass-and-play seats and bot-only matches cannot qualify.
 
 Three distinct qualified accounts grant the whole Nostalgia Pack once:
 Golden Reunion avatar aura, Gang Leader podium title, and School Slate
-table material (Rummy, Ludo, Goli Jump, Bingo, Star Game and Sudoku). There are no referral coins or XP. Existing cosmetic ownership
+table material (Rummy, Ludo, Goli Jump, Bingo, Star Game and Sudoku). Referral XP is never awarded; referral **coins** are
+paid separately, see "Referral codes and the coin bonus". Existing cosmetic ownership
 is preserved; ownership is never fabricated by the client.
 
 Admin Pass (including Super Admin) can equip all three items without qualifying
@@ -38,18 +39,56 @@ does not promise automatic deletion of stored attribution. Attribution remains
 until either account is deleted. Already earned rewards are not revoked if an
 invitee later deletes their account.
 
-Only qualification counts are disclosed to the inviter, never invitee email,
-name or match details. No contacts, IP or device fingerprint are collected for
-referrals. Public endpoints share a per-process 60-request burst/1-per-second
+The inviter sees the invitee's **display name**, join date, whether they have played
+a match with another person, and how each bonus stands (privacy notice 7). Never
+email, date of birth, other profile fields or match details. The invitee sees the
+same about the member who invited them. No contacts, IP or device fingerprint are
+collected for referrals. Public endpoints share a per-process 60-request burst/1-per-second
 budget; member mutations have a 12-request burst/one-per-five-seconds budget.
 Exhaustion returns 429 with Retry-After. These are operational bounds, not
 distributed abuse prevention or proof that two accounts are different people.
+
+## Referral codes and the coin bonus
+
+**The code.** Every verified member has a share code `BHALYAM-XXXXX`: five characters drawn at random from
+`23456789BCDFGHJKLMNPRSTVWXZ` (no vowels, so no word can be spelt, and no 0/1/O/I/U). It contains nothing about the
+member (no name, birthday or id), which is what keeps it clear of the DPDP Act's minimisation rule. It is stable,
+stored on `referral_invites.share_code`, and typed forgivingly (case, spaces, hyphens, optional `BHALYAM`) by
+`normalizeReferralCode` in `shared/referrals.ts`. The long UUID links already sent keep working.
+
+**Two ways in.** A visitor opens `/invite/BHALYAM-XXXXX` (or the old UUID link), accepts, and signs up; or a new member
+types a code in the sign-up form (step 3), or in the first-run `ReferralCodePrompt` (between the profile questions and
+the welcome). A typed code is held in `bhalyam.referral.code` and in the account's sign-up metadata
+(`referral_code`) so verifying the email on another device still applies it; both are cleared once tried.
+`referral_redeem_code` accepts it only for a verified member in their first 7 days (`code_window_days`), with no
+attribution yet, who has not yet finished a match with another person. "Wrong code? Remove" (`referral_detach`)
+works until the first qualifying match or once a bonus is reserved.
+
+**The bonus.** 2,000 coins to the inviter and 2,000 to the invitee (the invitee keeps the 5,000 welcome), when the
+invitee finishes a match with another non-bot human. `ReferralBonusService` runs every 60 seconds:
+`referral_qualify_open` marks friends qualified, `referral_bonus_due` lists who is owed, `referral_bonus_reserve`
+takes the inviter's lock, applies the rolling cap (10 rewarded friends per 30 days) and records the amounts, each
+side is granted through `RewardGateway` (reward type `REFERRAL`, source `referral:<invitee>:inviter|invitee`, held
+24 hours like any gameplay reward), and only then `referral_bonus_complete` closes it. A crash anywhere leaves the
+bonus reserved and the next pass finishes it; the idempotent ledger key means nobody is paid twice. Friends beyond
+the cap still count toward the Nostalgia Pack. Nothing accepted before the migration is paid retroactively
+(`referral_campaign.bonus_starts_at`).
+
+**Tuning and stopping.** The amounts, cap, windows and start time live in `referral_campaign`; set `inviter_bonus`
+and `invitee_bonus` to 0 to stop paying without touching any row (the rollback script does exactly that).
+
+**The page.** `/referrals` (capability `viewReferrals`, members only, linked from Player HQ as "Invite friends") reads
+`referral_overview`: the code with copy/share/WhatsApp, totals, the friends who joined with their bonuses, who
+invited the member, Nostalgia Pack progress and the rules. `/referrals` and `/invite/` are disallowed in
+`robots.txt` and never prerendered.
 
 ## Deploy
 
 1. Back up and migrate the existing production schema through:
    - [referral rules](../../supabase/migrations/20261108000000_referrals.sql)
    - [pack catalogue and campaign activation](../../supabase/migrations/20261108000001_nostalgia_pack.sql)
+   - [share codes, redeem and the coin bonus](../../supabase/migrations/20261111000000_referral_bonus.sql)
+     (needs `profiles` and `reward_ledger`; take owner authorisation before applying)
 2. Configure durable PostgREST/service-role access and verified Supabase auth
    on the server. Keep `SESSION_SECRET` stable and at least 32 characters; rotating
    it invalidates unconnected accepted invitations. Never expose service keys.
@@ -61,7 +100,7 @@ distributed abuse prevention or proof that two accounts are different people.
 
 Without persistence, a signing key or real auth verification, routes return 503.
 There is no in-memory or local-flag simulation of successful referrals.
-The browser notice version is 5; review the updated privacy notice before release.
+The browser notice version is 7; review the updated privacy notice and Terms (section 8) before release.
 
 ## Staging acceptance
 
@@ -85,6 +124,19 @@ The browser notice version is 5; review the updated privacy notice before releas
   account and verify attribution cascades; earned rewards on others remain.
 - Test 320/375/768/1024/1440px, keyboard, both theme contexts, reduced motion,
   public acceptance, sharing fallback and unavailable-service states.
+- Codes: the page shows one stable `BHALYAM-XXXXX`; `/invite/<code>` accepts and the sign-up field arrives
+  pre-filled; a typed code with a different case or spaces works; a wrong code is refused with a reason; a
+  member who already played a human match, is older than 7 days, or is the code's owner is refused.
+- Bonus: a new member finishes a match with a real second person; within a minute both sides show "arriving"
+  with the vesting date, and 24 hours later both wallets rise by 2,000. A bot-only match pays nothing. Run the
+  sweeper twice (and kill the server between the two grants) and confirm no one is paid twice.
+- Cap: with 10 rewarded friends in 30 days, the 11th shows "Not paid: 10 friends already rewarded", still counts
+  toward the pack, and the inviter's wallet does not move.
+- Privacy: the inviter's page shows the invitee's display name and nothing else personal (no email, birthday or
+  match detail); the invitee's "Invited by" card shows the inviter's display name. Deleting either account removes
+  the other's view of that name.
+- First run: a Google sign-up sees the code prompt before the welcome; an email sign-up that typed a code at step 3
+  (even if verified on another device) sees "Code added"; "Not now" leaves the Referrals page field available.
 
 ## Disable without erasing earned property
 
@@ -92,6 +144,11 @@ Run [the operational rollback](../../supabase/rollbacks/20261108000000_referrals
 It disables the campaign but keeps attribution and ownership for audit and
 recovery. Do not drop tables, remove owned catalogue rows, or roll back the
 unlock-method constraint while referral entitlements exist.
+
+To stop only the coin bonus, run
+[the bonus rollback](../../supabase/rollbacks/20261111000000_referral_bonus_rollback.sql): it sets both bonus
+amounts to 0, keeping codes, attributions, ledger rows and the page. Bonuses already reserved or vesting are
+not clawed back; an operator can void a pending reward through the reward-gateway admin tools.
 
 ## Local checks and scope
 
@@ -103,6 +160,7 @@ Focused verification commands (from the repository root):
 
 ```powershell
 npm --prefix client test -- src/hooks/__tests__/useReferralProgress.test.tsx src/components/auth/__tests__/referralSignup.test.tsx src/pages/__tests__/InvitePage.test.tsx src/pages/home/__tests__/PlayerJourneyDashboard.test.tsx src/pages/home/__tests__/ReferralQuest.test.tsx src/components/profile/__tests__/SeatAvatar.test.tsx src/components/cosmetics/__tests__/cosmeticsBoutiquePolish.test.tsx src/components/cosmetics/__tests__/referralCosmetics.test.tsx src/store/__tests__/cosmeticsStore.test.ts src/store/__tests__/authLifecycle.test.ts src/pages/__tests__/privacyPolicyContent.test.tsx src/lib/__tests__/referrals.test.ts --reporter=dot --maxWorkers=1 --minWorkers=1
+npm --prefix client test -- src/pages/__tests__/ReferralsPage.test.tsx src/features/referrals src/components/onboarding src/pages/__tests__/termsCoinsAndAge.test.tsx src/lib/privacy src/seo --reporter=dot --maxWorkers=1 --minWorkers=1
 npm --prefix server test -- src/referrals/__tests__ src/cosmetics/__tests__/cosmeticsService.test.ts src/cosmetics/__tests__/CosmeticsController.test.ts src/rooms/__tests__/cosmeticsOwnership.test.ts --reporter=dot --maxWorkers=1 --minWorkers=1
 npm --prefix client run typecheck
 npm --prefix client run build

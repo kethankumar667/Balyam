@@ -54,6 +54,13 @@ beforeAll(async () => {
   }
   await db.exec(await readFile(new URL("../../../../supabase/migrations/20261108000000_referrals.sql", import.meta.url), "utf8"));
   await db.exec(await readFile(new URL("../../../../supabase/migrations/20261108000001_nostalgia_pack.sql", import.meta.url), "utf8"));
+  // The bonus migration replaces referral_sync; every scenario below must keep passing against the new one.
+  await db.exec(`
+    CREATE TABLE profiles(id uuid PRIMARY KEY, display_name text, avatar_id text);
+    CREATE TABLE reward_ledger(player_id text, reward_type text, source_id text, amount int, status text,
+      vesting_until timestamptz, released_at timestamptz, UNIQUE(player_id, reward_type, source_id));
+  `);
+  await db.exec(await readFile(new URL("../../../../supabase/migrations/20261111000000_referral_bonus.sql", import.meta.url), "utf8"));
 }, 30000);
 
 afterAll(async () => {

@@ -42,8 +42,11 @@ export interface ConsentRecord {
  *     including across sign-out, so guest consent cannot bypass member onboarding.
  * 5 — declares deliberately accepted friend invitations and account referral qualification.
  * 6 — declares server-side Supabase room recovery for guests and members.
+ * 7 — referral codes and coin bonuses: the member who shared a code now sees the display name of each
+ *     friend who joined with it and whether that friend has played a match with another person, and a
+ *     typed or carried code is kept on this device (`bhalyam.referral.code`) until it is applied.
  */
-export const NOTICE_VERSION = 6;
+export const NOTICE_VERSION = 7;
 
 export const CONSENT_KEY = "bhalyam.consent";
 

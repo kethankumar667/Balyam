@@ -31,6 +31,8 @@ export function packEquipTargets(): PackEquipTarget[] {
 
 export interface ReferralProgress {
   inviteCode: string;
+  /** The member's shareable `BHALYAM-XXXXX` code. Absent on a server that predates codes. */
+  shareCode?: string;
   qualifiedFriends: number;
   pendingFriends: number;
   target: number;
@@ -43,7 +45,11 @@ export type ReferralRefusal =
   | "SELF_REFERRAL"
   | "EXISTING_ACCOUNT"
   | "ALREADY_ATTRIBUTED"
-  | "VERIFY_EMAIL";
+  | "VERIFY_EMAIL"
+  | "INVALID_CODE"
+  | "TOO_LATE"
+  | "ALREADY_PLAYED"
+  | "NOT_ATTACHED";
 
 export type ReferralAttributionResult =
   | { ok: true }
@@ -55,7 +61,129 @@ export interface ReferralIntent {
   expiresAt: number;
 }
 
+/** The long, private form of an invitation: the UUID a link carries. Kept so every link already sent still works. */
 export function isReferralCode(value: unknown): value is string {
   return typeof value === "string"
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value);
+}
+
+// ── The shareable code ────────────────────────────────────────────────────────
+
+export const REFERRAL_CODE_PREFIX = "BHALYAM";
+/**
+ * What the five characters after the prefix are drawn from: the digits 2-9 and the consonants, and nothing else.
+ * No vowels means a code can never spell a word (so nothing needs an offensive-word list), and no 0/1/O/I/U keeps
+ * it readable aloud. 27^5 is about 14 million codes. It carries no personal data: nothing about the member is in it.
+ */
+export const REFERRAL_CODE_ALPHABET = "23456789BCDFGHJKLMNPRSTVWXZ";
+export const REFERRAL_CODE_LENGTH = 5;
+
+const CODE_BODY = new RegExp(`^[${REFERRAL_CODE_ALPHABET}]{${REFERRAL_CODE_LENGTH}}$`);
+
+/**
+ * Turns what someone typed into the canonical `BHALYAM-XXXXX`, or null if it cannot be one. Forgiving about
+ * everything that does not matter (case, spaces, hyphens, dots) and about leaving the `BHALYAM` off, strict about
+ * the five characters, because a code that is nearly right must not quietly become someone else's.
+ */
+export function normalizeReferralCode(input: unknown): string | null {
+  if (typeof input !== "string" || input.length > 64) return null;
+  let compact = input.normalize("NFKC").toUpperCase().replace(/[\s\-_.]/g, "");
+  if (compact.startsWith(REFERRAL_CODE_PREFIX)) compact = compact.slice(REFERRAL_CODE_PREFIX.length);
+  return CODE_BODY.test(compact) ? `${REFERRAL_CODE_PREFIX}-${compact}` : null;
+}
+
+export function isShareCode(value: unknown): value is string {
+  return typeof value === "string" && normalizeReferralCode(value) === value;
+}
+
+/** What an invitation link or a typed field holds: a legacy UUID, or a share code. */
+export type InviteReference = { kind: "uuid" | "code"; value: string };
+
+export function parseInviteReference(input: unknown): InviteReference | null {
+  if (isReferralCode(input)) return { kind: "uuid", value: input };
+  const code = normalizeReferralCode(input);
+  return code ? { kind: "code", value: code } : null;
+}
+
+// ── The bonus ─────────────────────────────────────────────────────────────────
+
+/** Coins each side earns when the new member finishes a match with another human. Tunable in `referral_campaign`. */
+export const REFERRAL_BONUS_COINS = 2_000;
+/** A new member may enter a code for this long after registering, and only before their first human match. */
+export const REFERRAL_CODE_WINDOW_DAYS = 7;
+/** At most this many friends earn the inviter a bonus in any rolling `REFERRAL_CAP_WINDOW_DAYS`. */
+export const REFERRAL_ROLLING_CAP = 10;
+export const REFERRAL_CAP_WINDOW_DAYS = 30;
+
+export type ReferralFriendStatus = "JOINED" | "QUALIFIED" | "EXPIRED";
+
+/**
+ * Where one side's bonus stands. NONE: the match that unlocks it has not happened. PENDING: unlocked, being issued.
+ * VESTING: issued and waiting out the anti-abuse hold. CREDITED: in the wallet. BLOCKED: not paid (a cap or a review).
+ * VOIDED: withdrawn by an operator.
+ */
+export type ReferralBonusState = "NONE" | "PENDING" | "VESTING" | "CREDITED" | "BLOCKED" | "VOIDED";
+
+export interface ReferralBonusView {
+  state: ReferralBonusState;
+  amount: number;
+  /** When a VESTING bonus reaches the wallet (epoch ms). */
+  vestingUntil: number | null;
+  creditedAt: number | null;
+  blockedReason: "CAP" | "REVIEW" | null;
+}
+
+/** A friend who signed up with the member's code or link. Never an email, birthday or match detail. */
+export interface ReferralFriend {
+  ordinal: number;
+  displayName: string;
+  avatarId: string | null;
+  joinedAt: number;
+  expiresAt: number;
+  qualifiedAt: number | null;
+  status: ReferralFriendStatus;
+  via: "link" | "code";
+  yourBonus: ReferralBonusView;
+  theirBonus: ReferralBonusView;
+}
+
+/** The member who referred this one, shown to the invitee. */
+export interface ReferralReferrer {
+  displayName: string;
+  avatarId: string | null;
+  joinedAt: number;
+  qualifiedAt: number | null;
+  status: ReferralFriendStatus;
+  via: "link" | "code";
+  yourBonus: ReferralBonusView;
+  /** A mistyped code can be taken back until the first qualifying match. */
+  canDetach: boolean;
+}
+
+export interface ReferralOverview {
+  shareCode: string;
+  inviteCode: string;
+  campaign: {
+    inviterBonus: number;
+    inviteeBonus: number;
+    windowDays: number;
+    rollingCap: number;
+    capWindowDays: number;
+    codeWindowDays: number;
+    target: number;
+  };
+  totals: {
+    joined: number;
+    qualified: number;
+    waiting: number;
+    expired: number;
+    bonusCredited: number;
+    bonusPending: number;
+  };
+  friends: ReferralFriend[];
+  referredBy: ReferralReferrer | null;
+  pack: { granted: boolean; qualifiedFriends: number; target: number };
+  /** Whether this member may still type a referral code (new account, none attached, no human match yet). */
+  canEnterCode: boolean;
+  serverNow: number;
 }

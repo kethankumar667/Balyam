@@ -79,6 +79,7 @@ import { createMandaliRouter } from "./mandali/MandaliController.js";
 import { registerMandaliSocketHandlers } from "./mandali/MandaliSocketHandlers.js";
 import { createPresenceSources } from "./mandali/presenceSources.js";
 import { ReferralService } from "./referrals/ReferralService.js";
+import { ReferralBonusService } from "./referrals/ReferralBonusService.js";
 import { createReferralRouter } from "./referrals/ReferralController.js";
 
 /**
@@ -414,14 +415,6 @@ if (economyService) {
 }
 
 app.use("/api/cosmetics", createCosmeticsRouter(cosmeticsService));
-const referralConfig = readPostgrestConfig();
-const referralKey = process.env.SESSION_SECRET?.trim() ?? "";
-app.use("/api/referrals", createReferralRouter(
-  referralConfig && referralKey.length >= 32
-    ? new ReferralService(new PostgrestClient(referralConfig), referralKey)
-    : null,
-));
-
 /**
  * 30-Day Daily Login Streak & Rewards API.
  * Server-authoritative daily progression, protection shields, and milestone rewards.
@@ -446,6 +439,17 @@ const rewardGateway = new RewardGateway({
     : {}),
 });
 profileService.setRewardGateway(rewardGateway);
+
+/**
+ * Friend invitations. The pages and the typed-code check need only the database; the bonus is paid
+ * through the reward gateway above, so it can only be built once that exists. Both stay off together
+ * when the database or a durable signing key is missing.
+ */
+const referralConfig = readPostgrestConfig();
+const referralKey = process.env.SESSION_SECRET?.trim() ?? "";
+const referralDb = referralConfig && referralKey.length >= 32 ? new PostgrestClient(referralConfig) : null;
+const referralBonusService = referralDb ? new ReferralBonusService(referralDb, rewardGateway) : null;
+app.use("/api/referrals", createReferralRouter(referralDb ? new ReferralService(referralDb, referralKey) : null));
 
 const streakService = new StreakService({ economyService, cosmeticsService, rewardGateway, registeredAt: memberRegisteredAt });
 app.use("/api/streak", createStreakRouter(streakService));
@@ -693,6 +697,9 @@ async function boot(): Promise<void> {
   });
   rewardGateway.startSweeper();
   void rewardGateway.sweep();
+  // Friend-invitation bonuses are granted through the gateway, so they start after its store is ready.
+  referralBonusService?.startSweeper();
+  void referralBonusService?.sweep();
 
   server.listen(PORT, "0.0.0.0", () => {
     logger.info({
@@ -835,7 +842,9 @@ function shutdown(signal: string): void {
   roomManager.stopEconomyRecovery();
   // Same reason: a reward sweep firing mid-shutdown must not race the drain.
   rewardGateway.stopSweeper();
+  referralBonusService?.stopSweeper();
   void Promise.all([
+    referralBonusService?.drain().catch(() => undefined),
     progressionSync.drain().catch(() => undefined),
     // A sweep already paying rewards is allowed to finish; nothing new starts.
     rewardGateway.drain().catch(() => undefined),

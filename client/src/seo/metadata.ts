@@ -1117,6 +1117,8 @@ export const PRERENDER_ROUTES = Object.keys(PUBLIC_ROUTES_METADATA);
  */
 export const NON_PUBLIC_ROUTE_TITLES: Record<string, string> = {
   "/shop": "Cosmetics Boutique · BHALYAM",
+  // A member's own code and the friends who joined with it: never prerendered, listed or indexed.
+  "/referrals": "Invite Friends · BHALYAM",
 };
 
 /**

@@ -26,6 +26,7 @@ import {
   BarChart2,
   FileText,
   Bookmark,
+  Gift,
 } from "lucide-react";
 import type { NavigationConfig } from "./types";
 
@@ -384,6 +385,13 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         icon: Trophy,
         path: "/profile/scorecards",
         isActive: (p) => p === "/profile/scorecards",
+      },
+      {
+        id: "profile-referrals",
+        label: "Invite friends",
+        icon: Gift,
+        path: "/referrals",
+        isActive: (p) => p.startsWith("/referrals"),
       },
       // Preferences / Security & Data used to be duplicated here, pointing
       // at the exact same /settings/* routes the Settings section already

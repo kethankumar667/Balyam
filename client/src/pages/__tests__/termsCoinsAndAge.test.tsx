@@ -24,6 +24,16 @@ describe("Terms of Service — coins and age", () => {
     expect(text).toMatch(/Buying, selling, trading, auctioning or lending coins/i);
   });
 
+  it("describes the referral bonus as a free, capped, reversible gift that bots cannot earn", () => {
+    const { container } = renderTerms();
+    const text = container.textContent ?? "";
+    expect(text).toMatch(/pays both of them a referral bonus in coins/i);
+    expect(text).toMatch(/Matches against bots do not count/i);
+    expect(text).toMatch(/limited number of friends in any 30 days/i);
+    expect(text).toMatch(/withhold or reverse a bonus/i);
+    expect(text).toMatch(/free gift, not a payment/i);
+  });
+
   it("no longer claims there are zero stakes while the product has a Room Entry", () => {
     const { container } = renderTerms();
     expect(container.textContent ?? "").not.toMatch(/zero financial stakes|zero entry fees/i);

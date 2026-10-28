@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
-import { pendingReferralIntent, referralReturnPath } from "../../lib/referrals";
+import { pendingReferralCode, pendingReferralIntent, referralReturnPath } from "../../lib/referrals";
 import {
   authErrorMessage,
   getSupabase,
@@ -257,6 +257,8 @@ export function useSignUp(): SignUpState {
               account_id: extra?.accountId || null,
               avatar_id: extra?.avatarId || null,
               referral_intent: pendingReferralIntent(),
+              // A typed code follows the account, so verifying the email on another device still applies it.
+              referral_code: pendingReferralCode(),
             },
             emailRedirectTo: redirectTo("/verify-email?state=verified"),
           },

@@ -102,6 +102,14 @@ const ACADEMY_ENTRIES: readonly InventoryEntry[] = ACADEMY_GAMES.map(([slug, nam
 
 export const DATA_INVENTORY: readonly InventoryEntry[] = [
   {
+    key: "bhalyam.referral.code",
+    label: "Friend's referral code",
+    description: "A BHALYAM-XXXXX code you typed at sign-up or carried from a friend's invitation link, kept only until it is applied to your new account (or you skip it). The code identifies the member who shared it, not you.",
+    purpose: "consent",
+    isPersonalData: true,
+    holdsOthersData: true,
+  },
+  {
     key: "bhalyam.referral.intent",
     label: "Accepted friend invitation",
     description: "A signed record that you deliberately accepted a friend's invitation before creating an account. Valid for 30 days; removed here when connected, refused, or when you erase device data. A copy travels with email signup so confirmation on another device can connect it.",

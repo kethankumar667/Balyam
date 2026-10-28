@@ -7,7 +7,12 @@ import InvitePage from "../InvitePage";
 const mocks = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock("../../store/authStore", () => ({ useAuthStore: (select: (s: { isMember: boolean }) => unknown) => select({ isMember: false }) }));
 vi.mock("../../hooks/useReferralProgress", () => ({ useReferralProgress: () => ({ error: null, notice: null, retry: vi.fn() }) }));
-vi.mock("../../lib/referrals", () => ({ referralRequest: mocks.request, REFERRAL_INTENT_KEY: "bhalyam.referral.intent", pendingReferralIntent: () => localStorage.getItem("bhalyam.referral.intent") }));
+vi.mock("../../lib/referrals", () => ({
+  referralRequest: mocks.request,
+  REFERRAL_INTENT_KEY: "bhalyam.referral.intent",
+  pendingReferralIntent: () => localStorage.getItem("bhalyam.referral.intent"),
+  rememberReferralCode: (code: string) => localStorage.setItem("bhalyam.referral.code", code),
+}));
 const code = "00000000-0000-4000-8000-000000000001";
 function AnotherInvite() {
   const navigate = useNavigate();
@@ -29,6 +34,31 @@ describe("explicit referral acceptance", () => {
     await waitFor(() => expect(localStorage.getItem("bhalyam.referral.intent")).toBe("signed-intent"));
     expect(screen.getByRole("link", { name: "Create account" })).toHaveAttribute("href", "/signup");
     expect(mocks.request).toHaveBeenCalledWith("/accept", { code }, true);
+  });
+  it("checks a short BHALYAM code publicly and remembers it only after the visitor accepts", async () => {
+    open("/invite/BHALYAM-K7M2P");
+    fireEvent.click(await screen.findByRole("button", { name: /accept invitation/i }));
+    expect(mocks.request).toHaveBeenCalledWith("/code/BHALYAM-K7M2P", undefined, true);
+    expect(mocks.request).not.toHaveBeenCalledWith("/accept", expect.anything(), true);
+    await waitFor(() => expect(localStorage.getItem("bhalyam.referral.code")).toBe("BHALYAM-K7M2P"));
+    expect(localStorage.getItem("bhalyam.referral.intent")).toBeNull();
+    expect(screen.getByRole("link", { name: "Create account" })).toHaveAttribute("href", "/signup");
+  });
+  it("normalises a lower-case short code in the link", async () => {
+    open("/invite/bhalyam-k7m2p");
+    await screen.findByRole("button", { name: /accept invitation/i });
+    expect(mocks.request).toHaveBeenCalledWith("/code/BHALYAM-K7M2P", undefined, true);
+  });
+  it("tells the visitor what both sides get and what the friend can see", async () => {
+    open(`/invite/${code}`);
+    await screen.findByRole("button", { name: /accept invitation/i });
+    expect(screen.getByText(/each get 2,000 coins/i)).toBeInTheDocument();
+    expect(screen.getByText(/display name and whether you have played/i)).toBeInTheDocument();
+  });
+  it("refuses a link that is neither a code nor a private invitation", async () => {
+    open("/invite/not-a-code");
+    expect(await screen.findByRole("alert")).toHaveTextContent(/no longer available/i);
+    expect(mocks.request).not.toHaveBeenCalled();
   });
   it("does not call a bare completion URL an accepted invitation", async () => {
     open("/invite/complete");

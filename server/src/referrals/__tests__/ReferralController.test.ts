@@ -76,6 +76,54 @@ describe("referral HTTP boundaries", () => {
     const forged = await request("/attribute", { token: "unsigned" });
     expect(await forged.json()).toEqual({ ok: false, code: "EXPIRED_INVITE" });
   });
+  it("checks a typed code publicly, normalised, answering yes or no and nothing about whose it is", async () => {
+    const rpc = vi.spyOn(db, "rpc").mockResolvedValue(true);
+    const request = await app();
+    mocks.identity = "none";
+    const found = await request("/code/bhalyam%20k7m2p");
+    expect(found.status).toBe(200);
+    expect(await found.json()).toEqual({ valid: true });
+    expect(rpc).toHaveBeenCalledWith("referral_code_valid", { p_code: "BHALYAM-K7M2P" });
+
+    rpc.mockResolvedValue(false);
+    expect((await request("/code/BHALYAM-K7M2P")).status).toBe(404);
+    rpc.mockClear();
+    expect((await request("/code/nonsense")).status).toBe(404);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+  it("redeems and detaches for the verified member only, never for a caller-named player", async () => {
+    const rpc = vi.spyOn(db, "rpc").mockResolvedValue({ ok: true });
+    const request = await app();
+    expect((await request("/redeem", { code: "bhalyam-k7m2p", playerId: "someone-else" })).status).toBe(200);
+    expect(rpc).toHaveBeenLastCalledWith("referral_redeem_code", { p_player_id: "verified-caller", p_code: "BHALYAM-K7M2P" });
+
+    rpc.mockClear();
+    const garbage = await request("/redeem", { code: "not a code" });
+    expect(await garbage.json()).toEqual({ ok: false, code: "INVALID_CODE" });
+    expect(rpc).not.toHaveBeenCalled();
+
+    expect((await request("/detach", { playerId: "someone-else" })).status).toBe(200);
+    expect(rpc).toHaveBeenLastCalledWith("referral_detach", { p_player_id: "verified-caller" });
+
+    mocks.identity = "guest";
+    expect((await request("/redeem", { code: "BHALYAM-K7M2P" })).status).toBe(403);
+    expect((await request("/detach", {})).status).toBe(403);
+    mocks.identity = "none";
+    expect((await request("/redeem", { code: "BHALYAM-K7M2P" })).status).toBe(401);
+  });
+  it("reads the overview for the verified member and refuses guests and the signed-out", async () => {
+    const rpc = vi.spyOn(db, "rpc").mockResolvedValue({ shareCode: "BHALYAM-K7M2P", friends: [] });
+    const request = await app();
+    const response = await request("/overview");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ shareCode: "BHALYAM-K7M2P" });
+    expect(rpc).toHaveBeenCalledWith("referral_overview", { p_player_id: "verified-caller" });
+
+    mocks.identity = "guest";
+    expect((await request("/overview")).status).toBe(403);
+    mocks.identity = "none";
+    expect((await request("/overview")).status).toBe(401);
+  });
   it("surfaces database failure without returning success-shaped zero progress", async () => {
     vi.spyOn(db, "rpc").mockRejectedValue(new Error("Database unavailable"));
     const request = await app();

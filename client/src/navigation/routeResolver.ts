@@ -62,7 +62,7 @@ export function determineSection(pathname: string): NavigationSectionId {
     return "achievements";
   }
 
-  if (normalized.startsWith("/profile")) {
+  if (normalized.startsWith("/profile") || normalized.startsWith("/referrals")) {
     return "profile";
   }
 

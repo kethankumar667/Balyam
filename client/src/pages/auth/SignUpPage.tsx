@@ -30,6 +30,8 @@ import { AVATARS, findAvatar } from "../../lib/avatars";
 import { GoogleMark } from "../../components/auth/authIcons";
 import BirthdayPicker from "../../components/BirthdayPicker";
 import { getEraFromBirthYear } from "../../lib/accountGenerator";
+import { forgetReferralCode, pendingReferralCode, rememberReferralCode } from "../../lib/referrals";
+import { ReferralCodeField, useReferralCodeCheck } from "../../features/referrals/ReferralCodeField";
 
 export default function SignUpPage() {
   const navigate = useNavigate();
@@ -59,6 +61,11 @@ export default function SignUpPage() {
   );
   const [showAllAvatarsModal, setShowAllAvatarsModal] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
+  // A code carried from a shared /invite/BHALYAM-XXXXX link arrives pre-filled; the member can change or clear it.
+  const [referralCode, setReferralCode] = useState(() => pendingReferralCode() ?? "");
+  const referral = useReferralCodeCheck(referralCode);
+  // Optional, but never silently dropped: a half-typed or unknown code has to be fixed or cleared first.
+  const referralNeedsFixing = referral.check === "invalid" || referral.check === "incomplete";
 
   // Field Errors
   const [firstNameError, setFirstNameError] = useState<FieldError>(null);
@@ -168,7 +175,11 @@ export default function SignUpPage() {
   // Step 3 -> Final Account Creation Submission
   function handleFinalSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!agreeTerms) return;
+    if (!agreeTerms || referralNeedsFixing) return;
+
+    // The code is applied once the email is verified (MemberOnboarding), so it has to survive the round trip.
+    if (referral.code) rememberReferralCode(referral.code);
+    else forgetReferralCode();
 
     // Save profile state to room store
     setPlayerName(displayName.trim());
@@ -906,6 +917,11 @@ export default function SignUpPage() {
                       })}
                     </div>
 
+                    {/* Referral code: optional, applied after the email is verified */}
+                    <div className="auth-shell rounded-2xl border border-[var(--auth-card-edge)] bg-[var(--auth-card)] p-3">
+                      <ReferralCodeField value={referralCode} onChange={setReferralCode} check={referral.check} disabled={loading} />
+                    </div>
+
                     {/* Terms Checkbox */}
                     <div className="flex items-start gap-2 pt-1 pl-1">
                       <input
@@ -945,7 +961,7 @@ export default function SignUpPage() {
 
                       <button
                         type="submit"
-                        disabled={loading || !agreeTerms}
+                        disabled={loading || !agreeTerms || referralNeedsFixing}
                         className="inline-flex items-center justify-center gap-2 px-8 py-3 rounded-full bg-[#881337] hover:bg-[#9F1239] text-white font-bold text-sm shadow-sm hover:shadow-md active:scale-98 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ml-auto"
                       >
                         <span>

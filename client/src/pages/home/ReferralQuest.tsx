@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Check, Copy, Users } from "lucide-react";
-import { NOSTALGIA_PACK, packEquipTargets } from "@shared/referrals";
+import { NOSTALGIA_PACK, packEquipTargets, REFERRAL_BONUS_COINS } from "@shared/referrals";
 import { useReferralProgress } from "../../hooks/useReferralProgress";
 import { useCosmeticsStore } from "../../store/cosmeticsStore";
 import { PackCollectible } from "./JourneyArtwork";
@@ -17,7 +17,7 @@ export function ReferralQuest({ isMember }: { isMember: boolean }) {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [equipping, setEquipping] = useState(false);
   const canEquipPack = hasAdminPass || (progress?.rewardGranted && !error && !loading);
-  const link = progress ? `${window.location.origin}/invite/${progress.inviteCode}` : "";
+  const link = progress ? `${window.location.origin}/invite/${progress.shareCode ?? progress.inviteCode}` : "";
   useEffect(() => { setSharing(false); setFeedback(null); setEquipping(false); }, [userId]);
 
   async function copyInvite() {
@@ -50,7 +50,7 @@ export function ReferralQuest({ isMember }: { isMember: boolean }) {
     <span aria-hidden="true" className="absolute -left-[17px] top-7 h-2 w-2 rounded-full bg-journey-violet lg:hidden" />
     <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-journey-violet"><Users size={16} aria-hidden="true" /> Social quest</p>
     <h3 className="mt-4 font-display text-2xl">Bring your crew</h3>
-    <p className="mt-2 text-xs leading-relaxed text-journey-detail">New memories are better together. Invite three friends to earn the Nostalgia Pack.</p>
+    <p className="mt-2 text-xs leading-relaxed text-journey-detail">New memories are better together. When a friend you invite plays their first match with another person, you each get {REFERRAL_BONUS_COINS.toLocaleString("en-IN")} coins. Three friends earn the Nostalgia Pack.</p>
     <div className="my-5 rounded-xl border border-journey-gold/30 bg-journey-panel/70 p-3">
       <p className="mb-3 text-center text-[9px] font-bold uppercase tracking-[0.2em] text-journey-gold">The Nostalgia Pack</p>
       <ul className="grid grid-cols-3 gap-2">
@@ -76,6 +76,7 @@ export function ReferralQuest({ isMember }: { isMember: boolean }) {
         </ol>
         <p className="mb-2 text-[11px] leading-relaxed text-journey-detail">Each friend needs a new verified account and a completed match with another human within 30 days of accepting.</p>
         {progress.pendingFriends > 0 && <p className="mb-2 text-[11px] text-journey-violet">{progress.pendingFriends} accepted; waiting for qualifying play.</p>}
+        {progress.shareCode && <p className="mb-2 text-[11px] text-journey-detail">Your code <span className="font-mono font-bold text-journey-gold">{progress.shareCode}</span> · <Link to="/referrals" className="inline-flex min-h-[44px] items-center text-journey-violet underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-journey-gold">See who joined</Link></p>}
         <button type="button" onClick={retry} className="mb-1 min-h-[44px] self-start rounded-lg text-[11px] text-journey-violet underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-journey-gold">Refresh progress</button>
       </>
     ) : null}
