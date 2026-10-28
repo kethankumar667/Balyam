@@ -97,8 +97,33 @@ export function scorecardDate(timestamp?: number): string {
   return timestamp ? new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(timestamp) : "Not recorded";
 }
 
+const CONTEXT_LABELS: Record<ModeScorecard["bestContext"], string> = {
+  SOLO: "Solo", VS_BOTS: "Vs bots", PVP_MULTIPLAYER: "Online", PASS_AND_PLAY: "Pass & Play",
+};
+
+/** Plain words for how the record was set, never the raw wire enum. */
+export function scorecardContextLabel(context: ModeScorecard["bestContext"]): string {
+  return CONTEXT_LABELS[context] ?? "Not recorded";
+}
+
+/** The countable noun of a mode's unit ("rolls to 100" → "rolls") for milestone copy. */
+export function milestoneUnit(mode: ModeDefinition): string {
+  return mode.unit.split(" to ")[0].trim() || "points";
+}
+
+/** Score plus its unit for sentences ("184 runs", "5m 00s"); timed modes already read as a time. */
+export function scorecardValueWithUnit(game: AllGameSlug, mode: ModeDefinition, score: number): string {
+  const value = scorecardValue(game, mode, score);
+  return mode.unit && mode.unit !== "s" ? `${value} ${mode.unit}` : value;
+}
+
 export function scorecardValue(game: AllGameSlug, mode: ModeDefinition, score: number): string {
   return formatGameMetricValue(score, mode.unit === "s" ? "duration_seconds" : getGameMetricSchema(game).primaryRankMetric.format);
+}
+
+/** Averages are fractional; one decimal is enough to read and never prints "52.667". */
+export function scorecardAverage(game: AllGameSlug, mode: ModeDefinition, average: number): string {
+  return scorecardValue(game, mode, Math.round(average * 10) / 10);
 }
 
 export function shortModeName(mode: ModeDefinition, game: AllGameSlug): { name: string; detail: string } {

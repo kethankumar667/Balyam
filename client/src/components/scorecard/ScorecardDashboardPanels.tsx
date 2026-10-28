@@ -2,7 +2,7 @@ import { useId, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import {
   Activity, Award, BarChart3, BookOpen, CalendarDays, ChevronRight, Crown,
-  Gamepad2, History, Layers, Play, Search, Share2, ShieldCheck, Star, Target, Trophy, X,
+  Gamepad2, History, Layers, Lock, Play, Search, Share2, ShieldCheck, Star, Target, Trophy, X,
 } from "lucide-react";
 import type { ModeDefinition } from "@shared/profile/GameModes";
 import { getGameModeConfig } from "@shared/profile/GameModes";
@@ -22,7 +22,7 @@ import Modal from "../Modal";
 import QuantumRadarHexagon from "./QuantumRadarHexagon";
 import { SCORECARD_RANK_CLASSES } from "./scorecardTheme";
 import {
-  SCORECARD_CATEGORIES, scorecardArt, scorecardBest, scorecardDate, scorecardValue, shortModeName,
+  SCORECARD_CATEGORIES, milestoneUnit, scorecardArt, scorecardAverage, scorecardBest, scorecardContextLabel, scorecardDate, scorecardValue, shortModeName,
   type ScorecardCategory, type CricketFamily, type ScorecardBest,
 } from "./scorecardDashboardModel";
 
@@ -225,7 +225,7 @@ export function PersonalBestCard({ game, mode, record, best, onDetails, onShare 
           </div>
           <dl className="space-y-2.5 rounded-xl border border-score-edge bg-score-inset p-3 text-[11px]">
             {[
-              { label: "Average score", value: scorecardValue(game, mode, record.averageScore), icon: Activity },
+              { label: "Average score", value: scorecardAverage(game, mode, record.averageScore), icon: Activity },
               { label: "Matches played", value: String(record.timesPlayed), icon: Layers },
               { label: "Record set", value: scorecardDate(record.bestScoreAchievedAt), icon: CalendarDays },
             ].map(({ label, value, icon: Icon }) => <div key={label} className="flex items-center justify-between gap-2">
@@ -363,37 +363,98 @@ export function RecentBattles({ matches, status, onRetry, playerName, avatar, pl
 export function ScorecardDetails({ open, onClose, game, mode, record }: RecordProps & { open: boolean; onClose: () => void }) {
   const id = useId();
   if (!record) return null;
+  const config = getGameModeConfig(game);
+  const historical = !config.modes.some(current => current.modeId === mode.modeId);
+  const timed = mode.unit === "s";
   const rank = calculatePerformanceRank(game, mode.modeId, record.bestScore, record.scoringDirection);
-  const milestone = getNextMilestoneTarget(game, mode.modeId, record.bestScore, record.scoringDirection);
+  const milestone = getNextMilestoneTarget(game, mode.modeId, record.bestScore, record.scoringDirection, milestoneUnit(mode));
   const feats = getSignatureFeatsForGame(game, record);
+  const unlocked = feats.filter(feat => feat.isUnlocked).length;
   const schema = getGameMetricSchema(game);
+  const stats = [
+    { label: "Record set", value: scorecardDate(record.bestScoreAchievedAt), icon: CalendarDays },
+    { label: "Played as", value: scorecardContextLabel(record.bestContext), icon: Gamepad2 },
+    { label: "Average score", value: scorecardAverage(game, mode, record.averageScore), icon: Activity },
+    { label: "Matches played", value: record.timesPlayed.toLocaleString(), icon: Layers },
+    ...schema.secondaryMetrics.map(metric => ({
+      label: metric.label, value: formatGameMetricValue(record.secondaryMetrics[metric.key], metric.format), icon: BarChart3,
+    })),
+  ].filter(stat => stat.value !== "-");
   return <Modal open={open} onClose={onClose} mobileSheet ariaLabelledBy={id}
-    panelClassName="chrono-scorecards relative w-full max-w-lg rounded-t-3xl border border-score-edge bg-score-panel p-5 font-sans text-score-ink md:rounded-3xl">
-    <header className="flex items-start justify-between gap-3">
-      <div><p className="text-[10px] font-bold uppercase tracking-wider text-score-cyan">Record dossier</p><h2 id={id} className="mt-1 text-xl font-bold">{getGameModeConfig(game).displayName} scorecard</h2><p className="mt-1 text-xs text-score-soft">{mode.displayName}</p></div>
+    panelClassName="chrono-scorecards relative flex max-h-[calc(100dvh-1rem)] w-full max-w-lg flex-col overflow-y-auto rounded-t-3xl border border-score-edge bg-score-panel p-5 font-sans text-score-ink sm:p-6 md:rounded-3xl">
+    <header className="flex items-start gap-3">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-score-edge bg-score-inset">
+        <GameArt game={game} className="h-full w-full" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-score-cyan">Record dossier</p>
+        <h2 id={id} className="mt-0.5 text-xl font-bold leading-tight">{config.displayName} scorecard</h2>
+        <p className="mt-1 text-xs text-score-soft">{mode.displayName}</p>
+      </div>
       <button type="button" onClick={onClose} aria-label="Close scorecard" className={`${SECONDARY_BUTTON} w-11 shrink-0 px-0`}><X className="h-4 w-4" aria-hidden="true" /></button>
     </header>
-    <div className="my-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-score-edge bg-score-inset p-4">
-      <strong className="text-3xl font-black text-score-gold">{scorecardValue(game, mode, record.bestScore)}</strong>
-      <div className="text-right"><p className="text-sm font-bold text-score-cyan">{rank.label}</p><p className="mt-1 text-xs text-score-soft">{rank.grade}-RANK</p></div>
+
+    <div className="mt-5 rounded-2xl border border-score-edge bg-score-inset p-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <strong className="block break-words font-display text-4xl leading-none tracking-tight text-score-gold sm:text-5xl">{timed ? scorecardValue(game, mode, record.bestScore) : record.bestScore.toLocaleString()}</strong>
+          <span className="mt-1 block font-mono text-xs font-bold uppercase tracking-[0.14em] text-score-gold">{timed ? "best time" : mode.unit || "score"}</span>
+        </div>
+        <div className="flex flex-col items-end gap-1.5 text-right">
+          <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-bold ${SCORECARD_RANK_CLASSES[rank.tier]}`}>
+            <Award className="h-3.5 w-3.5" aria-hidden="true" />{rank.grade}-RANK
+          </span>
+          <span className="text-xs font-semibold text-score-ink">{rank.label}</span>
+        </div>
+      </div>
+      <p className="mt-3 border-t border-score-edge pt-3 text-xs text-score-soft">{record.scoringDirection === "LOWER_IS_BETTER" ? "Lower is better" : "Higher is better"}</p>
     </div>
-    <dl className="grid grid-cols-2 gap-3 text-xs">
-      <div><dt className="text-score-soft">Record set</dt><dd className="mt-1 font-semibold">{scorecardDate(record.bestScoreAchievedAt)}</dd></div>
-      <div><dt className="text-score-soft">Match context</dt><dd className="mt-1 font-semibold">{record.bestContext.replace(/_/g, " ")}</dd></div>
-      <div><dt className="text-score-soft">Average</dt><dd className="mt-1 font-semibold">{formatGameMetricValue(record.averageScore, schema.primaryRankMetric.format)}</dd></div>
-      <div><dt className="text-score-soft">Matches played</dt><dd className="mt-1 font-semibold">{record.timesPlayed}</dd></div>
-      {schema.secondaryMetrics.map(metric => <div key={metric.key}><dt className="text-score-soft">{metric.label}</dt><dd className="mt-1 font-semibold">{formatGameMetricValue(record.secondaryMetrics[metric.key], metric.format)}</dd></div>)}
+
+    <dl className="mt-4 grid grid-cols-2 gap-2.5">
+      {stats.map(({ label, value, icon: Icon }) => <div key={label} className="min-w-0 rounded-xl border border-score-edge bg-score-inset p-3 [&:last-child:nth-child(odd)]:col-span-2">
+        <dt className="flex items-center gap-1.5 text-[11px] text-score-soft"><Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{label}</dt>
+        <dd className="mt-1 truncate text-sm font-bold text-score-ink" title={value}>{value}</dd>
+      </div>)}
     </dl>
-    <section className="my-5 rounded-xl border border-score-edge bg-score-inset p-3">
-      <h3 className="flex items-center gap-1.5 text-xs font-bold text-score-gold"><Target className="h-4 w-4" aria-hidden="true" />{milestone.title}</h3>
-      <p className="mt-1 text-xs text-score-soft">{milestone.remainingText}</p>
-      <div role="progressbar" aria-label="Next record milestone" aria-valuenow={Math.round(milestone.progressPercent)} aria-valuemin={0} aria-valuemax={100}
-        className="mt-3 h-1.5 overflow-hidden rounded-full bg-score-grid"><div className="h-full bg-score-cyan" style={{ width: `${milestone.progressPercent}%` }} /></div>
+
+    <section aria-labelledby={`${id}-next`} className="mt-4 rounded-xl border border-score-edge bg-score-inset p-4">
+      <p className="text-[11px] font-bold uppercase tracking-wider text-score-cyan">Next target</p>
+      {timed ? <>
+        <h3 id={`${id}-next`} className="mt-1 flex items-center gap-1.5 text-sm font-bold text-score-gold"><Target className="h-4 w-4 shrink-0" aria-hidden="true" />Beat your best time</h3>
+        <p className="mt-1 text-xs text-score-soft">Finish faster than {scorecardValue(game, mode, record.bestScore)} to set a new record.</p>
+      </> : <>
+        <h3 id={`${id}-next`} className="mt-1 flex items-center gap-1.5 text-sm font-bold text-score-gold"><Target className="h-4 w-4 shrink-0" aria-hidden="true" />{milestone.title}</h3>
+        <div className="mt-3 flex items-center gap-3">
+          <div role="progressbar" aria-label="Next record milestone" aria-valuenow={Math.round(milestone.progressPercent)} aria-valuemin={0} aria-valuemax={100}
+            className="h-2 flex-1 overflow-hidden rounded-full bg-score-grid"><div className="h-full rounded-full bg-score-cyan" style={{ width: `${milestone.progressPercent}%` }} /></div>
+          <span className="font-mono text-xs font-bold text-score-ink">{Math.round(milestone.progressPercent)}%</span>
+        </div>
+        <p className="mt-2 text-xs text-score-soft">{milestone.remainingText}</p>
+      </>}
     </section>
-    <h3 className="mb-3 flex items-center gap-2 text-sm font-bold"><ShieldCheck className="h-4 w-4 text-score-gold" aria-hidden="true" />Signature feats</h3>
-    <ul className="space-y-2">{feats.map(feat => <li key={feat.id} className="flex items-start gap-3 rounded-xl border border-score-edge bg-score-inset p-3">
-      <Trophy className={`mt-0.5 h-4 w-4 shrink-0 ${feat.isUnlocked ? "text-score-gold" : "text-score-soft"}`} aria-hidden="true" />
-      <div><p className="text-xs font-bold">{feat.name}<span className="ml-2 text-[10px] font-normal text-score-soft">{feat.isUnlocked ? "Unlocked" : "Locked"}</span></p><p className="mt-1 text-[11px] leading-relaxed text-score-soft">{feat.description}</p></div>
-    </li>)}</ul>
+
+    <section aria-labelledby={`${id}-feats`} className="mt-5">
+      <header className="mb-3 flex items-center justify-between gap-2">
+        <h3 id={`${id}-feats`} className="flex items-center gap-2 text-sm font-bold"><ShieldCheck className="h-4 w-4 text-score-gold" aria-hidden="true" />Signature feats</h3>
+        <span className="rounded-md border border-score-edge bg-score-inset px-2 py-1 text-[11px] font-bold text-score-soft">{unlocked} of {feats.length} unlocked</span>
+      </header>
+      <ul className="space-y-2">{feats.map(feat => <li key={feat.id}
+        className={`flex items-start gap-3 rounded-xl border p-3 ${feat.isUnlocked ? "border-score-gold bg-score-inset" : "border-dashed border-score-edge"}`}>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${feat.isUnlocked ? "border-score-gold text-score-gold" : "border-score-edge text-score-soft"}`}>
+          {feat.isUnlocked ? <Trophy className="h-4 w-4" aria-hidden="true" /> : <Lock className="h-4 w-4" aria-hidden="true" />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-bold">{feat.name}
+            <span className={`text-[11px] font-semibold ${feat.isUnlocked ? "text-score-gold" : "text-score-soft"}`}>{feat.isUnlocked ? "Unlocked" : "Locked"}</span>
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-score-soft">{feat.description}</p>
+        </div>
+      </li>)}</ul>
+    </section>
+
+    <div className="mt-5 flex gap-2 border-t border-score-edge pt-4">
+      <Link {...launchLinkProps(game)} className={`${PLAY_BUTTON} flex-1`}><Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />{historical ? "Play current modes" : "Play again"}</Link>
+      <button type="button" onClick={onClose} className={`${SECONDARY_BUTTON} flex-1`}>Done</button>
+    </div>
   </Modal>;
 }

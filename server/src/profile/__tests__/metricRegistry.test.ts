@@ -94,6 +94,21 @@ describe("MetricRegistry & Polymorphic Telemetry", () => {
     expect(rummyNext.title).toContain("Pure Show");
   });
 
+  it("picks the nearest lower-is-better benchmark and names the mode's unit", () => {
+    const snl = getNextMilestoneTarget("snl", "medium", 42, "LOWER_IS_BETTER", "rolls");
+    expect(snl.targetScore).toBe(30);
+    expect(snl.remainingText).toBe("Shave 12 rolls");
+
+    const sudoku = getNextMilestoneTarget("sudoku", "medium", 300, "LOWER_IS_BETTER");
+    expect(sudoku.targetScore).toBe(50);
+
+    const repeat = getNextMilestoneTarget("snl", "medium", 42, "LOWER_IS_BETTER", "rolls");
+    expect(repeat.targetScore).toBe(30);
+
+    const higher = getNextMilestoneTarget("bingo", "first_win", 7, "HIGHER_IS_BETTER", "lines");
+    expect(higher.remainingText).toBe("3 lines away");
+  });
+
   it("derives player archetype persona from quantum performance radar", () => {
     const tactician = derivePlayerArchetype({
       velocity: 20,

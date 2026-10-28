@@ -1316,12 +1316,15 @@ export interface NextMilestoneTarget {
 
 /**
  * Derives the next achievable benchmark quest from a player's current record.
+ * `unitLabel` names the score in the generic fallbacks (e.g. "rolls"); the
+ * Hand Cricket, Ludo and Rummy branches keep their own wording.
  */
 export function getNextMilestoneTarget(
   game: AllGameSlug,
   _modeId: string,
   bestScore: number | undefined | null,
-  direction: ScoringDirection
+  direction: ScoringDirection,
+  unitLabel = "points"
 ): NextMilestoneTarget {
   const current = bestScore ?? 0;
 
@@ -1437,17 +1440,18 @@ export function getNextMilestoneTarget(
       title: `Target: ${target} Score`,
       progressPercent: Math.min(100, Math.round((current / target) * 100)),
       rewardXp: 200,
-      remainingText: `${target - current} points away`,
+      remainingText: `${target - current} ${unitLabel} away`,
     };
   } else {
+    // Largest benchmark still below the best, so the next step is the nearest one.
     const steps = [50, 30, 20, 10, 5];
-    const target = steps.reverse().find((s) => s < current) ?? Math.max(1, current - 5);
+    const target = steps.find((s) => s < current) ?? Math.max(1, current - 5);
     return {
       targetScore: target,
       title: `Sub-${target} Benchmark`,
       progressPercent: Math.max(20, Math.min(95, Math.round((target / (current || 1)) * 100))),
       rewardXp: 250,
-      remainingText: `Shave ${current - target} points`,
+      remainingText: `Shave ${Math.max(0, current - target)} ${unitLabel}`,
     };
   }
 }

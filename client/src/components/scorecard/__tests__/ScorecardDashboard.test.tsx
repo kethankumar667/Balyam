@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PlayerScorecardArchive } from "@shared/profile/Scorecard";
 import ScorecardDashboard from "../ScorecardDashboard";
 import { RecentBattles } from "../ScorecardDashboardPanels";
-import { scorecardArt, scorecardBest, scorecardCoverage, scorecardModes } from "../scorecardDashboardModel";
+import { milestoneUnit, scorecardArt, scorecardBest, scorecardContextLabel, scorecardCoverage, scorecardModes } from "../scorecardDashboardModel";
 import { GAME_MODE_REGISTRY } from "@shared/profile/GameModes";
 import { buildRecords } from "../../../features/myrecords/records";
 
@@ -90,6 +90,33 @@ describe.each(["mobile", "desktop"] as const)("scorecards %s dashboard", layout 
     expect(share).toBeVisible();
     expect(share).not.toHaveTextContent(/ghost|VERIFIED RECORD|HASH:|SCAN TO CHALLENGE/);
     fireEvent.click(screen.getByRole("button", { name: "Close dialog" }));
+  });
+
+  it("shows the dossier in plain words and the share card without internal ids", () => {
+    const base = dashboardArchive.games.handcricket!.modes.international_t20;
+    draw({ ...dashboardArchive, games: { handcricket: {
+      ...dashboardArchive.games.handcricket!, modes: { international_t20: {
+        ...base, bestContext: "VS_BOTS", secondaryMetrics: {},
+      } },
+    } } });
+    fireEvent.click(screen.getByRole("button", { name: "View scorecard" }));
+    const details = screen.getByRole("dialog", { name: "Hand Cricket scorecard" });
+    expect(within(details).getByText("Vs bots")).toBeVisible();
+    expect(details).not.toHaveTextContent(/VS BOTS|VS_BOTS/);
+    expect(within(details).queryByText("-", { exact: true })).not.toBeInTheDocument();
+    expect(within(details).getByText(/^\d+ of \d+ unlocked$/)).toBeVisible();
+    expect(within(details).getByRole("progressbar", { name: "Next record milestone" })).toBeInTheDocument();
+    expect(within(details).getByRole("link", { name: "Play again" })).toHaveAttribute("href", "/");
+    fireEvent.click(within(details).getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Share scorecard" }));
+    const share = screen.getByRole("dialog", { name: "Challenge Your Friends" });
+    expect(share).not.toHaveTextContent(/MATCH:|test-match/);
+    expect(share).toHaveTextContent(/Record set/);
+    expect(within(share).getByText(/^[SABC]-RANK$/)).toBeVisible();
+    expect(within(share).getByRole("button", { name: "Share challenge" })).toBeVisible();
+    expect(within(share).getByRole("button", { name: "WhatsApp" })).toBeVisible();
   });
 
   it("handles zero scores, singleton charts and lower-is-better records without invented comparisons", () => {
@@ -219,5 +246,16 @@ describe("dashboard persistence and layout", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select game Ludo" }));
     rerender(<MemoryRouter><ScorecardDashboard layout="desktop" archive={dashboardArchive} playerName="Kethan" /></MemoryRouter>);
     expect(screen.getByRole("button", { name: "Select game Ludo" })).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
+describe("scorecard dossier wording", () => {
+  it("names every match context and every mode unit in plain words", () => {
+    expect(["SOLO", "VS_BOTS", "PVP_MULTIPLAYER", "PASS_AND_PLAY"].map(c => scorecardContextLabel(c as "SOLO")))
+      .toEqual(["Solo", "Vs bots", "Online", "Pass & Play"]);
+    const units = Object.values(GAME_MODE_REGISTRY).flatMap(config => config.modes.map(milestoneUnit));
+    expect(units.every(unit => unit.length > 0 && !unit.includes(" to "))).toBe(true);
+    const snl = GAME_MODE_REGISTRY.snl.modes.find(mode => mode.modeId === "medium")!;
+    expect(milestoneUnit(snl)).toBe("rolls");
   });
 });

@@ -62,7 +62,8 @@ describe.each(["desktop", "mobile"] as const)("scorecard %s theme", layout => {
     expect(screen.getByRole("dialog", { name: "Hand Cricket scorecard" })).toHaveClass("chrono-scorecards", "bg-score-panel");
     fireEvent.click(screen.getByRole("button", { name: "Close scorecard" }));
     fireEvent.click(screen.getByRole("button", { name: "Share scorecard" }));
-    expect(screen.getByRole("heading", { name: "Challenge Your Friends" })).toHaveClass("text-ink-hi");
+    expect(screen.getByRole("heading", { name: "Challenge Your Friends" })).toHaveClass("text-score-ink");
+    expect(screen.getByRole("dialog", { name: "Challenge Your Friends" })).toHaveClass("chrono-scorecards", "bg-score-panel");
     expect(screen.getByRole("button", { name: "Close dialog" })).toHaveClass("z-10");
     fireEvent.click(screen.getByRole("button", { name: "Close dialog" }));
   });
