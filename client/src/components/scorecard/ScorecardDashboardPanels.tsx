@@ -33,13 +33,31 @@ const PLAY_BUTTON = "inline-flex min-h-11 items-center justify-center gap-2 roun
 function Panel({ title, children, action, className = "" }: { title: string; children: ReactNode; action?: ReactNode; className?: string }) {
   const id = useId();
   return (
-    <section aria-labelledby={id} className={`${PANEL} ${className}`}>
+    <section aria-labelledby={id} className={`${PANEL} flex flex-col ${className}`}>
       <header className="flex min-h-14 items-center justify-between gap-2 px-4 pb-2 pt-3">
         <h3 id={id} className="text-sm font-bold tracking-tight text-score-ink">{title}</h3>
         {action}
       </header>
       {children}
     </section>
+  );
+}
+
+/** One empty-state shape for every scorecard panel, so a fresh profile reads as "not yet" rather than "broken". */
+function PanelEmpty({ icon: Icon, title, children, preview }: {
+  icon: typeof Trophy; title: string; children: ReactNode; preview?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 px-5 pb-5 pt-1 text-center">
+      {preview}
+      <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-score-edge bg-score-inset text-score-cyan">
+        <Icon className="h-5 w-5" aria-hidden="true" />
+      </span>
+      <div className="max-w-64">
+        <p className="text-sm font-bold text-score-ink">{title}</p>
+        <div className="mt-1 text-xs leading-relaxed text-score-soft">{children}</div>
+      </div>
+    </div>
   );
 }
 
@@ -134,26 +152,28 @@ export function ScorecardModes({ records, game, modes, selectedModeId, onSelect,
               family === id ? "bg-score-cyan text-score-on-cyan shadow-sm" : "text-score-soft hover:bg-score-active"
             }`}>{label}</button>)}
       </div> : <p className="px-4 pt-2 text-[11px] leading-relaxed text-score-soft">Choose a format to explore your record.</p>}
-      <div role="group" aria-label={`${config.displayName} modes`} className="grid grid-cols-2 gap-2 p-3 min-[400px]:grid-cols-3">
+      <div role="group" aria-label={`${config.displayName} modes`} className="grid grid-cols-2 gap-2.5 p-3 sm:grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))]">
         {filtered.map(mode => {
           const saved = scorecardBest(records, mode.modeId);
           const label = shortModeName(mode, game);
           const selected = selectedModeId === mode.modeId;
           return <button key={mode.modeId} type="button" aria-label={`Select ${mode.displayName}`} aria-pressed={selected}
-            onClick={() => onSelect(mode.modeId)}
-            className={`relative flex min-h-24 min-w-0 flex-col rounded-xl border p-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-score-cyan ${
+            onClick={() => onSelect(mode.modeId)} title={label.detail || undefined}
+            className={`relative flex min-h-32 min-w-0 flex-col rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-score-cyan ${
               selected ? "border-score-cyan bg-score-active shadow-[inset_0_0_14px_rgba(6,182,212,0.1)]" : "border-score-edge bg-score-inset hover:border-score-cyan"
             }`}>
-            {game === "handcricket" && family === "all" ? <span className="mb-1 text-[9px] font-medium text-score-soft">{mode.displayName.split(" ")[0]}</span> : null}
-            <span className="flex w-full items-start justify-between gap-1">
-              <span className="text-xs font-bold text-score-ink">{label.name}</span>
-              {saved ? <Crown aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-score-gold" />
-                : <Target aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-score-soft" />}
+            {game === "handcricket" && family === "all" ? <span className="mb-1 text-[10px] font-bold uppercase tracking-wider text-score-soft">{mode.displayName.split(" ")[0]}</span> : null}
+            <span className="flex w-full items-start justify-between gap-2">
+              <span className="min-w-0 break-words text-sm font-bold leading-snug text-score-ink">{label.name}</span>
+              {saved ? <Crown aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-score-gold" />
+                : <Target aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-score-soft" />}
             </span>
-            <span className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-score-soft">{label.detail}</span>
-            <span className={`mt-auto pt-2 text-[10px] font-semibold ${saved ? "text-score-cyan" : "text-score-soft"}`}>
-              {saved ? `Best: ${scorecardValue(game, mode, saved.score)}` : "No record yet"}
-            </span>
+            {label.detail ? <span className="mt-1.5 line-clamp-3 text-[11px] leading-snug text-score-soft">{label.detail}</span> : null}
+            <span className="mt-auto flex pt-3"><span className={`inline-flex max-w-full rounded-md border px-2 py-1 text-[11px] font-bold tabular-nums ${
+              saved ? "border-score-cyan bg-score-panel text-score-cyan" : "border-score-edge text-score-soft"
+            }`}>
+              <span className="truncate">{saved ? `Best: ${scorecardValue(game, mode, saved.score)}` : "No record yet"}</span>
+            </span></span>
           </button>;
         })}
       </div>
@@ -184,9 +204,9 @@ export function PersonalBestCard({ game, mode, record, best, onDetails, onShare 
   const rank = calculatePerformanceRank(game, mode.modeId, record?.bestScore, record?.scoringDirection ?? mode.scoringDirection);
   const historical = !config.modes.some(current => current.modeId === mode.modeId);
   return (
-    <section aria-labelledby={titleId} className={`${PANEL} relative isolate overflow-hidden border-score-cyan`}>
+    <section aria-labelledby={titleId} className={`${PANEL} relative isolate flex flex-col overflow-hidden border-score-cyan`}>
       <RecordArtwork game={game} />
-      <div className="relative p-4">
+      <div className="relative flex flex-1 flex-col p-4">
         <header className="flex items-center justify-between gap-2">
           <h3 id={titleId} className="flex items-center gap-2 text-sm font-bold text-score-ink"><Trophy className="h-4 w-4 text-score-gold" aria-hidden="true" />Personal best</h3>
           {record ? <span className="rounded-md border border-score-gold bg-score-inset px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-score-gold">Personal record</span> : null}
@@ -213,13 +233,13 @@ export function PersonalBestCard({ game, mode, record, best, onDetails, onShare 
               <dd className="text-right font-semibold text-score-ink">{value}</dd>
             </div>)}
           </dl>
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="mt-auto flex flex-wrap gap-2 pt-5">
             {!historical ? <Link {...launchLinkProps(game)} className={`${PLAY_BUTTON} flex-1`}><Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />Play again</Link>
               : <Link {...launchLinkProps(game)} className={`${PLAY_BUTTON} flex-1`}>Play current modes</Link>}
             <button type="button" onClick={onDetails} className={`${SECONDARY_BUTTON} flex-1`}>View scorecard</button>
             <button type="button" onClick={onShare} aria-label="Share scorecard" className={`${SECONDARY_BUTTON} w-11 px-0`}><Share2 className="h-4 w-4" aria-hidden="true" /></button>
           </div>
-        </> : best ? <div className="relative flex min-h-72 flex-col items-start justify-center gap-4">
+        </> : best ? <div className="relative flex min-h-64 flex-1 flex-col items-start justify-center gap-4 pt-4">
           <strong className="max-w-full break-words font-display text-4xl tabular-nums text-score-gold sm:text-5xl">{mode.unit === "s" ? scorecardValue(game, mode, best.score) : best.score.toLocaleString()}</strong>
           <p className="text-xs font-bold text-score-gold">{mode.unit || "score"} / {mode.displayName}</p>
           <p className="rounded-xl border border-score-edge bg-score-inset p-3 text-xs leading-relaxed text-score-soft">
@@ -227,10 +247,10 @@ export function PersonalBestCard({ game, mode, record, best, onDetails, onShare 
             Date not recorded. This best has no match count or performance grade and does not count on leaderboards.
           </p>
           <Link {...launchLinkProps(game)} className={PLAY_BUTTON}><Play className="h-3.5 w-3.5" aria-hidden="true" />Play again</Link>
-        </div> : <div className="relative flex min-h-72 flex-col items-start justify-center">
-          <span className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-score-gold bg-score-inset text-score-gold"><Trophy className="h-7 w-7" aria-hidden="true" /></span>
-          <h4 className="max-w-48 text-xl font-bold text-score-ink">Your next record starts here</h4>
-          <p className="mb-5 mt-2 max-w-56 text-xs leading-relaxed text-score-soft">Play {mode.displayName} to set your first personal best.</p>
+        </div> : <div className="relative flex min-h-64 flex-1 flex-col items-start justify-center pt-4">
+          <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-score-gold bg-score-inset text-score-gold"><Trophy className="h-6 w-6" aria-hidden="true" /></span>
+          <h4 className="max-w-56 text-xl font-bold leading-tight text-score-ink">Your next record starts here</h4>
+          <p className="mb-5 mt-2 max-w-64 text-xs leading-relaxed text-score-soft">Play {mode.displayName} to set your first personal best.</p>
           <Link {...launchLinkProps(game)} className={PLAY_BUTTON}><Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />Launch {config.displayName}</Link>
         </div>}
       </div>
@@ -242,23 +262,20 @@ export function RecordIntelligence({ record }: { record?: ModeScorecard }) {
   const archetype = record ? derivePlayerArchetype(record.radar) : null;
   return (
     <Panel title="Record intelligence">
-      {record ? <div className="px-3 pb-3">
-        <div className="flex min-h-60 items-center justify-center py-2"><QuantumRadarHexagon radar={record.radar} size={220} /></div>
+      {record ? <div className="flex flex-1 flex-col px-3 pb-3">
+        <div className="flex min-h-60 flex-1 items-center justify-center py-2"><QuantumRadarHexagon radar={record.radar} size={220} /></div>
         <div className="rounded-xl border border-score-edge bg-score-inset p-3">
           <p className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-score-cyan"><Activity className="h-3.5 w-3.5" aria-hidden="true" />Playing signature</p>
-          <h4 className="text-xs font-bold text-score-ink">{archetype?.title}</h4>
-          <p className="mt-1 text-[11px] leading-relaxed text-score-soft">{archetype?.motto}</p>
+          <h4 className="text-sm font-bold text-score-ink">{archetype?.title}</h4>
+          <p className="mt-1 text-xs leading-relaxed text-score-soft">{archetype?.motto}</p>
         </div>
-      </div> : <div className="px-4 pb-4">
-        <div className="relative mx-auto flex h-48 max-w-56 items-center justify-center" aria-hidden="true">
-          <svg viewBox="0 0 200 180" className="h-40 w-48 fill-none stroke-score-grid">
-            <path d="M100 10 186 72 153 170 47 170 14 72Z M100 42 158 84 136 148 64 148 42 84Z M100 74 130 96 119 126 81 126 70 96Z" />
-            <path d="M100 108V10M100 108 186 72M100 108 153 170M100 108 47 170M100 108 14 72" />
-          </svg>
-          <Target className="absolute h-8 w-8 text-score-cyan" />
-        </div>
-        <p className="rounded-xl border border-score-edge bg-score-inset p-3 text-xs leading-relaxed text-score-soft">Your performance radar appears after your first saved match score.</p>
-      </div>}
+      </div> : <PanelEmpty icon={Target} title="Radar unlocks after one match"
+        preview={<svg viewBox="0 0 200 180" aria-hidden="true" className="h-28 w-32 fill-none stroke-score-grid">
+          <path d="M100 10 186 72 153 170 47 170 14 72Z M100 42 158 84 136 148 64 148 42 84Z M100 74 130 96 119 126 81 126 70 96Z" />
+          <path d="M100 108V10M100 108 186 72M100 108 153 170M100 108 47 170M100 108 14 72" />
+        </svg>}>
+        Your performance radar appears after your first saved match score.
+      </PanelEmpty>}
     </Panel>
   );
 }
@@ -276,7 +293,7 @@ export function PerformanceHistory({ game, mode, record }: RecordProps) {
     <Panel title="Performance history" action={<span className="rounded-lg border border-score-edge bg-score-active px-2 py-1 text-[10px] font-semibold text-score-cyan">{scores.length ? `Latest ${scores.length} saved ${scores.length === 1 ? "score" : "scores"}` : "No scores yet"}</span>}>
       <p className="px-4 text-[11px] text-score-soft">{mode.displayName} {record?.scoringDirection === "LOWER_IS_BETTER" ? " / Lower is better" : ""}</p>
       {scores.length ? <div className="px-3 pb-3">
-        <svg role="img" aria-label={title} viewBox="0 0 330 182" className="mt-2 w-full overflow-visible">
+        <svg role="img" aria-label={title} viewBox="0 0 330 182" className="mx-auto mt-2 max-h-72 w-full overflow-visible">
           <title>{title}</title>
           <defs><linearGradient id={`history-${id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="var(--score-cyan)" stopOpacity="0.26" /><stop offset="1" stopColor="var(--score-cyan)" stopOpacity="0" /></linearGradient></defs>
           {[0, 0.5, 1].map(fraction => {
@@ -303,10 +320,13 @@ export function PerformanceHistory({ game, mode, record }: RecordProps) {
           <summary className="min-h-11 cursor-pointer py-3 font-semibold text-score-cyan">Score values</summary>
           <ol className="flex flex-wrap gap-2 pb-2">{scores.map((score, index) => <li key={index} className="rounded-lg border border-score-edge bg-score-inset px-2 py-1">{index + 1}. {scorecardValue(game, mode, score)}</li>)}</ol>
         </details>
-      </div> : <div className="flex min-h-52 flex-col items-center justify-center px-5 pb-5 text-center text-score-soft">
-        <BarChart3 className="mb-3 h-8 w-8 text-score-cyan" aria-hidden="true" />
-        <p className="text-xs">Your saved scores will trace the story here.</p>
-      </div>}
+      </div> : <PanelEmpty icon={BarChart3} title="No trend yet"
+        preview={<svg viewBox="0 0 160 48" aria-hidden="true" className="h-12 w-40 fill-none">
+          <path d="M4 44H156" className="stroke-score-grid" />
+          <polyline points="8,38 40,30 72,34 104,18 136,22 152,8" className="stroke-score-grid" strokeWidth="2" strokeDasharray="4 4" strokeLinejoin="round" />
+        </svg>}>
+        Your saved scores will trace the story here.
+      </PanelEmpty>}
     </Panel>
   );
 }
@@ -333,11 +353,9 @@ export function RecentBattles({ matches, status, onRetry, playerName, avatar, pl
                       : "border-score-edge bg-score-inset text-score-soft"
                 }`}>{match.result === "won" ? "Victory" : match.result === "lost" ? "Defeat" : "Draw"}</span>
               </li>)}
-          </ul> : <div className="flex min-h-52 flex-col items-center justify-center px-5 pb-5 text-center text-score-soft">
-            <History className="mb-3 h-8 w-8 text-score-cyan" aria-hidden="true" />
-            <p className="text-xs">No battles recorded yet.</p>
-            <p className="mt-1 text-[11px] leading-relaxed">Finish a match to add your first result.</p>
-          </div>}
+          </ul> : <PanelEmpty icon={History} title="No battles recorded yet.">
+            Finish a match to add your first result.
+          </PanelEmpty>}
     </Panel>
   );
 }
