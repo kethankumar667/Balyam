@@ -20,6 +20,7 @@ import {
   type GameFilter,
 } from "../components/bhalyam/CategoryFilter";
 import { getSocket } from "../lib/socket";
+import { InvitePromo } from "../features/referrals/InvitePromo";
 
 export default function GamesPage() {
   const { openGameSheet } = useOutletContext<GamesFamilyOutletContext>();
@@ -133,6 +134,8 @@ export default function GamesPage() {
             />
           )}
         </section>
+
+        <InvitePromo placement="games" />
       </div>
 
       <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />

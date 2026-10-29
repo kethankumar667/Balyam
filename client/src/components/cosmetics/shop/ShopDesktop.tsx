@@ -16,6 +16,7 @@ import { ShopShelf, useRarityShelf } from "./ShopShelf";
 import { categoryLabel } from "./shopPlan";
 import { rarityVars } from "./shopRarity";
 import { ShopFeedback } from "./ShopFeedback";
+import { InvitePromo } from "../../../features/referrals/InvitePromo";
 
 export interface ShopDesktopProps {
   shop: CosmeticsShop;
@@ -125,6 +126,7 @@ export function ShopDesktop({ shop: source, onBack }: ShopDesktopProps) {
                 <ShopShelf shop={shop} rarity={rarity} selectRarity={selectRarity} label={tabLabel} />
               </div>
         )}
+        <InvitePromo placement="shop" className="mx-auto w-full max-w-[1440px] px-6 pb-8" />
       </section>
     </div>
   );

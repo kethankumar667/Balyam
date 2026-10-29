@@ -16,6 +16,7 @@ import { GamesSection } from "./home/GamesSection";
 import { PlayerJourneyDashboard } from "./home/PlayerJourneyDashboard";
 import { Footer } from "./home/Footer";
 import { FaucetClaimRow } from "../components/faucet/FaucetClaimRow";
+import { InviteShowcase } from "../features/referrals/InviteShowcase";
 
 /**
  * BHALYAM home — the app's landing surface.
@@ -77,6 +78,7 @@ export default function BhalyamHome() {
           <div id="games-section">
             <GamesSection onSelect={setSheetGame} way={way} onClearWay={() => setWay(null)} />
           </div>
+          <InviteShowcase className="mt-8" />
           <WhatAreWePlayingSection
             onSelectGame={setSheetGame}
             onOpenCreateRoom={() => setJoinOpen(true)}

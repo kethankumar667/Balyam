@@ -94,6 +94,17 @@ and `invitee_bonus` to 0 to stop paying without touching any row (the rollback s
 invited the member, Nostalgia Pack progress and the rules. `/referrals` and `/invite/` are disallowed in
 `robots.txt` and never prerendered.
 
+**Invitation promos.** The home page (between the games grid and "What are we playing") shows a large showcase,
+"Bring your last-bench gang": a dark panel with the friends photograph, count-up reward chips, a tilted gold
+"Admit two" pass holding the member's code (Copy code and Share on its stub) and, only when the browser allows
+motion, coins drifting upward. A compact `InvitePromo` card appears on the Games catalogue (below the grid), the Shop
+(below the shelf, both layouts), the wallet drawer (under the carry-over card) and the finished-table card after a
+match. Both read the member's overview once per visit
+(`useInvitePromoStore`) and shows the code with Copy and Share; a guest sees "Create an account" with no coin figure.
+It is hidden while loading, on any error, and when the campaign's two bonuses are both 0 (so "Stop the coin bonus" in
+the admin console also switches the promos off). "Hide" lasts for the visit only and is held in memory, so there is
+no storage key and no privacy-notice change. The promos send nothing about who saw them.
+
 **The operator console.** `/admin/referrals` (admin nav item "Referrals") is a view over `/api/admin/referrals`
 (`ReferralAdminController`, behind `requireOperationalAuth`: super admins or the operations key). It shows the funnel
 (members with a code → friends joined → played with another person → bonus issued), the coins waiting / paid /
@@ -168,6 +179,11 @@ The browser notice version is 7; review the updated privacy notice and Terms (se
 - Privacy: the inviter's page shows the invitee's display name and nothing else personal (no email, birthday or
   match detail); the invitee's "Invited by" card shows the inviter's display name. Deleting either account removes
   the other's view of that name.
+- Promos: a member sees their own code (the same as on `/referrals`) on home, Games, Shop, wallet and after a match;
+  Copy puts it on the clipboard and Share opens the share sheet or WhatsApp; "Hide" removes every promo until the
+  page is reloaded. A guest sees the sign-up pitch and no coin figure, and the network tab shows no referral call for
+  them. Setting both bonuses to 0 in the admin console removes every member promo. Check 375, 768, 1024, 1440 and
+  800x365: the card must not push the Shop's stage or action bar off the first screen.
 - Console: as a super admin, `/admin/referrals` shows numbers that match the member Referrals pages; changing a
   bonus without a note is impossible, a value over its limit is refused with the range, a saved change appears in
   "Record of changes" with the admin's id and the note; withdrawing a vesting bonus asks for a reason, removes it

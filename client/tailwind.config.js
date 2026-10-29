@@ -593,6 +593,17 @@ export default {
           "45%":  { transform: "translateY(-6px)", animationTimingFunction: "cubic-bezier(0.65, 0, 0.35, 1)" },
           "100%": { transform: "translateY(0)" },
         },
+        /** Home invitation showcase: a coin drifts up and fades, and the ticket hovers. Both `motion-safe:` only. */
+        inviteCoinRise: {
+          "0%":   { transform: "translateY(24px) rotate(0deg)",    opacity: "0" },
+          "15%":  { opacity: "0.95" },
+          "80%":  { opacity: "0.9" },
+          "100%": { transform: "translateY(-190px) rotate(200deg)", opacity: "0" },
+        },
+        inviteTicketHover: {
+          "0%,100%": { transform: "translateY(0) rotate(-2deg)" },
+          "50%":     { transform: "translateY(-7px) rotate(-1deg)" },
+        },
       },
       animation: {
         "card-flip":  "cardFlip 360ms ease-in-out",
@@ -604,6 +615,8 @@ export default {
         "cosmetic-modal-in":  "cosmeticModalIn 420ms cubic-bezier(0.16,1,0.3,1) both",
         "cosmetic-fade-in":   "cosmeticFadeIn 420ms ease-out both",
         "trophy-float":       "trophyFloat 2400ms infinite",
+        "invite-coin":        "inviteCoinRise 7s ease-in infinite",
+        "invite-ticket":      "inviteTicketHover 5s ease-in-out infinite",
       },
     },
   },

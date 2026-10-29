@@ -3,6 +3,9 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import FinishedTableCard from "../FinishedTableCard";
 
+// The invitation promo has its own tests (features/referrals); this card is tested without a router or a store.
+vi.mock("../../../features/referrals/InvitePromo", () => ({ InvitePromo: () => null }));
+
 describe("FinishedTableCard", () => {
   afterEach(cleanup);
 

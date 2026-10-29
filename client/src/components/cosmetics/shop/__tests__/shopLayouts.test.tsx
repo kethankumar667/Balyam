@@ -5,6 +5,9 @@ import { ShopMobile } from "../ShopMobile";
 import { REASSURANCE } from "../ShopNav";
 import { BLAZE_RING, DEFAULT_FRAME, frame, makeEmptyShop, makeShop, type FakeShopOptions } from "./fakeShop";
 
+// The invitation promo has its own tests (features/referrals); the layouts are tested without a router or a store.
+vi.mock("../../../../features/referrals/InvitePromo", () => ({ InvitePromo: () => null }));
+
 /**
  * The two layouts are separate designs over one set of state and actions, so the same scenarios are run
  * through both: whatever the shopper can do on a desktop they can do on a phone, in the same words.

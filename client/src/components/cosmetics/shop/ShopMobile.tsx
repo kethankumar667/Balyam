@@ -18,6 +18,7 @@ import { ShopShelf, useRarityShelf } from "./ShopShelf";
 import { categoryLabel } from "./shopPlan";
 import { rarityVars } from "./shopRarity";
 import { ShopFeedback } from "./ShopFeedback";
+import { InvitePromo } from "../../../features/referrals/InvitePromo";
 
 export interface ShopMobileProps {
   shop: CosmeticsShop;
@@ -97,6 +98,7 @@ export function ShopMobile({ shop: source, onBack }: ShopMobileProps) {
             <ShopShelf compact shop={shop} rarity={rarity} selectRarity={selectRarity} label={tabLabel} />
           </div>
         )}
+        <InvitePromo placement="shop" className="shrink-0 px-3 pb-4" />
       </section>
 
       {shopPlan && (

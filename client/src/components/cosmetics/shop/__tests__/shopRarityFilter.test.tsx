@@ -4,6 +4,9 @@ import { ShopMobile } from "../ShopMobile";
 import { ShopDesktop } from "../ShopDesktop";
 import { BLAZE_RING, DEFAULT_FRAME, frame, makeShop } from "./fakeShop";
 
+// The invitation promo has its own tests (features/referrals); the shop is tested without a router or a store.
+vi.mock("../../../../features/referrals/InvitePromo", () => ({ InvitePromo: () => null }));
+
 describe.each([ShopMobile, ShopDesktop])("rarity shelf", (Layout) => {
   it("uses the newly previewed item's ownership and price after filtering", () => {
     const epic = frame({ ...BLAZE_RING, priceCoins: 600 });

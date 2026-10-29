@@ -2,6 +2,7 @@ import { Plus } from "lucide-react";
 import type { GameKind } from "@shared/types";
 import { GAME_DISPLAY_NAMES } from "@shared/catalog";
 import { plainGameName } from "../mandali/album/games";
+import { InvitePromo } from "../../features/referrals/InvitePromo";
 
 export interface FinishedTableCardProps {
   /** The game just played, so "play again" can open a new room for the same one. */
@@ -46,6 +47,7 @@ export default function FinishedTableCard({ game, onNewRoom, onLeave }: Finished
       >
         Leave table
       </button>
+      <InvitePromo placement="finished" className="mt-3" />
     </section>
   );
 }

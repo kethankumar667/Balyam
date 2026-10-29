@@ -19,6 +19,7 @@ import { EconomySkeleton } from "./EconomySkeleton";
 import { EconomyActionButton } from "./EconomyActionButton";
 import { useWallet, useLedger } from "../../hooks/useEconomy";
 import { CarryOverCard } from "../carryover/CarryOverCard";
+import { InvitePromo } from "../../features/referrals/InvitePromo";
 import { FaucetClaimRow } from "../faucet/FaucetClaimRow";
 import { type CoinLedgerEntryRecord } from "../../lib/economyApi";
 import { formatTimeAgo } from "../../lib/formatTimeAgo";
@@ -372,6 +373,9 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
 
                 {/* Coins brought over from a guest account and the welcome bonus; renders nothing unless there is something to say. */}
                 <CarryOverCard />
+
+                {/* An invitation to bring friends; renders nothing while loading, on error, or once dismissed for this visit. */}
+                <InvitePromo placement="wallet" />
 
                 {/* Lifetime Stats */}
                 {wallet && !isWalletError && (
