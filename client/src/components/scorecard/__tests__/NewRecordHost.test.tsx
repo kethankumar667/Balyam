@@ -64,10 +64,30 @@ describe("NewRecordHost", () => {
 
     expect(screen.getByRole("dialog")).toBeTruthy();
     expect(screen.getByText("You beat your own record!")).toBeTruthy();
-    expect(screen.getByText("NEW PERSONAL RECORD")).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: /new personal record/i })).toBeTruthy();
     expect(screen.getByText(/Hand Cricket · International T20/)).toBeTruthy();
     expect(screen.getByText("40")).toBeTruthy();
     expect(screen.getByText("Improved by 15 runs")).toBeTruthy();
+    expect(screen.getByText("55")).toBeTruthy();
+  });
+
+  it("puts the tile art of the game the record was set in at the centre of the trophy", () => {
+    const { container } = mountHost();
+    act(() => useNewRecordStore.getState().announce(record()));
+    expect(container.ownerDocument.querySelector('[role="dialog"] image')?.getAttribute("href")).toBe("/HandCricketTile.png");
+
+    fireEvent.click(screen.getByRole("button", { name: "Awesome!" }));
+    act(() => useNewRecordStore.getState().announce({ ...record("m9"), game: "rummy" } as RecordScoreResult));
+    expect(container.ownerDocument.querySelector('[role="dialog"] image')?.getAttribute("href")).toBe("/RummyTile.png");
+  });
+
+  it("closes on Escape", () => {
+    mountHost();
+    act(() => useNewRecordStore.getState().announce(record()));
+
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("opens when the server reports a room game's record on the player's socket", () => {

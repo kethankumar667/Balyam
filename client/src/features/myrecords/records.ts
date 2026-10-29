@@ -29,6 +29,12 @@ const IMAGES: Partial<Record<AllGameSlug, string>> = {
   brainvita: "GoliJumpTile", tictactoe: "TicTacToeTile", connect4: "Connect4Tile", vamanaguntalu: "VamanaGuntaluTile",
 };
 
+/** The game's tile art (the picture on its home tile), or null for a game that has none. Records use the record ids. */
+export function tileImageForGame(game: string): string | null {
+  const name = (IMAGES as Record<string, string | undefined>)[game];
+  return name ? `/${name}.png` : null;
+}
+
 export const RECORD_GAMES = GAME_IDS.filter((game) => GAME_MODE_REGISTRY[game]).map((id) => ({
   id, label: LABELS[id] ?? getGameModeConfig(id).displayName,
   image: `/${IMAGES[id]}.png`, config: getGameModeConfig(id),

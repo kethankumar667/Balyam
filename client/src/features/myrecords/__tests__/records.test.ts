@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { buildRecords, formatRecordScore, goalProgress, orderGamesByRecency, readDeviceBest, recordSummary, RECORD_GAMES } from "../records";
+import { buildRecords, formatRecordScore, goalProgress, orderGamesByRecency, readDeviceBest, recordSummary, RECORD_GAMES, tileImageForGame } from "../records";
 import type { AllGameSlug, ModeScorecard, PlayerScorecardArchive } from "@shared/profile/Scorecard";
 
 beforeEach(() => localStorage.clear());
@@ -365,5 +365,20 @@ describe("personal records data", () => {
     const device = buildRecords(null).find((entry) => entry.id === "nokiasnake")!.modes[0]!;
     expect(device.timesPlayed).toBe(0);
     expect(device.achievedAt).toBeUndefined();
+  });
+});
+
+describe("tileImageForGame", () => {
+  it("gives the tile art of the game a record was set in", () => {
+    expect(tileImageForGame("handcricket")).toBe("/HandCricketTile.png");
+    expect(tileImageForGame("nokiasnake")).toBe("/Snake Game Tile.png");
+  });
+
+  it("has art for every game that keeps records, so the new-record popup never shows an empty medal", () => {
+    expect(RECORD_GAMES.filter((game) => !tileImageForGame(game.id)).map((game) => game.id)).toEqual([]);
+  });
+
+  it("gives null for a game it does not know", () => {
+    expect(tileImageForGame("not-a-game")).toBeNull();
   });
 });
