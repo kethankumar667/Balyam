@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReferralBonusView, ReferralOverview } from "@shared/referrals";
-import { daysLeft, describeBonus, describeFriendStatus, formatCoins, promiseLine } from "../referralCopy";
+import { daysLeft, describeBonus, describeFriendStatus, formatArrivalMoment, formatCoins, promiseLine } from "../referralCopy";
 import { inviteMessage, inviteUrl, whatsappUrl } from "../referralShare";
 
 const campaign: ReferralOverview["campaign"] = {
@@ -19,10 +19,34 @@ describe("describeBonus", () => {
     });
   });
 
-  it("names the arrival date for a bonus that is still held", () => {
-    const chip = describeBonus(view({ state: "VESTING", vestingUntil: NOW + DAY }), campaign);
+  it("names the day, the time and how far off a held bonus is", () => {
+    const chip = describeBonus(view({ state: "VESTING", vestingUntil: NOW + DAY }), campaign, NOW);
     expect(chip.tone).toBe("info");
-    expect(chip.label).toMatch(/^2,000 coins arriving /);
+    expect(chip.label).toMatch(/^2,000 coins arriving .+ at \d{1,2}:\d{2}.* \(in 24 hr\)$/);
+  });
+
+  describe("when a held bonus lands", () => {
+    // Built from local dates, because "today" and "tomorrow" are the member's own calendar days.
+    const evening = new Date(2026, 9, 29, 20, 10).getTime();
+    const hours = (n: number) => evening + n * 3_600_000;
+
+    it("says 'today at' with the time and a countdown when it lands the same day", () => {
+      expect(formatArrivalMoment(hours(1.5), evening)).toMatch(/^today at \d{1,2}:\d{2}.* \(in 2 hr\)$/);
+    });
+
+    it("says 'tomorrow at' when it lands after midnight", () => {
+      expect(formatArrivalMoment(hours(24), evening)).toMatch(/^tomorrow at \d{1,2}:\d{2}.* \(in 24 hr\)$/);
+    });
+
+    it("gives the date and the time when it lands later than tomorrow", () => {
+      expect(formatArrivalMoment(hours(72), evening)).toMatch(/^[A-Za-z0-9 ,.]+ at \d{1,2}:\d{2}.* \(in 72 hr\)$/);
+    });
+
+    it("counts in minutes inside the last hour, and never says a time that has already passed", () => {
+      expect(formatArrivalMoment(evening + 20 * 60_000, evening)).toMatch(/\(in 20 min\)$/);
+      expect(formatArrivalMoment(evening - 1_000, evening)).toBe("now");
+      expect(describeBonus(view({ state: "VESTING", vestingUntil: evening - 1_000 }), campaign, evening).label).toBe("2,000 coins arriving now");
+    });
   });
 
   it("falls back to 'on the way' when a held bonus has no date", () => {

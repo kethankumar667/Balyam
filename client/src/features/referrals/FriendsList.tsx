@@ -12,8 +12,8 @@ interface FriendsListProps {
 
 function FriendRow({ friend, campaign, serverNow }: { friend: ReferralFriend; campaign: ReferralOverview["campaign"]; serverNow: number }) {
   const status = describeFriendStatus(friend.status, friend.expiresAt, serverNow);
-  const yours = describeBonus(friend.yourBonus, campaign);
-  const theirs = describeBonus(friend.theirBonus, campaign);
+  const yours = describeBonus(friend.yourBonus, campaign, serverNow);
+  const theirs = describeBonus(friend.theirBonus, campaign, serverNow);
   return (
     <li className="rounded-2xl border border-[var(--auth-field-edge)] bg-[var(--auth-field)] p-4">
       <div className="flex items-start gap-3">

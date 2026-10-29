@@ -1,4 +1,5 @@
 import type { ReferralBonusView, ReferralFriendStatus, ReferralOverview } from "@shared/referrals";
+import { formatArrival } from "../../components/progression/formatArrival";
 
 export type ChipTone = "success" | "info" | "muted" | "warn";
 
@@ -17,6 +18,23 @@ export function formatShortDate(epochMs: number): string {
   return new Date(epochMs).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
+/**
+ * When a held bonus reaches the wallet, with the time of day and how far off that is: "today at 9:42 PM (in 3 hr)".
+ * A date alone ("Oct 29") left people unsure whether the coins would land that morning or that night. The coins are
+ * paid by a sweep that runs every minute once the hold ends, so the time is when it becomes due, give or take a minute.
+ */
+export function formatArrivalMoment(target: number, now: number): string {
+  if (target <= now) return "now";
+  const when = new Date(target);
+  const today = new Date(now);
+  const tomorrow = new Date(now);
+  tomorrow.setDate(today.getDate() + 1);
+  const time = when.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const day =
+    when.toDateString() === today.toDateString() ? "today" : when.toDateString() === tomorrow.toDateString() ? "tomorrow" : formatShortDate(target);
+  return `${day} at ${time} (${formatArrival(target, now)})`;
+}
+
 /** Whole days from `now` until `target`, never below zero. */
 export function daysLeft(target: number, now: number): number {
   return Math.max(0, Math.ceil((target - now) / DAY_MS));
@@ -26,13 +44,13 @@ export function daysLeft(target: number, now: number): number {
  * One side's bonus as a short, honest line. A held or blocked bonus says why in plain words; it never
  * hints at a risk review, because a watch is not something a player is told about.
  */
-export function describeBonus(view: ReferralBonusView, campaign: ReferralOverview["campaign"]): BonusChip {
+export function describeBonus(view: ReferralBonusView, campaign: ReferralOverview["campaign"], now: number = Date.now()): BonusChip {
   const coins = `${formatCoins(view.amount)} coins`;
   switch (view.state) {
     case "CREDITED":
       return { tone: "success", label: view.creditedAt ? `${coins} received ${formatShortDate(view.creditedAt)}` : `${coins} received` };
     case "VESTING":
-      return { tone: "info", label: view.vestingUntil ? `${coins} arriving ${formatShortDate(view.vestingUntil)}` : `${coins} on the way` };
+      return { tone: "info", label: view.vestingUntil ? `${coins} arriving ${formatArrivalMoment(view.vestingUntil, now)}` : `${coins} on the way` };
     case "PENDING":
       return { tone: "info", label: `${coins} being issued` };
     case "BLOCKED":

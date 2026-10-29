@@ -12,7 +12,7 @@ const PRIMARY = "inline-flex min-h-[44px] items-center justify-center gap-2 roun
 const QUIET = "inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[var(--auth-field-edge)] bg-[var(--auth-field)] px-4 text-xs font-bold text-[var(--auth-ink)] transition hover:bg-[var(--auth-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50";
 
 interface ReferredBySectionProps {
-  overview: Pick<ReferralOverview, "referredBy" | "canEnterCode" | "campaign">;
+  overview: Pick<ReferralOverview, "referredBy" | "canEnterCode" | "campaign"> & Partial<Pick<ReferralOverview, "serverNow">>;
   redeem: (code: string) => Promise<ReferralAttributionResult>;
   detach: () => Promise<ReferralAttributionResult>;
 }
@@ -22,7 +22,7 @@ function refusalMessage(result: ReferralAttributionResult): string | null {
 }
 
 export function ReferredBySection({ overview, redeem, detach }: ReferredBySectionProps) {
-  const { referredBy, canEnterCode, campaign } = overview;
+  const { referredBy, canEnterCode, campaign, serverNow = Date.now() } = overview;
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -44,7 +44,7 @@ export function ReferredBySection({ overview, redeem, detach }: ReferredBySectio
   }
 
   if (referredBy) {
-    const bonus = describeBonus(referredBy.yourBonus, campaign);
+    const bonus = describeBonus(referredBy.yourBonus, campaign, serverNow);
     return (
       <section aria-labelledby="referred-by-title" className={PANEL}>
         <h2 id="referred-by-title" className="text-xs font-black uppercase tracking-[0.18em] text-[var(--auth-ink-soft)]">Invited by</h2>
