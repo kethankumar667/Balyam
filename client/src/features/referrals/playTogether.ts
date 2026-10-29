@@ -7,15 +7,42 @@
  * and the member picks the friend's chat.
  */
 
-/** Games a pair can play on their own. Every slug here must allow two players (see playTogether.test.ts). */
-export const PLAY_TOGETHER_GAMES = [
-  { slug: "rps", label: "Rock Paper Scissors", hint: "Quick, just the two of you" },
-  { slug: "handcricket", label: "Hand Cricket", hint: "Two players, a school classic" },
-  { slug: "ludo", label: "Ludo", hint: "Two or more, as many as you like" },
-  { slug: "dotsboxes", label: "Dots & Boxes", hint: "Draw the line, claim the box" },
-] as const;
+import { GAME_LIMITS } from "@shared/catalog";
+import type { GameKind } from "@shared/types";
+import { BHALYAM_GAMES, isLocked, type BhalyamGameCard } from "../../components/bhalyam/data";
+import { gameLaunch } from "../../lib/gameLaunch";
 
-export type PlayTogetherSlug = (typeof PLAY_TOGETHER_GAMES)[number]["slug"];
+export type PlayTogetherSlug = GameKind;
+
+export interface PlayTogetherGame {
+  slug: PlayTogetherSlug;
+  label: string;
+  /** Who it takes and how long it runs, from the catalogue ("2–6 Players · 10–20 min"). */
+  hint: string;
+}
+
+/** A room game two people can start: it has a room, and its limits allow exactly two players. */
+function isPairGame(card: BhalyamGameCard): card is BhalyamGameCard & { slug: PlayTogetherSlug } {
+  if (isLocked(card) || gameLaunch(card.slug).kind !== "room-sheet") return false;
+  const limits = GAME_LIMITS[card.slug as GameKind];
+  return limits !== undefined && limits.min <= 2 && limits.max >= 2;
+}
+
+function hintFor(card: BhalyamGameCard): string {
+  const parts = [card.playerRange, card.duration].filter((part): part is string => Boolean(part));
+  return parts.length > 0 ? parts.join(" · ") : card.blurb;
+}
+
+/**
+ * Every multiplayer game in the app that a pair can play, in the catalogue's own order. It is read from the catalogue
+ * rather than listed here, so a new game appears by itself and a solo game, a browser-only game or one under
+ * maintenance never does (see playTogether.test.ts).
+ */
+export const PLAY_TOGETHER_GAMES: readonly PlayTogetherGame[] = BHALYAM_GAMES.filter(isPairGame).map((card) => ({
+  slug: card.slug,
+  label: card.title,
+  hint: hintFor(card),
+}));
 
 /** The router state `AppLayout` reads once to open that game's create-room sheet for this friend. */
 export interface PlayTogetherHandOff {

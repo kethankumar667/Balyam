@@ -35,12 +35,15 @@ export function PlayTogetherButton({ friendName, label, className = "mt-3" }: { 
               <X size={16} aria-hidden="true" />
             </button>
           </div>
-          {PLAY_TOGETHER_GAMES.map(game => (
-            <button key={game.slug} type="button" onClick={() => start(game.slug)} className={CHOICE}>
-              <span className="text-sm font-bold text-[var(--auth-ink)]">{game.label}</span>
-              <span className="text-[11px] text-[var(--auth-ink-soft)]">{game.hint}</span>
-            </button>
-          ))}
+          {/* Every multiplayer game two people can play: a scrolling list, two columns where there is room. */}
+          <div className="grid max-h-[min(24rem,55vh)] gap-2 overflow-y-auto overscroll-contain pr-1 sm:grid-cols-2">
+            {PLAY_TOGETHER_GAMES.map(game => (
+              <button key={game.slug} type="button" onClick={() => start(game.slug)} className={CHOICE}>
+                <span className="text-sm font-bold text-[var(--auth-ink)]">{game.label}</span>
+                <span className="text-[11px] text-[var(--auth-ink-soft)]">{game.hint}</span>
+              </button>
+            ))}
+          </div>
           <p className="text-[11px] leading-relaxed text-[var(--auth-ink-soft)]">
             We will name {friendName} in the share message. A match against a bot does not count for the bonus, so wait for {friendName} to join.
           </p>
