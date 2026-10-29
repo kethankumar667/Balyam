@@ -115,6 +115,28 @@ export const REFERRAL_CODE_WINDOW_DAYS = 7;
 export const REFERRAL_ROLLING_CAP = 10;
 export const REFERRAL_CAP_WINDOW_DAYS = 30;
 
+// ── Live notices ──────────────────────────────────────────────────────────────
+
+/** The socket event the server sends to one member's `user:<id>` room. */
+export const REFERRAL_LIVE_EVENT = "referral:update";
+
+/**
+ * What happened, told to the member it concerns:
+ * `friend_joined`    to the inviter, when someone joins with their code;
+ * `friend_played`    to the inviter, when that friend finishes a first match with another person (bonus is on its way);
+ * `bonus_on_the_way` to the invitee, at the same moment;
+ * `bonus_landed`     to whoever the coins went to, when the hold ends and they reach the wallet.
+ */
+export type ReferralLiveKind = "friend_joined" | "friend_played" | "bonus_on_the_way" | "bonus_landed";
+
+/** The other person's display name (the one `referral_overview` already shows), and the coins where there are some. Nothing else. */
+export interface ReferralLiveEvent {
+  kind: ReferralLiveKind;
+  friendName: string;
+  coins?: number;
+  at: number;
+}
+
 export type ReferralFriendStatus = "JOINED" | "QUALIFIED" | "EXPIRED";
 
 /**

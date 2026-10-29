@@ -80,6 +80,7 @@ import { registerMandaliSocketHandlers } from "./mandali/MandaliSocketHandlers.j
 import { createPresenceSources } from "./mandali/presenceSources.js";
 import { ReferralService } from "./referrals/ReferralService.js";
 import { ReferralBonusService } from "./referrals/ReferralBonusService.js";
+import { ReferralNotifier } from "./referrals/ReferralNotifier.js";
 import { createReferralRouter } from "./referrals/ReferralController.js";
 
 /**
@@ -448,8 +449,14 @@ profileService.setRewardGateway(rewardGateway);
 const referralConfig = readPostgrestConfig();
 const referralKey = process.env.SESSION_SECRET?.trim() ?? "";
 const referralDb = referralConfig && referralKey.length >= 32 ? new PostgrestClient(referralConfig) : null;
-const referralBonusService = referralDb ? new ReferralBonusService(referralDb, rewardGateway) : null;
-app.use("/api/referrals", createReferralRouter(referralDb ? new ReferralService(referralDb, referralKey) : null));
+// Live notices ("Meera joined", "your coins landed") go to each member's personal socket room.
+const referralNotifier = referralDb ? new ReferralNotifier(io, referralDb) : null;
+const referralBonusService = referralDb ? new ReferralBonusService(referralDb, rewardGateway, referralNotifier ?? undefined) : null;
+app.use("/api/referrals", createReferralRouter(referralDb ? new ReferralService(referralDb, referralKey, referralNotifier ?? undefined) : null));
+// The coins reach the wallet when the 24-hour hold ends, which only the gateway knows.
+rewardGateway.setReleaseListener((record) => {
+  if (record.rewardType === "REFERRAL") void referralNotifier?.bonusLanded(record);
+});
 
 const streakService = new StreakService({ economyService, cosmeticsService, rewardGateway, registeredAt: memberRegisteredAt });
 app.use("/api/streak", createStreakRouter(streakService));

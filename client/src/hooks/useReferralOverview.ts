@@ -3,6 +3,7 @@ import type { ReferralAttributionResult, ReferralOverview } from "@shared/referr
 import { useAuthStore } from "../store/authStore";
 import { useProgressionVersion } from "../store/progressionVersionStore";
 import { useCosmeticsStore } from "../store/cosmeticsStore";
+import { useReferralLiveStore } from "../store/referralLiveStore";
 import {
   detachReferralCode,
   fetchReferralOverview,
@@ -27,6 +28,8 @@ interface OverviewState {
 export function useReferralOverview(enabled: boolean) {
   const userId = useAuthStore(s => s.userId);
   const progression = useProgressionVersion(s => s.version);
+  // A live notice ("Meera joined") means the overview is stale: read it again, with no refresh needed.
+  const liveVersion = useReferralLiveStore(s => s.version);
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<OverviewState>({ owner: null, overview: null, loading: true, error: null });
 
@@ -48,7 +51,7 @@ export function useReferralOverview(enabled: boolean) {
       }
     })();
     return () => { cancelled = true; };
-  }, [enabled, userId, attempt, progression]);
+  }, [enabled, userId, attempt, progression, liveVersion]);
 
   const retry = useCallback(() => setAttempt(n => n + 1), []);
 

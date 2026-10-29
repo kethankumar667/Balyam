@@ -7,9 +7,14 @@ import {
   type ReferralProgress,
 } from "@shared/referrals.js";
 import { mintReferralIntent, readReferralIntent } from "./referralIntent.js";
+import type { ReferralNotifier } from "./ReferralNotifier.js";
 
 export class ReferralService {
-  constructor(private readonly db: PostgrestClient, private readonly signingKey: string) {
+  constructor(
+    private readonly db: PostgrestClient,
+    private readonly signingKey: string,
+    private readonly notifier?: Pick<ReferralNotifier, "friendJoined">,
+  ) {
     if (signingKey.length < 32) throw new Error("Referrals require a durable SESSION_SECRET of at least 32 characters.");
   }
 
@@ -37,20 +42,29 @@ export class ReferralService {
     return this.db.rpc<ReferralProgress>("referral_sync", { p_player_id: playerId });
   }
 
-  attribute(playerId: string, token: unknown): Promise<ReferralAttributionResult> {
+  async attribute(playerId: string, token: unknown): Promise<ReferralAttributionResult> {
     const intent = readReferralIntent(token, this.signingKey);
-    if (!intent) return Promise.resolve({ ok: false, code: "EXPIRED_INVITE" });
-    return this.db.rpc<ReferralAttributionResult>("referral_attribute", {
+    if (!intent) return { ok: false, code: "EXPIRED_INVITE" };
+    const result = await this.db.rpc<ReferralAttributionResult>("referral_attribute", {
       p_player_id: playerId, p_code: intent.code,
       p_accepted_at: intent.acceptedAt, p_expires_at: intent.expiresAt,
     });
+    this.announceJoin(playerId, result);
+    return result;
   }
 
   /** A new member types the code of whoever invited them. The database decides; this only normalises. */
-  redeemCode(playerId: string, input: unknown): Promise<ReferralAttributionResult> {
+  async redeemCode(playerId: string, input: unknown): Promise<ReferralAttributionResult> {
     const code = normalizeReferralCode(input);
-    if (!code) return Promise.resolve({ ok: false, code: "INVALID_CODE" });
-    return this.db.rpc<ReferralAttributionResult>("referral_redeem_code", { p_player_id: playerId, p_code: code });
+    if (!code) return { ok: false, code: "INVALID_CODE" };
+    const result = await this.db.rpc<ReferralAttributionResult>("referral_redeem_code", { p_player_id: playerId, p_code: code });
+    this.announceJoin(playerId, result);
+    return result;
+  }
+
+  /** Tell the inviter. Best effort and never awaited: a notice must not slow or fail a sign-up. */
+  private announceJoin(inviteeId: string, result: ReferralAttributionResult): void {
+    if (result.ok) void this.notifier?.friendJoined(inviteeId);
   }
 
   /** "Wrong code? Remove" — allowed only until the first qualifying match. */

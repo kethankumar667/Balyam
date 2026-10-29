@@ -128,6 +128,7 @@ export class RewardGateway {
   private sweeping: Promise<void> | null = null;
   private readonly riskEventRetentionMs: number;
   private lastPurgeAt = 0;
+  private releaseListener: ((record: RewardRecord) => void) | null = null;
 
   constructor(deps: RewardGatewayDeps) {
     this.economy = deps.economy;
@@ -261,6 +262,7 @@ export class RewardGateway {
       const entries = await economy.getLedger(record.playerId, { limit: 20 });
       const ledgerEntryId = entries.find((e) => e.idempotencyKey === key)?.id ?? null;
       await this.repository.completeRelease(record.rewardId, ledgerEntryId, this.now());
+      this.announceRelease(record);
       return true;
     } catch (err) {
       // Left RELEASING on purpose: the credit may or may not have landed, and the
@@ -270,6 +272,26 @@ export class RewardGateway {
         module: "REWARDS",
       });
       return false;
+    }
+  }
+
+  /**
+   * Ask to be told, once, each time a reward reaches the wallet (the moment a held coin becomes spendable).
+   * One listener, set once at start-up; the referral notices use it to say "your coins landed". It is told
+   * AFTER the payment is final, and whatever it does cannot undo or fail the payment.
+   */
+  setReleaseListener(listener: ((record: RewardRecord) => void) | null): void {
+    this.releaseListener = listener;
+  }
+
+  private announceRelease(record: RewardRecord): void {
+    try {
+      this.releaseListener?.(record);
+    } catch (err) {
+      logger.warn({
+        message: `Reward release listener failed for ${record.rewardId}: ${err instanceof Error ? err.message : String(err)}`,
+        module: "REWARDS",
+      });
     }
   }
 

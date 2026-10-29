@@ -67,7 +67,7 @@ beforeAll(async () => {
     await db.query("INSERT INTO player_identities VALUES ($1, 'member', $2, null)", [uid(i), uid(i)]);
     await db.query("INSERT INTO profiles VALUES ($1, $2, $3, $4, '2001-08-06')", [uid(i), `Player ${i}`, `avatar-${i}`, `p${i}@example.com`]);
   }
-  for (const file of ["20261108000000_referrals", "20261108000001_nostalgia_pack", "20261111000000_referral_bonus"]) {
+  for (const file of ["20261108000000_referrals", "20261108000001_nostalgia_pack", "20261111000000_referral_bonus", "20261112000000_referral_event_context"]) {
     await db.exec(await readFile(new URL(`../../../../supabase/migrations/${file}.sql`, import.meta.url), "utf8"));
   }
   // The migration's own campaign starts the bonus at "now"; these tests accept friends "an hour ago".
@@ -271,5 +271,43 @@ describe("the nostalgia pack milestone is unchanged", () => {
   it("is granted when the third friend qualifies, with no page open, and sync agrees", async () => {
     expect(await value<number>("SELECT count(*)::int FROM user_cosmetics WHERE user_id = $1", [uid(20)])).toBe(3);
     expect(await sync(20)).toMatchObject({ qualifiedFriends: 3, rewardGranted: true });
+  });
+});
+
+describe("who a live notice is about", () => {
+  type Context = { referrerId: string; inviteeName: string; referrerName: string } | null;
+  const context = (invitee: number) => value<Context>("SELECT referral_event_context($1)", [uid(invitee)]);
+
+  it("names both sides and the inviter for one invitee", async () => {
+    // Player 5 invited Player 6 earlier in this file.
+    expect(await context(6)).toEqual({ referrerId: uid(5), inviteeName: "Player 6", referrerName: "Player 5" });
+  });
+
+  it("knows nothing about someone who joined with no code", async () => {
+    expect(await context(29)).toBeNull();
+  });
+
+  it("returns only ids and display names: never an email, a birthday or an avatar", async () => {
+    const result = await context(6);
+    expect(Object.keys(result!).sort()).toEqual(["inviteeName", "referrerId", "referrerName"]);
+    expect(JSON.stringify(result)).not.toMatch(/example\.com|2001-08-06|avatar/i);
+  });
+
+  it("falls back to a neutral name for a member with no display name", async () => {
+    await db.query("UPDATE profiles SET display_name = '   ' WHERE id = $1", [uid(6)]);
+    try {
+      expect((await context(6))!.inviteeName).toBe("A new member");
+    } finally {
+      await db.query("UPDATE profiles SET display_name = 'Player 6' WHERE id = $1", [uid(6)]);
+    }
+  });
+
+  it("cannot be called from the browser", async () => {
+    await db.exec("SET ROLE authenticated");
+    try {
+      await expect(db.query("SELECT referral_event_context($1)", [uid(6)])).rejects.toThrow("permission denied");
+    } finally {
+      await db.exec("RESET ROLE");
+    }
   });
 });

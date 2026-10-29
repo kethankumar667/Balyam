@@ -36,6 +36,8 @@ describe("wallet ledger direction", () => {
   it("labels the coins a guest brought to an account, and the welcome bonus", () => {
     expect(mapEntryToDeltaType("ADMIN_ADJUSTMENT", "3000", "system:guest_carryover")).toEqual({ type: "CREDIT", label: "Brought Over From Guest" });
     expect(mapEntryToDeltaType("ADMIN_ADJUSTMENT", "5000", "system:guest_upgrade_bonus")).toEqual({ type: "CREDIT", label: "Welcome Bonus" });
+    // A friend's invitation pays through the same generic entry type; the principal is what names it.
+    expect(mapEntryToDeltaType("ADMIN_ADJUSTMENT", "2000", "system:referral")).toEqual({ type: "CREDIT", label: "Friend Bonus" });
   });
 
   it("shows the guest wallet's side of a carry-over as a debit", () => {

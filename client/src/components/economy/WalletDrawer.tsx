@@ -42,6 +42,8 @@ const HOURLY_FAUCET_PRINCIPAL = "system:hourly_faucet";
 /** The same, for the coins a guest brought to a new account and the welcome bonus that follows. */
 const GUEST_CARRYOVER_PRINCIPAL = "system:guest_carryover";
 const GUEST_UPGRADE_BONUS_PRINCIPAL = "system:guest_upgrade_bonus";
+/** The coins a friend's invitation earned, from either side (`ReferralBonusService`, reward type `REFERRAL`). */
+const REFERRAL_PRINCIPAL = "system:referral";
 
 export interface WalletDrawerProps {
   isOpen: boolean;
@@ -73,6 +75,9 @@ export function mapEntryToDeltaType(
   }
   if (entryType === "ADMIN_ADJUSTMENT" && sourceId === GUEST_UPGRADE_BONUS_PRINCIPAL) {
     return { type: "CREDIT", label: "Welcome Bonus" };
+  }
+  if (entryType === "ADMIN_ADJUSTMENT" && sourceId === REFERRAL_PRINCIPAL) {
+    return { type: "CREDIT", label: "Friend Bonus" };
   }
   switch (entryType) {
     case "GUEST_CARRYOVER_DEBIT":
@@ -449,7 +454,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                       {entries.map((entry) => {
                         const { type, label } = mapEntryToDeltaType(entry.entryType, entry.amount, entry.sourceId);
                         const gameName = friendlyGameName(entry.gameKind);
-                        const isGrant = entry.entryType === "STARTER_GRANT" || (entry.entryType === "ADMIN_ADJUSTMENT" && entry.sourceId !== HOURLY_FAUCET_PRINCIPAL && entry.sourceId !== GUEST_CARRYOVER_PRINCIPAL && entry.sourceId !== GUEST_UPGRADE_BONUS_PRINCIPAL);
+                        const isGrant = entry.entryType === "STARTER_GRANT" || (entry.entryType === "ADMIN_ADJUSTMENT" && entry.sourceId !== HOURLY_FAUCET_PRINCIPAL && entry.sourceId !== GUEST_CARRYOVER_PRINCIPAL && entry.sourceId !== GUEST_UPGRADE_BONUS_PRINCIPAL && entry.sourceId !== REFERRAL_PRINCIPAL);
                         return (
                           <button
                             type="button"

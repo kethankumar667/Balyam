@@ -74,6 +74,18 @@ bonus reserved and the next pass finishes it; the idempotent ledger key means no
 the cap still count toward the Nostalgia Pack. Nothing accepted before the migration is paid retroactively
 (`referral_campaign.bonus_starts_at`).
 
+**Live notices and the wallet label.** `ReferralNotifier` (server) sends a `referral:update` socket event to the
+member's `user:<id>` room, which every signed-in tab joins through the Mandali authentication, at four moments:
+a friend joined with your code (`friend_joined`, to the inviter, from `redeemCode`/`attribute`, once per invitee),
+the friend played their first match (`friend_played` to the inviter, `bonus_on_the_way` to the invitee, once, right
+after `referral_bonus_complete`), and the coins landed (`bonus_landed`, from the reward gateway's
+`setReleaseListener` when the 24-hour hold ends). A notice carries only the other person's display name and the
+coins, read by `referral_event_context` (migration `20261112000000`, service-role only, rollback in
+`supabase/rollbacks/`). It is best effort: it never throws, an offline member simply misses it, and the Referrals page
+and wallet show the same facts later. The client (`useReferralLive`, mounted in `AppLayout`) validates the payload,
+shows a toast, bumps `useReferralLiveStore` so an open Referrals page re-reads, and reloads the wallet when coins land.
+Referral coins appear in wallet history as **Friend Bonus** (principal `system:referral`).
+
 **Tuning and stopping.** The amounts, cap, windows and start time live in `referral_campaign`; set `inviter_bonus`
 and `invitee_bonus` to 0 to stop paying without touching any row (the rollback script does exactly that).
 
@@ -89,6 +101,8 @@ invited the member, Nostalgia Pack progress and the rules. `/referrals` and `/in
    - [pack catalogue and campaign activation](../../supabase/migrations/20261108000001_nostalgia_pack.sql)
    - [share codes, redeem and the coin bonus](../../supabase/migrations/20261111000000_referral_bonus.sql)
      (needs `profiles` and `reward_ledger`; take owner authorisation before applying)
+   - [live-notice name lookup](../../supabase/migrations/20261112000000_referral_event_context.sql)
+     (read-only; without it the notices are skipped with a warning, nothing else breaks)
 2. Configure durable PostgREST/service-role access and verified Supabase auth
    on the server. Keep `SESSION_SECRET` stable and at least 32 characters; rotating
    it invalidates unconnected accepted invitations. Never expose service keys.

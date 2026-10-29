@@ -2,6 +2,7 @@ import { PostgrestClient } from "../persistence/postgrest.js";
 import type { RewardGateway } from "../rewards/RewardGateway.js";
 import { REASON } from "../rewards/types.js";
 import { logger } from "../lib/logger.js";
+import type { ReferralNotifier } from "./ReferralNotifier.js";
 
 /** How often the sweeper looks for friends who have just finished their first match with another person. */
 export const REFERRAL_BONUS_SWEEP_MS = 60_000;
@@ -42,7 +43,11 @@ export class ReferralBonusService {
   private timer: NodeJS.Timeout | null = null;
   private running: Promise<BonusSweepTotals> | null = null;
 
-  constructor(private readonly db: PostgrestClient, private readonly gateway: RewardGateway) {}
+  constructor(
+    private readonly db: PostgrestClient,
+    private readonly gateway: RewardGateway,
+    private readonly notifier?: Pick<ReferralNotifier, "bonusScheduled">,
+  ) {}
 
   startSweeper(intervalMs = REFERRAL_BONUS_SWEEP_MS): void {
     if (this.timer) return;
@@ -114,6 +119,8 @@ export class ReferralBonusService {
     }
 
     await this.db.rpc("referral_bonus_complete", { p_invitee_id: inviteeId });
+    // Said once, only now that the bonus is closed: a retried pass never reaches this line a second time.
+    void this.notifier?.bonusScheduled(inviteeId, reservation.inviterBonus, reservation.inviteeBonus);
     return "paid";
   }
 }
