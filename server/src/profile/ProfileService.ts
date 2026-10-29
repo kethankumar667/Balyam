@@ -9,6 +9,7 @@ import { StatsProjection } from "./StatsProjection.js";
 import { AchievementsEngine } from "./AchievementsEngine.js";
 import { matchHistoryService } from "./MatchHistoryService.js";
 import { scorecardService } from "./ScorecardService.js";
+import type { RecordScoreResult } from "@shared/profile/Scorecard.js";
 import { resolveModeId } from "@shared/profile/GameModes.js";
 import { progressionSync } from "../persistence/ProgressionSync.js";
 import { progressionRepository } from "../persistence/index.js";
@@ -285,6 +286,25 @@ export class ProfileService {
   }
 
   /**
+   * Who to tell when a finished match beats a player's own record. This service does not know about sockets; whoever
+   * owns them (the room manager, wired in `index.ts`) registers here. A listener that throws must never undo or hold
+   * up the scoring, so a failure is logged and dropped.
+   */
+  private newRecordListener: ((playerId: string, result: RecordScoreResult, roomCode: string) => void) | null = null;
+
+  public setNewRecordListener(listener: ((playerId: string, result: RecordScoreResult, roomCode: string) => void) | null): void {
+    this.newRecordListener = listener;
+  }
+
+  private announceNewRecord(playerId: string, result: RecordScoreResult, roomCode: string): void {
+    try {
+      this.newRecordListener?.(playerId, result, roomCode);
+    } catch (err) {
+      logger.warn({ message: `New-record notice failed for ${playerId}: ${String(err)}`, module: "PROFILE" });
+    }
+  }
+
+  /**
    * Records match outcome for all participants in a finished match.
    */
   public recordMatchFinished(params: {
@@ -440,7 +460,7 @@ export class ProfileService {
         const resolvedMode = params.modeId || resolveModeId(params.game);
         const isSoloOrBot = params.participants.filter((x) => !x.isBot).length <= 1;
         const context = isSoloOrBot ? "VS_BOTS" : "PVP_MULTIPLAYER";
-        scorecardService.recordScore(p.playerId, {
+        const scored = scorecardService.recordScore(p.playerId, {
           game: params.game,
           modeId: resolvedMode,
           score: p.score,
@@ -448,6 +468,10 @@ export class ProfileService {
           matchId: matchItem.matchId,
           secondaryMetrics: p.secondaryMetrics,
         });
+        // Only a record that BEAT an earlier one is announced: a mode's first score has nothing to beat.
+        if (scored.isNewPersonalBest && scored.previousBest !== undefined) {
+          this.announceNewRecord(p.playerId, scored, params.roomCode);
+        }
       }
     }
 

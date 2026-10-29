@@ -162,6 +162,22 @@ describe("scorecardStore — scores that could not be saved are kept and sent ag
     localStorage.clear();
   });
 
+  it("asks for the \"you beat your own record\" popup when a solo score beats the old best", async () => {
+    const { resetNewRecordStore, useNewRecordStore } = await import("../newRecordStore");
+    resetNewRecordStore();
+    const beaten = {
+      game: "nokiacricket", isNewPersonalBest: true, deltaFromPrevious: 6, previousBest: 12, totalPersonalBestsBeaten: 1,
+      scorecard: { modeId: "classic_1", modeDisplayName: "Classic", bestScore: 18, bestScoreMatchId: "m-pb", scoringDirection: "HIGHER_IS_BETTER" },
+    };
+    mockApiFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ result: beaten }) });
+    mockApiJson.mockResolvedValue({ archive: archiveFor("playerA") });
+
+    await useScorecardStore.getState().recordScore("playerA", payload("m-pb"));
+
+    expect(useNewRecordStore.getState().queue.map((r) => r.scorecard.bestScoreMatchId)).toEqual(["m-pb"]);
+    resetNewRecordStore();
+  });
+
   it("queues a score the server could not take, and says it will be sent again", async () => {
     mockApiFetch.mockResolvedValueOnce({ ok: false, status: 503 });
 

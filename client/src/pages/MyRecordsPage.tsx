@@ -9,7 +9,8 @@ import { useScorecardStore } from "../store/scorecardStore";
 import { useAuthStore } from "../store/authStore";
 import { usePlayerId } from "../lib/playerIdentity";
 import { launchLinkProps } from "../lib/gameLaunch";
-import { buildRecords, formatRecordScore, goalProgress, preferredRecordModeId, recordSummary, recordValue, recordDate, type RecordGame } from "../features/myrecords/records";
+import { buildRecords, formatRecordScore, goalProgress, orderGamesByRecency, preferredRecordModeId, recordSummary, recordValue, recordDate, type RecordGame } from "../features/myrecords/records";
+import { useRecentlyPlayed } from "../hooks/useRecentlyPlayed";
 import { importDeviceBests, listDeviceBests } from "../features/myrecords/deviceRecords";
 import { RecordHistory, RecordJourney } from "../features/myrecords/RecordPanels";
 import { useReducedMotion } from "../hooks/useReducedMotion";
@@ -24,8 +25,10 @@ export default function MyRecordsPage() {
   const [mounted, setMounted] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncNote, setSyncNote] = useState<{ ok: boolean; text: string } | null>(null);
-  const [gameId, setGameId] = useState("handcricket");
-  const [modeId, setModeId] = useState("international_t20");
+  // Until the player picks one, the page opens on the game they played last (the first in the list below).
+  const [gameId, setGameId] = useState<string | null>(null);
+  const [modeId, setModeId] = useState<string | null>(null);
+  const { recentItems } = useRecentlyPlayed();
   const [search, setSearch] = useState("");
   const gamesRef = useRef<HTMLDivElement>(null);
   const modesRef = useRef<HTMLDivElement>(null);
@@ -42,7 +45,11 @@ export default function MyRecordsPage() {
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [playerId, fetchScorecards]);
-  const games = useMemo(() => buildRecords(archive, mounted, localArchive?.playerId === playerId ? localArchive : null), [archive, localArchive, mounted, playerId]);
+  // The games played most recently come first, then every other game in its usual place.
+  const games = useMemo(
+    () => orderGamesByRecency(buildRecords(archive, mounted, localArchive?.playerId === playerId ? localArchive : null), recentItems),
+    [archive, localArchive, mounted, playerId, recentItems],
+  );
   const summary = useMemo(() => recordSummary(games), [games]);
   // Only a signed-in member can be offered this: a guest's records already live under that guest, and their
   // sign-out does not clear the device.
@@ -66,7 +73,7 @@ export default function MyRecordsPage() {
   };
   const filtered = games.filter((game) => `${game.label} ${game.id} ${game.modes.map((mode) => `${mode.displayName} ${mode.description}`).join(" ")} ${game.previousModeRecords.map((saved) => `${saved.modeDisplayName} ${saved.modeId}`).join(" ")}`.toLowerCase().includes(search.trim().toLowerCase()));
   const game = filtered.find((candidate) => candidate.id === gameId) ?? filtered[0] ?? games[0]!;
-  const mode = game.modes.find((candidate) => candidate.modeId === modeId) ?? game.modes.find((candidate) => candidate.modeId === game.config.defaultModeId) ?? game.modes[0]!;
+  const mode = game.modes.find((candidate) => candidate.modeId === (modeId ?? preferredRecordModeId(game))) ?? game.modes.find((candidate) => candidate.modeId === game.config.defaultModeId) ?? game.modes[0]!;
   const progress = goalProgress(mode);
   const selectGame = (next: RecordGame) => { setGameId(next.id); setModeId(preferredRecordModeId(next)); };
   const stats = [
@@ -133,7 +140,7 @@ export default function MyRecordsPage() {
               <div className="min-w-0 space-y-5">
                 <section aria-labelledby="records-games-title" className="min-w-0 space-y-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h2 id="records-games-title" className="font-display text-lg">All Games <span className="ml-2 font-sans text-xs font-medium text-ink-mid">{games.length} games</span></h2>
+                    <h2 id="records-games-title" className="font-display text-lg">All Games <span className="ml-2 font-sans text-xs font-medium text-ink-mid">{games.length} games · recently played first</span></h2>
                     <div className="relative w-full sm:w-60">
                       <Search aria-hidden className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-ink-mid" />
                       <input aria-label="Search games by name" placeholder="Search games..." value={search} onChange={(event) => setSearch(event.target.value)} className={`min-h-[44px] w-full rounded-xl border border-[var(--chrome-hairline)] bg-surface-1 pl-9 pr-12 text-sm ${FOCUS}`} />

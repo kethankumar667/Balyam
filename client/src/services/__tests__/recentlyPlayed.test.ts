@@ -34,6 +34,39 @@ describe("RecentlyPlayedManager", () => {
     expect(recent[2].slug).toBe("rummy");
   });
 
+  it("touch moves a game to the front without counting another play", () => {
+    RecentlyPlayedManager.recordRecentlyPlayed("ludo");
+    RecentlyPlayedManager.recordRecentlyPlayed("rummy");
+
+    RecentlyPlayedManager.touchRecentlyPlayed("ludo");
+
+    const recent = RecentlyPlayedManager.getRecentlyPlayed();
+    expect(recent.map((item) => item.slug)).toEqual(["ludo", "rummy"]);
+    expect(recent[0].playCount).toBe(1);
+  });
+
+  it("touch lists a game that was never created from the sheet (a room joined from a link) with one play", () => {
+    RecentlyPlayedManager.touchRecentlyPlayed("rummy");
+
+    const recent = RecentlyPlayedManager.getRecentlyPlayed();
+    expect(recent).toHaveLength(1);
+    expect(recent[0]).toMatchObject({ slug: "rummy", playCount: 1 });
+    expect(recent[0].lastPlayedAt).toBeGreaterThan(0);
+  });
+
+  it("touch changes the list's reference and tells subscribers, as a real play does", () => {
+    RecentlyPlayedManager.recordRecentlyPlayed("ludo");
+    const before = RecentlyPlayedManager.getRecentlyPlayed();
+    let notified = 0;
+    const unsubscribe = RecentlyPlayedManager.subscribe(() => { notified += 1; });
+
+    RecentlyPlayedManager.touchRecentlyPlayed("ludo");
+    unsubscribe();
+
+    expect(notified).toBe(1);
+    expect(RecentlyPlayedManager.getRecentlyPlayed()).not.toBe(before);
+  });
+
   it("caps list to maximum 10 items", () => {
     const games = [
       "ludo", "rummy", "uno", "snl", "rps",

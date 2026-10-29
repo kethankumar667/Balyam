@@ -359,6 +359,8 @@ const checkReadiness = createReadinessCheck({
 });
 app.get("/ready", readinessHandler(checkReadiness, () => shuttingDown));
 const roomManager = new RoomManager(io, economyService, cosmeticsService, snapshotStore);
+// A finished match that beat a player's own record is told to that player's socket, so every game can show the popup.
+profileService.setNewRecordListener((playerId, result, roomCode) => roomManager.announceNewRecord(roomCode, playerId, result));
 await roomManager.hydrateSnapshots();
 
 try {

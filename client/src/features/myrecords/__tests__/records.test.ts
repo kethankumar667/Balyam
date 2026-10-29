@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { buildRecords, formatRecordScore, goalProgress, readDeviceBest, recordSummary, RECORD_GAMES } from "../records";
+import { buildRecords, formatRecordScore, goalProgress, orderGamesByRecency, readDeviceBest, recordSummary, RECORD_GAMES } from "../records";
 import type { AllGameSlug, ModeScorecard, PlayerScorecardArchive } from "@shared/profile/Scorecard";
 
 beforeEach(() => localStorage.clear());
@@ -19,6 +19,59 @@ function archived(game: AllGameSlug, modes: Record<string, ModeScorecard>): Play
     [game]: { game, gameDisplayName: game, modes, lastPlayedAt: 123, totalModesPlayed: Object.keys(modes).length },
   } };
 }
+
+describe("orderGamesByRecency", () => {
+  const game = (id: string, lastPlayedAt?: number) => ({ id, lastPlayedAt });
+  const ids = (games: ReadonlyArray<{ id: string }>) => games.map((entry) => entry.id);
+
+  it("puts the game played last first, then the one before it, then the rest in their usual order", () => {
+    const games = [game("handcricket"), game("rummy"), game("ludo"), game("uno"), game("chess")];
+    const ordered = orderGamesByRecency(games, [
+      { slug: "ludo", lastPlayedAt: 100 },
+      { slug: "rummy", lastPlayedAt: 300 },
+    ]);
+    expect(ids(ordered)).toEqual(["rummy", "ludo", "handcricket", "uno", "chess"]);
+  });
+
+  it("keeps the usual order when nothing has been played", () => {
+    const games = [game("handcricket"), game("rummy"), game("ludo")];
+    expect(ids(orderGamesByRecency(games, []))).toEqual(["handcricket", "rummy", "ludo"]);
+  });
+
+  it("counts the account's own last-played time, so a game played on another device rises too", () => {
+    const games = [game("handcricket", 10), game("rummy"), game("ludo", 500)];
+    expect(ids(orderGamesByRecency(games, [{ slug: "rummy", lastPlayedAt: 200 }]))).toEqual(["ludo", "rummy", "handcricket"]);
+  });
+
+  it("uses the later of the account time and this browser's time for the same game", () => {
+    const games = [game("handcricket", 900), game("rummy", 100)];
+    // Rummy was recorded to the account long ago, but a match started on this browser just now.
+    expect(ids(orderGamesByRecency(games, [{ slug: "rummy", lastPlayedAt: 1000 }]))).toEqual(["rummy", "handcricket"]);
+  });
+
+  it("reads a catalogue tile under the id its records use", () => {
+    const games = [game("handcricket"), game("nokiasnake"), game("brickblocks")];
+    const ordered = orderGamesByRecency(games, [
+      { slug: "snake", lastPlayedAt: 50 },
+      { slug: "tetris", lastPlayedAt: 80 },
+    ]);
+    expect(ids(ordered)).toEqual(["brickblocks", "nokiasnake", "handcricket"]);
+  });
+
+  it("ignores a recent game that has no records entry, and never changes the list it was given", () => {
+    const games = [game("handcricket"), game("rummy")];
+    const copy = [...games];
+    expect(ids(orderGamesByRecency(games, [{ slug: "mystery", lastPlayedAt: 999 }]))).toEqual(["handcricket", "rummy"]);
+    expect(games).toEqual(copy);
+  });
+
+  it("orders the real record games, with a played game first and the rest as before", () => {
+    const usual = ids(buildRecords(null, false));
+    const ordered = ids(orderGamesByRecency(buildRecords(null, false), [{ slug: "rummy", lastPlayedAt: 1 }]));
+    expect(ordered[0]).toBe("rummy");
+    expect(ordered.slice(1)).toEqual(usual.filter((id) => id !== "rummy"));
+  });
+});
 
 describe("bests brought from a device", () => {
   const withImport = (score: number, saved?: ModeScorecard): PlayerScorecardArchive => ({

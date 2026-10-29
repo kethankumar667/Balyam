@@ -28,6 +28,7 @@ import { useFullscreenToggle } from "../hooks/useFullscreenToggle";
 import { useGameFullscreen } from "../hooks/useGameFullscreen";
 import { getGamePreferredOrientation } from "@shared/catalog";
 import { HapticsManager } from "../services/HapticsManager";
+import { RecentlyPlayedManager } from "../services/RecentlyPlayedManager";
 import { useAudio } from "../hooks/useAudio";
 import type { BhalyamGameSlug } from "../components/bhalyam/data";
 import PlayerList from "../components/PlayerList";
@@ -1546,6 +1547,14 @@ export default function Room() {
     () => roomState?.players.find((p) => p.id === playerId) ?? null,
     [roomState?.players, playerId]
   );
+
+  // A match this player is seated in has started: the game counts as recently played (My Records lists it first),
+  // whether they created the room, joined it from a link, or came back to it. A spectator has no seat and does not count.
+  const isSeated = selfPlayer !== null;
+  useEffect(() => {
+    if (!isSeated || roomState?.phase !== "playing" || !roomState.game) return;
+    RecentlyPlayedManager.touchRecentlyPlayed(roomState.game as BhalyamGameSlug);
+  }, [isSeated, roomState?.phase, roomState?.game]);
 
   const viewModel = useRoomViewModel(roomState, playerId);
 

@@ -16,6 +16,7 @@ import { useCosmeticsBootstrap } from "./hooks/useCosmeticsBootstrap";
 import { useLevelUpWatcher } from "./hooks/useLevelUpWatcher";
 import { LevelUpAscension } from "./components/progression/LevelUpAscension";
 import { XpGainToast } from "./components/progression/XpGainToast";
+import NewRecordHost from "./components/scorecard/NewRecordHost";
 import { CarryOverArrivalDialog } from "./components/carryover/CarryOverArrivalDialog";
 import { CoinJoyOverlay } from "./components/mandali/CoinJoyOverlay";
 import BhalyamLogo from "./components/bhalyam/BhalyamLogo";
@@ -383,6 +384,7 @@ export default function App({ components = {} }: AppProps) {
           <CoinJoyOverlay />
           <LevelUpAscension />
           <XpGainToast />
+          <NewRecordHost />
         <Suspense fallback={<RouteLoadingFallback />}>
           <Routes>
             <Route path="/" element={<BhalyamHome />} />

@@ -199,6 +199,34 @@ export function buildRecords(archive: PlayerScorecardArchive | null, useDevice =
   });
 }
 
+/**
+ * A few catalogue tiles open a game whose records live under another id: the "Retro Snake" tile is `snake` but its
+ * records are `nokiasnake`, and `tetris` is the old name of Brick Blocks.
+ */
+const RECENT_SLUG_TO_RECORD_ID: Readonly<Record<string, string>> = { snake: "nokiasnake", tetris: "brickblocks" };
+
+/**
+ * The games in the order a player last met them: the one played most recently first, then the one before it, and every
+ * game never played after those in their usual order. "Played" is the later of two signals, because each misses
+ * something: the account's own `lastPlayedAt` (it follows the player across devices but only moves when a result was
+ * recorded) and this browser's recently-played list (it moves when a match starts, even one that was lost or left).
+ * Never reorders the input in place.
+ */
+export function orderGamesByRecency<T extends { id: string; lastPlayedAt?: number }>(
+  games: readonly T[],
+  recent: ReadonlyArray<{ slug: string; lastPlayedAt: number }>,
+): T[] {
+  const onThisDevice = new Map<string, number>();
+  for (const item of recent) {
+    const id = RECENT_SLUG_TO_RECORD_ID[item.slug] ?? item.slug;
+    onThisDevice.set(id, Math.max(onThisDevice.get(id) ?? 0, item.lastPlayedAt));
+  }
+  return games
+    .map((game, position) => ({ game, position, playedAt: Math.max(game.lastPlayedAt ?? 0, onThisDevice.get(game.id) ?? 0) }))
+    .sort((a, b) => b.playedAt - a.playedAt || a.position - b.position)
+    .map(({ game }) => game);
+}
+
 /** `better` as the mode reads it: a lower time wins in some modes, a higher score in the rest. */
 export function isBetterScore(candidate: number, current: number, direction: ModeScorecard["scoringDirection"]): boolean {
   return direction === "LOWER_IS_BETTER" ? candidate < current : candidate > current;

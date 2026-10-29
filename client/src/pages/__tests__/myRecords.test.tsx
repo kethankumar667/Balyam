@@ -6,6 +6,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import MyRecordsPage from "../MyRecordsPage";
 import { useScorecardStore } from "../../store/scorecardStore";
+import { RecentlyPlayedManager } from "../../services/RecentlyPlayedManager";
 import type { PlayerScorecardArchive } from "@shared/profile/Scorecard";
 
 vi.mock("../../components/layout/AppLayout", () => ({ default: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }));
@@ -42,7 +43,65 @@ beforeEach(() => {
   identity.playerId = null;
   identity.kind = null;
   importDeviceBests.mockReset();
+  // The browser's recently-played list outlives a test (it is cached in memory), and a stale entry would reorder the page.
+  RecentlyPlayedManager.clearRecentlyPlayed();
   useScorecardStore.setState({ archive: null, localArchive: null, loading: false, error: null, pendingScoreCount: 0 });
+});
+
+describe("My Records — the game played last comes first", () => {
+  const arenaLabels = () =>
+    within(screen.getByRole("group", { name: /filter scoreboard by game arena/i })).getAllByRole("button").map((button) => button.getAttribute("aria-label"));
+  const asMember = () => {
+    identity.playerId = "record-test";
+    identity.kind = "member";
+    useScorecardStore.setState({ archive, fetchScorecards: vi.fn().mockResolvedValue(undefined) });
+  };
+  /** Plays a game at a fixed time, so two plays can never tie on the clock. */
+  const playedAt = (slug: "rummy" | "ludo", time: number) => {
+    const now = vi.spyOn(Date, "now").mockReturnValue(time);
+    RecentlyPlayedManager.recordRecentlyPlayed(slug);
+    now.mockRestore();
+  };
+  const NEWER_THAN_ANY_RECORD = 2_000_000_000_000;
+
+  it("lists the game just played first, the rest in their usual order, and opens on it", () => {
+    playedAt("rummy", NEWER_THAN_ANY_RECORD);
+    asMember();
+    show();
+
+    const labels = arenaLabels();
+    expect(labels[0]).toBe("Filter by Indian Rummy game");
+    // Hand Cricket has an older recorded match, so it follows; everything else keeps its place after that.
+    expect(labels[1]).toBe("Filter by Hand Cricket game");
+    expect(screen.getByRole("region", { name: "Indian Rummy personal record" })).toBeDefined();
+  });
+
+  it("shows the most recent of several, newest first", () => {
+    playedAt("ludo", NEWER_THAN_ANY_RECORD);
+    playedAt("rummy", NEWER_THAN_ANY_RECORD + 5_000);
+    asMember();
+    show();
+
+    expect(arenaLabels().slice(0, 2)).toEqual(["Filter by Indian Rummy game", "Filter by Ludo game"]);
+  });
+
+  it("puts a game recorded on the account first even when this browser has played nothing", () => {
+    asMember();
+    show();
+
+    expect(arenaLabels()[0]).toBe("Filter by Hand Cricket game");
+    expect(screen.getByText(/recently played first/i)).toBeDefined();
+  });
+
+  it("keeps the game the player chose selected, whatever the order", () => {
+    playedAt("rummy", NEWER_THAN_ANY_RECORD);
+    asMember();
+    show();
+
+    fireEvent.click(screen.getByRole("button", { name: "Filter by Hand Cricket game" }));
+
+    expect(screen.getByRole("region", { name: "Hand Cricket personal record" })).toBeDefined();
+  });
 });
 
 describe("My Records — keeping records from being lost", () => {

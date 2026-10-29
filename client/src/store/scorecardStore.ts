@@ -10,6 +10,7 @@ import type {
   AllGameSlug,
 } from "@shared/profile/Scorecard";
 import { getGameModeConfig } from "@shared/profile/GameModes";
+import { useNewRecordStore } from "./newRecordStore";
 
 interface ScorecardState {
   archive: PlayerScorecardArchive | null;
@@ -230,6 +231,7 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
         // If new personal best, queue celebratory overdrive modal
         if (result.isNewPersonalBest) {
           set({ lastNewPB: result });
+          useNewRecordStore.getState().announce(result);
         }
 
         // Re-fetch archive in background to update UI

@@ -1,4 +1,5 @@
 import type { BotProfile } from "./bot-profile.js";
+import type { RecordScoreResult } from "./profile/Scorecard.js";
 import type { WorldId } from "./worlds.js";
 
 export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "snake" | "roadrash" | "chess" | "blockblast" | "spacewar" | "tictactoe" | "connect4" | "vamanaguntalu";
@@ -3241,6 +3242,12 @@ export interface ServerToClientEvents {
   "chat:message": (message: ChatMessage) => void;
   "game:state": (state: unknown) => void;
   "game:error": (message: string) => void;
+  /**
+   * The match that just finished beat this player's own record in a mode they had played before. Sent only to that
+   * player's own socket, never to the room: it is their scorecard, and it carries the old best so the screen can show
+   * what was beaten. A mode's first-ever score is not announced (there was nothing to beat).
+   */
+  "scorecard:newBest": (result: RecordScoreResult) => void;
   "webrtc:signal": (payload: WebRTCSignalRecvPayload) => void;
   /**
    * Sent once per connection. `bootId` changes only when the server PROCESS

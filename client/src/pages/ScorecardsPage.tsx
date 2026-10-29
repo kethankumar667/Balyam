@@ -5,7 +5,6 @@ import MemberLockedGate from "../components/auth/MemberLockedGate";
 import type { ProfileFamilyOutletContext } from "../components/layout/ProfileFamilyLayout";
 import { useScorecardStore } from "../store/scorecardStore";
 import ChronoScorecardDeck from "../components/scorecard/ChronoScorecardDeck";
-import PersonalBestOverdriveModal from "../components/scorecard/PersonalBestOverdriveModal";
 import { scorecardCoverage } from "../components/scorecard/scorecardDashboardModel";
 import { ProfileEmptyState, ProfileErrorState, ProfilePanelSkeleton } from "../features/profile/ProfilePrimitives";
 import { buildRecords } from "../features/myrecords/records";
@@ -15,7 +14,7 @@ export default function ScorecardsPage() {
     profile, currentName, currentAvatar, effectivePlayerId, isMember,
     recentMatches, resources, retryProfileData,
   } = useOutletContext<ProfileFamilyOutletContext>();
-  const { archive: storedArchive, localArchive, loading, error, fetchScorecards, lastNewPB, dismissPBModal, pendingScoreCount } = useScorecardStore();
+  const { archive: storedArchive, localArchive, loading, error, fetchScorecards, pendingScoreCount } = useScorecardStore();
   const archive = storedArchive?.playerId === effectivePlayerId ? storedArchive : null;
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -78,7 +77,6 @@ export default function ScorecardsPage() {
           avatar={currentAvatar ?? profile.avatar} recentMatches={recentMatches}
           recentMatchesStatus={resources.recentMatches.status} onRetryMatches={retryProfileData} /> : null}
       </section>
-      {lastNewPB ? <PersonalBestOverdriveModal result={lastNewPB} onClose={dismissPBModal} /> : null}
     </div>
   );
 }

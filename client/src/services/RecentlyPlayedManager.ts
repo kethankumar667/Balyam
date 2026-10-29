@@ -94,6 +94,22 @@ class RecentlyPlayedManagerService {
     this.notify();
   }
 
+  /**
+   * Moves a game to the front of the list without counting another play. A match that starts in a room the player
+   * joined from a link never went through the create-room sheet that counts plays, and one that did was already
+   * counted there; this only keeps the order honest ("the game I played last is first") and leaves `playCount` alone
+   * for a game already listed. A game not in the list yet starts at 1.
+   */
+  public touchRecentlyPlayed(slug: BhalyamGameSlug): void {
+    const list = this.load();
+    const existing = list.find((item) => item.slug === slug);
+    const touched: RecentlyPlayedItem = { slug, lastPlayedAt: Date.now(), playCount: existing?.playCount ?? 1 };
+    // A new array, for the same useSyncExternalStore reason as `recordRecentlyPlayed`.
+    this.cache = [touched, ...list.filter((item) => item.slug !== slug)].slice(0, MAX_RECENT_ITEMS);
+    this.save();
+    this.notify();
+  }
+
   public clearRecentlyPlayed(): void {
     this.cache = [];
     if (typeof window !== "undefined" && typeof localStorage !== "undefined") {

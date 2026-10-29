@@ -121,6 +121,7 @@ import { metricsCollector } from "../observability/MetricsCollector.js";
 import { metricsRegistry } from "../observability/MetricsRegistry.js";
 import { performanceMonitor } from "../observability/PerformanceMonitor.js";
 import { profileService } from "../profile/ProfileService.js";
+import type { RecordScoreResult } from "@shared/profile/Scorecard.js";
 import { cricketRecordScore, rummyRecordScore } from "../profile/matchRecordScores.js";
 import { roomModeId } from "./roomModeId.js";
 import { rankingService } from "../ranking/RankingService.js";
@@ -6818,6 +6819,23 @@ export class RoomManager {
         ts: Date.now(),
       };
       this.io.to(room.code).emit("chat:message", msg);
+    }
+  }
+
+  /**
+   * Tells one player that the match which just finished beat their own record. It goes to that player's own
+   * socket(s) in that room and to nobody else (it is their scorecard). `playerId` is the canonical id the match was
+   * scored under: a member's account id when they have one, otherwise their seat id. A bot, a pass-and-play seat and
+   * anyone who has already left the room are skipped; the record itself is saved either way and shows in My Records.
+   */
+  public announceNewRecord(roomCode: string, playerId: string, result: RecordScoreResult): void {
+    const room = this.rooms.get(roomCode);
+    if (!room) return;
+    for (const [socketId, seatId] of room.socketToPlayer.entries()) {
+      const seat = room.players.get(seatId);
+      if (!seat || seat.isBot || seat.isLocal) continue;
+      if ((seat.identityId ?? seat.id) !== playerId) continue;
+      this.io.sockets.sockets.get(socketId)?.emit("scorecard:newBest", result);
     }
   }
 
