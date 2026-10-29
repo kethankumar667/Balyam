@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { REFERRAL_LIVE_EVENT } from "@shared/referrals.js";
 import { EconomyService } from "../../economy/EconomyService.js";
 import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
@@ -180,7 +180,7 @@ describe("the reward gateway's release listener", () => {
 describe("ReferralBonusService announces a bonus once, only after it is closed", () => {
   let db: { calls: string[]; owed: Array<{ inviteeId: string; referrerId: string }>; failCompleteOnce: boolean; rpc: (fn: string, args?: Record<string, unknown>) => Promise<unknown> };
   let risk: RiskService;
-  let notifier: { bonusScheduled: ReturnType<typeof vi.fn> };
+  let notifier: { bonusScheduled: Mock<[string, number, number], Promise<void>> };
   let service: ReferralBonusService;
 
   beforeEach(async () => {
@@ -204,7 +204,7 @@ describe("ReferralBonusService announces a bonus once, only after it is closed",
         }
       },
     };
-    notifier = { bonusScheduled: vi.fn().mockResolvedValue(undefined) };
+    notifier = { bonusScheduled: vi.fn<[string, number, number], Promise<void>>().mockResolvedValue(undefined) };
     service = new ReferralBonusService(db as unknown as PostgrestClient, gateway, notifier);
   });
 

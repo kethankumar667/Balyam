@@ -94,6 +94,23 @@ and `invitee_bonus` to 0 to stop paying without touching any row (the rollback s
 invited the member, Nostalgia Pack progress and the rules. `/referrals` and `/invite/` are disallowed in
 `robots.txt` and never prerendered.
 
+**The operator console.** `/admin/referrals` (admin nav item "Referrals") is a view over `/api/admin/referrals`
+(`ReferralAdminController`, behind `requireOperationalAuth`: super admins or the operations key). It shows the funnel
+(members with a code → friends joined → played with another person → bonus issued), the coins waiting / paid /
+withdrawn, the members with the most invitees (a number to read, not a verdict), the bonuses still in their hold,
+and the record of operator changes. Two levers exist, and nothing else:
+- **Campaign settings** (`PUT /campaign`): inviter and invitee bonus (0–10,000), friends rewarded per window
+  (0–100), window length (1–365 days), days a new member may add a code (1–60). Tighter than the table's own limits
+  on purpose, so a typo of 20000 for 2000 is refused rather than paid. A change needs a written note (≤200
+  characters). "Stop the coin bonus" only fills in zeros; it still needs a note and a save. Bonuses already reserved
+  keep their amounts; the new amounts apply to a friend whose bonus has not been reserved yet.
+- **Withdraw a pending bonus** (`POST /rewards/:id/void`): needs a reason, cannot be undone, and is refused with 409
+  once a bonus has started being paid (the page offers no button for it).
+Every change is written to the append-only `referral_admin_events` table with the actor taken from the verified
+credential (`admin:<id>` or `ops-key`), never from the request body. The migration is `20261113000000`
+(service-role only, rollback in `supabase/rollbacks/`; the rollback drops the functions but keeps the log table as
+evidence, and leaves any campaign values already set as they are).
+
 ## Deploy
 
 1. Back up and migrate the existing production schema through:
@@ -103,6 +120,8 @@ invited the member, Nostalgia Pack progress and the rules. `/referrals` and `/in
      (needs `profiles` and `reward_ledger`; take owner authorisation before applying)
    - [live-notice name lookup](../../supabase/migrations/20261112000000_referral_event_context.sql)
      (read-only; without it the notices are skipped with a warning, nothing else breaks)
+   - [operator console](../../supabase/migrations/20261113000000_referral_admin.sql)
+     (without it `/admin/referrals` shows "Referral data unavailable"; nothing else breaks)
 2. Configure durable PostgREST/service-role access and verified Supabase auth
    on the server. Keep `SESSION_SECRET` stable and at least 32 characters; rotating
    it invalidates unconnected accepted invitations. Never expose service keys.
@@ -149,6 +168,10 @@ The browser notice version is 7; review the updated privacy notice and Terms (se
 - Privacy: the inviter's page shows the invitee's display name and nothing else personal (no email, birthday or
   match detail); the invitee's "Invited by" card shows the inviter's display name. Deleting either account removes
   the other's view of that name.
+- Console: as a super admin, `/admin/referrals` shows numbers that match the member Referrals pages; changing a
+  bonus without a note is impossible, a value over its limit is refused with the range, a saved change appears in
+  "Record of changes" with the admin's id and the note; withdrawing a vesting bonus asks for a reason, removes it
+  from the hold list, and the member's wallet never receives it; an ordinary member gets 401 from the API.
 - First run: a Google sign-up sees the code prompt before the welcome; an email sign-up that typed a code at step 3
   (even if verified on another device) sees "Code added"; "Not now" leaves the Referrals page field available.
 

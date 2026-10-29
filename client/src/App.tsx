@@ -81,6 +81,7 @@ const LazyAdminAnalyticsPage = lazy(() => import("./pages/admin/analytics"));
 const LazyAdminSystemHealthPage = lazy(() => import("./pages/admin/system-health"));
 const LazyAdminAuditLogsPage = lazy(() => import("./pages/admin/audit-logs"));
 const LazyAdminRiskPage = lazy(() => import("./pages/admin/risk"));
+const LazyAdminReferralsPage = lazy(() => import("./pages/admin/referrals"));
 const LazyAdminSettingsPage = lazy(() => import("./pages/admin/settings"));
 const LazyAdminEconomyPage = lazy(() => import("./pages/admin/economy"));
 const LazyAdminReviewsPage = lazy(() => import("./pages/admin/reviews"));
@@ -638,6 +639,16 @@ export default function App({ components = {} }: AppProps) {
                 <ProtectedRoute>
                   <AdminRoute>
                     <AdminRiskPage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/referrals"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <LazyAdminReferralsPage />
                   </AdminRoute>
                 </ProtectedRoute>
               }

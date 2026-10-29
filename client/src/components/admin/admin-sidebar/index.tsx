@@ -15,6 +15,7 @@ import {
   Shield,
   Landmark,
   Star,
+  Gift,
 } from "lucide-react";
 import BhalyamLogo from "../../bhalyam/BhalyamLogo";
 
@@ -37,6 +38,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { label: "System Health", href: "/admin/system-health", icon: HeartPulse },
   { label: "Audit Logs", href: "/admin/audit-logs", icon: ScrollText },
   { label: "Risk & Rewards", href: "/admin/risk", icon: ShieldAlert },
+  { label: "Referrals", href: "/admin/referrals", icon: Gift },
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
 

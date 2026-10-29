@@ -81,6 +81,8 @@ import { createPresenceSources } from "./mandali/presenceSources.js";
 import { ReferralService } from "./referrals/ReferralService.js";
 import { ReferralBonusService } from "./referrals/ReferralBonusService.js";
 import { ReferralNotifier } from "./referrals/ReferralNotifier.js";
+import { ReferralAdminService } from "./referrals/ReferralAdminService.js";
+import { createReferralAdminRouter } from "./referrals/ReferralAdminController.js";
 import { createReferralRouter } from "./referrals/ReferralController.js";
 
 /**
@@ -575,6 +577,11 @@ app.use(
     trust: trustService,
     collusion: () => findFeedingPatterns(matchHistoryService.allMatchesByPlayer(), Date.now()),
   }),
+);
+// The referral console: funnel, coins waiting, the campaign editor, and withdrawing one pending bonus.
+app.use(
+  "/api/admin/referrals",
+  createReferralAdminRouter(referralDb ? new ReferralAdminService(referralDb, rewardGateway, rewardStore) : null),
 );
 
 /**

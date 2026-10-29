@@ -57,7 +57,8 @@ beforeAll(async () => {
     CREATE TABLE match_participants(match_id text REFERENCES match_summaries, player_id text,
       is_bot boolean, PRIMARY KEY(match_id, player_id));
     CREATE TABLE reward_ledger(player_id text, reward_type text, source_id text, amount int, status text,
-      vesting_until timestamptz, released_at timestamptz, UNIQUE(player_id, reward_type, source_id));
+      vesting_until timestamptz, released_at timestamptz, reward_id text, earned_at timestamptz DEFAULT now(),
+      UNIQUE(player_id, reward_type, source_id));
   `);
   for (let i = 1; i <= 30; i++) {
     const created = i === 13 ? now - 10 * day : now - hour;
@@ -67,7 +68,7 @@ beforeAll(async () => {
     await db.query("INSERT INTO player_identities VALUES ($1, 'member', $2, null)", [uid(i), uid(i)]);
     await db.query("INSERT INTO profiles VALUES ($1, $2, $3, $4, '2001-08-06')", [uid(i), `Player ${i}`, `avatar-${i}`, `p${i}@example.com`]);
   }
-  for (const file of ["20261108000000_referrals", "20261108000001_nostalgia_pack", "20261111000000_referral_bonus", "20261112000000_referral_event_context"]) {
+  for (const file of ["20261108000000_referrals", "20261108000001_nostalgia_pack", "20261111000000_referral_bonus", "20261112000000_referral_event_context", "20261113000000_referral_admin"]) {
     await db.exec(await readFile(new URL(`../../../../supabase/migrations/${file}.sql`, import.meta.url), "utf8"));
   }
   // The migration's own campaign starts the bonus at "now"; these tests accept friends "an hour ago".
@@ -306,6 +307,167 @@ describe("who a live notice is about", () => {
     await db.exec("SET ROLE authenticated");
     try {
       await expect(db.query("SELECT referral_event_context($1)", [uid(6)])).rejects.toThrow("permission denied");
+    } finally {
+      await db.exec("RESET ROLE");
+    }
+  });
+});
+
+describe("the operator console", () => {
+  interface AdminOverview {
+    campaign: { enabled: boolean; inviterBonus: number; inviteeBonus: number; rollingCap: number; capWindowDays: number; codeWindowDays: number };
+    funnel: Record<string, number>;
+    liability: Record<string, number>;
+    topReferrers: Array<{ playerId: string; displayName: string; joined: number; qualified: number }>;
+    serverNow: number;
+  }
+  interface PendingReward { rewardId: string; playerId: string; displayName: string; side: string; inviteeId: string; amount: number; status: string; vestingUntil: number }
+  interface AdminEvent { actor: string; action: string; note: string; detail: { before?: Record<string, number>; after?: Record<string, number> } }
+
+  const adminOverview = () => value<AdminOverview>("SELECT referral_admin_overview()");
+  const pending = (limit = 50) => value<PendingReward[]>("SELECT referral_admin_pending_rewards($1)", [limit]);
+  const setCampaign = (patch: object, note = "Test change", actor = "admin:test") =>
+    value<AdminOverview["campaign"]>("SELECT referral_admin_set_campaign($1, $2, $3::jsonb)", [actor, note, JSON.stringify(patch)]);
+  const events = (limit = 30) => value<AdminEvent[]>("SELECT referral_admin_events_list($1)", [limit]);
+  const campaignRow = () => value<unknown>("SELECT to_jsonb(c) FROM referral_campaign c WHERE id = 'nostalgia-v1'");
+  const insertReward = (id: string, player: number, source: string, amount: number, status: string, vesting: string) =>
+    db.query("INSERT INTO reward_ledger(player_id, reward_type, source_id, amount, status, vesting_until, reward_id) VALUES ($1, 'REFERRAL', $2, $3, $4, $5::timestamptz, $6)",
+      [uid(player), source, amount, status, vesting, id]);
+
+  it("reports a funnel that adds up and matches the tables", async () => {
+    const view = await adminOverview();
+    const [direct] = (await db.query<{ joined: string; qualified: string; invites: string }>(
+      "SELECT (SELECT count(*) FROM referral_attributions) AS joined, (SELECT count(*) FROM referral_attributions WHERE qualified_at IS NOT NULL) AS qualified, (SELECT count(*) FROM referral_invites) AS invites",
+    )).rows;
+    expect(view.funnel.joined).toBe(Number(direct!.joined));
+    expect(view.funnel.qualified).toBe(Number(direct!.qualified));
+    expect(view.funnel.invitesCreated).toBe(Number(direct!.invites));
+    expect(view.funnel.viaCode + view.funnel.viaLink).toBe(view.funnel.joined);
+    expect(view.funnel.qualified + view.funnel.waiting + view.funnel.expired).toBe(view.funnel.joined);
+    expect(view.serverNow).toBeGreaterThan(0);
+  });
+
+  it("shows the live campaign settings", async () => {
+    expect((await adminOverview()).campaign).toMatchObject({ enabled: true, inviterBonus: 2000, inviteeBonus: 2000, rollingCap: 10, capWindowDays: 30, codeWindowDays: 7 });
+  });
+
+  it("lists the accounts with the most invitees, with names and counts, never an email or birthday", async () => {
+    const view = await adminOverview();
+    expect(view.topReferrers.length).toBeGreaterThan(0);
+    expect(view.topReferrers.length).toBeLessThanOrEqual(5);
+    const joined = view.topReferrers.map(r => r.joined);
+    expect([...joined].sort((a, b) => b - a)).toEqual(joined);
+    for (const row of view.topReferrers) expect(Object.keys(row).sort()).toEqual(["displayName", "joined", "playerId", "qualified"]);
+    expect(JSON.stringify(view)).not.toMatch(/example\.com|2001-08-06|dob|email/i);
+  });
+
+  it("totals the coins by where they are: waiting, paid, withdrawn", async () => {
+    const before = (await adminOverview()).liability;
+    await insertReward("adm-r1", 4, `referral:${uid(40)}:inviter`, 2000, "PENDING", "2030-01-02T00:00:00Z");
+    await insertReward("adm-r2", 5, `referral:${uid(41)}:inviter`, 2000, "RELEASING", "2030-01-03T00:00:00Z");
+    await insertReward("adm-r3", 6, `referral:${uid(42)}:inviter`, 1500, "RELEASED", "2030-01-01T00:00:00Z");
+    await insertReward("adm-r4", 7, `referral:${uid(43)}:inviter`, 500, "VOIDED", "2030-01-01T00:00:00Z");
+    const after = (await adminOverview()).liability;
+    expect(after.pendingCoins - before.pendingCoins).toBe(4000);
+    expect(after.pendingCount - before.pendingCount).toBe(2);
+    expect(after.releasedCoins - before.releasedCoins).toBe(1500);
+    expect(after.voidedCoins - before.voidedCoins).toBe(500);
+  });
+
+  it("lists only bonuses still in their hold, soonest first, by name and side", async () => {
+    const rows = await pending();
+    const ids = rows.map(r => r.rewardId);
+    expect(ids).toContain("adm-r1");
+    expect(ids).toContain("adm-r2");
+    expect(ids).not.toContain("adm-r3");
+    expect(ids).not.toContain("adm-r4");
+    expect(ids.indexOf("adm-r1")).toBeLessThan(ids.indexOf("adm-r2"));
+    expect(rows.find(r => r.rewardId === "adm-r1")).toMatchObject({
+      playerId: uid(4), displayName: "Player 4", side: "inviter", inviteeId: uid(40), amount: 2000, status: "PENDING",
+    });
+    expect(rows.every(r => r.status === "PENDING" || r.status === "RELEASING")).toBe(true);
+  });
+
+  it("caps how many bonuses one request returns", async () => {
+    expect(await pending(1)).toHaveLength(1);
+    expect((await pending(100000)).length).toBeLessThanOrEqual(200);
+  });
+
+  describe("changing the campaign", () => {
+    afterAll(async () => { await setCampaign({ inviterBonus: 2000, inviteeBonus: 2000, rollingCap: 10, capWindowDays: 30, codeWindowDays: 7 }, "Restore test defaults"); });
+
+    it("updates only the fields sent, returns the new settings, and records before and after with who and why", async () => {
+      const result = await setCampaign({ inviterBonus: 2500, rollingCap: 8 }, "Weekend boost for the launch", "admin:asha");
+      expect(result).toMatchObject({ inviterBonus: 2500, inviteeBonus: 2000, rollingCap: 8, capWindowDays: 30, codeWindowDays: 7 });
+      const [latest] = await events(1);
+      expect(latest).toMatchObject({ actor: "admin:asha", action: "CAMPAIGN_UPDATED", note: "Weekend boost for the launch" });
+      expect(latest!.detail.before).toMatchObject({ inviterBonus: 2000, rollingCap: 10 });
+      expect(latest!.detail.after).toMatchObject({ inviterBonus: 2500, rollingCap: 8 });
+    });
+
+    it("refuses a change with no note, and changes nothing", async () => {
+      const before = await campaignRow();
+      for (const note of ["", "   "]) {
+        await expect(setCampaign({ inviterBonus: 100 }, note)).rejects.toThrow("NOTE_REQUIRED");
+      }
+      await expect(setCampaign({ inviterBonus: 100 }, "x".repeat(201))).rejects.toThrow("NOTE_REQUIRED");
+      expect(await campaignRow()).toEqual(before);
+    });
+
+    it("refuses a missing actor, an empty change, and a field that is not editable", async () => {
+      await expect(setCampaign({ inviterBonus: 100 }, "ok", "  ")).rejects.toThrow("ACTOR_REQUIRED");
+      await expect(setCampaign({}, "ok")).rejects.toThrow("EMPTY_CHANGE");
+      await expect(setCampaign({ enabled: false }, "ok")).rejects.toThrow("INVALID_CAMPAIGN_FIELD:enabled");
+      await expect(setCampaign({ bonusStartsAt: 0 }, "ok")).rejects.toThrow("INVALID_CAMPAIGN_FIELD");
+    });
+
+    it("refuses a typo that would pay far too much, a negative, a fraction and a non-number", async () => {
+      const before = await campaignRow();
+      await expect(setCampaign({ inviterBonus: 20000 })).rejects.toThrow("INVALID_CAMPAIGN_VALUE:inviterBonus");
+      await expect(setCampaign({ inviteeBonus: -1 })).rejects.toThrow("INVALID_CAMPAIGN_VALUE:inviteeBonus");
+      await expect(setCampaign({ rollingCap: 101 })).rejects.toThrow("INVALID_CAMPAIGN_VALUE:rollingCap");
+      await expect(setCampaign({ capWindowDays: 0 })).rejects.toThrow("INVALID_CAMPAIGN_VALUE:capWindowDays");
+      await expect(setCampaign({ codeWindowDays: 61 })).rejects.toThrow("INVALID_CAMPAIGN_VALUE:codeWindowDays");
+      await expect(setCampaign({ inviterBonus: 1.5 })).rejects.toThrow("INVALID_CAMPAIGN_VALUE");
+      await expect(setCampaign({ inviterBonus: "2000" })).rejects.toThrow("INVALID_CAMPAIGN_VALUE");
+      expect(await campaignRow()).toEqual(before);
+    });
+
+    it("applies none of a change when one of its fields is bad", async () => {
+      const before = await campaignRow();
+      await expect(setCampaign({ inviterBonus: 1234, rollingCap: 5000 })).rejects.toThrow("INVALID_CAMPAIGN_VALUE:rollingCap");
+      expect(await campaignRow()).toEqual(before);
+    });
+
+    it("lets the bonuses be set to zero, which is how they are stopped", async () => {
+      expect(await setCampaign({ inviterBonus: 0, inviteeBonus: 0 }, "Pause the coin bonus")).toMatchObject({ inviterBonus: 0, inviteeBonus: 0 });
+    });
+  });
+
+  describe("the record", () => {
+    it("logs a withdrawn bonus, newest first, and refuses any other kind of entry", async () => {
+      await db.query("SELECT referral_admin_log($1, 'REWARD_VOIDED', $2::jsonb, $3)", ["admin:asha", JSON.stringify({ rewardId: "adm-r1", amount: 2000 }), "Duplicate accounts"]);
+      const [latest] = await events(1);
+      expect(latest).toMatchObject({ actor: "admin:asha", action: "REWARD_VOIDED", note: "Duplicate accounts" });
+      await expect(db.query("SELECT referral_admin_log($1, 'CAMPAIGN_UPDATED', '{}'::jsonb, 'x')", ["admin:asha"])).rejects.toThrow("INVALID_ACTION");
+      await expect(db.query("SELECT referral_admin_log($1, 'REWARD_VOIDED', '{}'::jsonb, '')", ["admin:asha"])).rejects.toThrow();
+    });
+
+    it("cannot be edited or deleted through any function", async () => {
+      const { rows } = await db.query<{ proname: string }>(
+        "SELECT proname FROM pg_proc WHERE proname LIKE 'referral_admin_%' AND (proname LIKE '%delete%' OR proname LIKE '%update%' OR proname LIKE '%edit%')");
+      expect(rows).toEqual([]);
+    });
+  });
+
+  it("is closed to the browser: every function and the log table refuse an ordinary signed-in role", async () => {
+    await db.exec("SET ROLE authenticated");
+    try {
+      await expect(db.query("SELECT referral_admin_overview()")).rejects.toThrow("permission denied");
+      await expect(db.query("SELECT referral_admin_pending_rewards(5)")).rejects.toThrow("permission denied");
+      await expect(db.query("SELECT referral_admin_set_campaign('a', 'b', '{\"inviterBonus\": 1}'::jsonb)")).rejects.toThrow("permission denied");
+      await expect(db.query("SELECT referral_admin_events_list(5)")).rejects.toThrow("permission denied");
+      await expect(db.query("SELECT * FROM referral_admin_events")).rejects.toThrow("permission denied");
     } finally {
       await db.exec("RESET ROLE");
     }

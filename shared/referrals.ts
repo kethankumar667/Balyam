@@ -137,6 +137,84 @@ export interface ReferralLiveEvent {
   at: number;
 }
 
+// ── The operator console ──────────────────────────────────────────────────────
+
+/**
+ * What an operator may set, and how far. Tighter than the table's own limits on purpose: a typo of 20000 for 2000
+ * must be refused, not paid. The database enforces the same numbers (`referral_admin_set_campaign`); the console and
+ * the router read them from here so a form can say what is allowed before anything is sent.
+ */
+export const REFERRAL_ADMIN_LIMITS = {
+  inviterBonus: { min: 0, max: 10_000, label: "Inviter bonus (coins)" },
+  inviteeBonus: { min: 0, max: 10_000, label: "Invitee bonus (coins)" },
+  rollingCap: { min: 0, max: 100, label: "Friends rewarded per window" },
+  capWindowDays: { min: 1, max: 365, label: "Cap window (days)" },
+  codeWindowDays: { min: 1, max: 60, label: "Days a new member may add a code" },
+} as const;
+
+export type ReferralCampaignField = keyof typeof REFERRAL_ADMIN_LIMITS;
+export const REFERRAL_CAMPAIGN_FIELDS = Object.keys(REFERRAL_ADMIN_LIMITS) as ReferralCampaignField[];
+/** A change to the campaign: any of the fields above, each a whole number within its limits. */
+export type ReferralCampaignPatch = Partial<Record<ReferralCampaignField, number>>;
+export const REFERRAL_ADMIN_NOTE_MAX = 200;
+
+export interface ReferralAdminCampaign extends Record<ReferralCampaignField, number> {
+  enabled: boolean;
+  bonusStartsAt: number;
+}
+
+export interface ReferralAdminFunnel {
+  invitesCreated: number;
+  joined: number;
+  viaCode: number;
+  viaLink: number;
+  qualified: number;
+  waiting: number;
+  expired: number;
+  bonusReserved: number;
+  bonusIssued: number;
+  bonusBlockedCap: number;
+}
+
+export interface ReferralAdminLiability {
+  pendingCoins: number;
+  pendingCount: number;
+  releasedCoins: number;
+  releasedCount: number;
+  voidedCoins: number;
+  voidedCount: number;
+}
+
+export interface ReferralAdminOverview {
+  campaign: ReferralAdminCampaign;
+  funnel: ReferralAdminFunnel;
+  liability: ReferralAdminLiability;
+  topReferrers: Array<{ playerId: string; displayName: string; joined: number; qualified: number }>;
+  serverNow: number;
+}
+
+/** A bonus still in its hold, which an operator can withdraw. */
+export interface ReferralAdminPendingReward {
+  rewardId: string;
+  playerId: string;
+  displayName: string;
+  side: "inviter" | "invitee";
+  inviteeId: string;
+  amount: number;
+  status: "PENDING" | "RELEASING";
+  earnedAt: number;
+  vestingUntil: number;
+}
+
+export interface ReferralAdminEvent {
+  id: number;
+  actor: string;
+  action: "CAMPAIGN_UPDATED" | "REWARD_VOIDED";
+  detail: Record<string, unknown>;
+  note: string;
+  at: number;
+}
+
 export type ReferralFriendStatus = "JOINED" | "QUALIFIED" | "EXPIRED";
 
 /**
