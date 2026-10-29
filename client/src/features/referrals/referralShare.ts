@@ -18,5 +18,12 @@ export function whatsappUrl(shareCode: string, bonusCoins: number, origin: strin
   return `https://wa.me/?text=${encodeURIComponent(`${inviteMessage(shareCode, bonusCoins)} ${inviteUrl(shareCode, origin)}`)}`;
 }
 
+/** An email draft with the same message and link. It only opens the member's own mail app; nothing is sent from here. */
+export function emailUrl(shareCode: string, bonusCoins: number, origin: string): string {
+  const subject = "Come play on BHALYAM with me";
+  const body = `${inviteMessage(shareCode, bonusCoins)} ${inviteUrl(shareCode, origin)}`;
+  return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
 /** What to show in a code field before the member has typed anything. */
 export const REFERRAL_CODE_PLACEHOLDER = `${REFERRAL_CODE_PREFIX}-K7M2P`;

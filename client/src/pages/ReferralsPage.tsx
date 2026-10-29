@@ -1,83 +1,83 @@
-import { Gift, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import AppLayout from "../components/layout/AppLayout";
 import MemberLockedGate from "../components/auth/MemberLockedGate";
 import { useAuthStore } from "../store/authStore";
 import { useReferralOverview } from "../hooks/useReferralOverview";
-import { InviteCodeCard } from "../features/referrals/InviteCodeCard";
 import { ReferredBySection } from "../features/referrals/ReferredBySection";
-import { FriendsList } from "../features/referrals/FriendsList";
-import { HowItWorks, PackProgress, StatTiles } from "../features/referrals/ReferralSummary";
+import { CrewHero } from "../features/referrals/crew/CrewHero";
+import { CrewCodeCard } from "../features/referrals/crew/CrewCodeCard";
+import { CrewPulse } from "../features/referrals/crew/CrewPulse";
+import { InvitationJourney } from "../features/referrals/crew/InvitationJourney";
+import { CrewList } from "../features/referrals/crew/CrewList";
+import { NostalgiaVault } from "../features/referrals/crew/NostalgiaVault";
+import { HowItWorksStrip, PrivacyPanel } from "../features/referrals/crew/CrewGuide";
+import { AUTH_VARS, GHOST_BUTTON } from "../features/referrals/crew/crewStyles";
+import { useTheme } from "../lib/useTheme";
 
 function PageSkeleton() {
+  const block = "animate-pulse rounded-2xl bg-slate-900/[0.06] ring-1 ring-slate-200 dark:bg-white/[0.06] dark:ring-white/10";
   return (
-    <div role="status" aria-label="Loading your invitations" className="space-y-5">
-      <div className="h-56 animate-pulse rounded-3xl bg-[var(--auth-card)] ring-1 ring-[var(--auth-card-edge)]" />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {Array.from({ length: 5 }, (_, index) => <div key={index} className="h-24 animate-pulse rounded-2xl bg-[var(--auth-card)] ring-1 ring-[var(--auth-card-edge)]" />)}
+    <div role="status" aria-label="Loading your invitations" className="space-y-4">
+      <div className="grid gap-4 xl:grid-cols-12">
+        <div className={`h-44 xl:col-span-7 ${block}`} />
+        <div className={`h-44 xl:col-span-5 ${block}`} />
       </div>
-      <div className="h-48 animate-pulse rounded-3xl bg-[var(--auth-card)] ring-1 ring-[var(--auth-card-edge)]" />
+      <div className={`h-40 ${block}`} />
+      <div className={`h-64 ${block}`} />
     </div>
   );
 }
 
+/**
+ * Crew Quest, at `/referrals`: the invitation as a journey. It follows the app's theme: navy glass by night, warm
+ * paper by day (the hero stays a dark illustrated banner in both). The wrapper carries the matching `--auth-*` set for
+ * the older referral pieces that read it, and the `dark:` utilities follow the page's own theme. The grid is twelve
+ * columns from `xl`, not `lg`: at 1024px the app sidebar leaves the main area about 680px wide, too narrow for two
+ * columns; below `xl` everything stacks in the order a member needs it: code, pulse, journey, crew, pack, rules.
+ */
 export default function ReferralsPage() {
   const canView = useAuthStore(state => state.capabilities.viewReferrals);
   const { overview, loading, error, retry, redeem, detach } = useReferralOverview(canView);
+  const [theme] = useTheme();
 
   if (!canView) return <MemberLockedGate feature="referrals" />;
 
   return (
     <AppLayout>
-      <div className="min-h-[85vh] bhalyam-paper auth-shell px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
-        <main className="mx-auto max-w-6xl space-y-5">
-          <header>
-            <p className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-amber-700 dark:text-amber-400">
-              <Gift size={14} aria-hidden="true" /> Invite friends
-            </p>
-            <h1 className="mt-2 font-display text-3xl tracking-wide text-[var(--auth-ink)] sm:text-4xl">Your invitations</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--auth-ink-soft)]">
-              Bring the people you already play with. See who joined, and where each bonus stands.
-            </p>
-          </header>
+      <div
+        style={AUTH_VARS[theme]}
+        className="min-h-[85vh] shrink-0 bg-[#FAF6EC] bg-[radial-gradient(ellipse_at_top,rgba(14,165,233,0.10),transparent_55%)] px-3 py-4 text-slate-900 dark:bg-[#07111f] dark:bg-[radial-gradient(ellipse_at_top,rgba(39,215,242,0.12),transparent_55%)] dark:text-slate-100 sm:px-6 sm:py-6"
+      >
+        {/* Not a second <main>: the app shell already provides the page's main landmark. */}
+        <div id="crew-quest" className="mx-auto max-w-6xl space-y-4">
+          <CrewHero />
 
           {loading && !overview && <PageSkeleton />}
 
           {error && !overview && (
-            <div role="alert" className="rounded-3xl border border-rose-500/40 bg-[var(--auth-card)] p-6 text-center">
-              <p className="text-sm font-bold text-[var(--auth-ink)]">{error}</p>
-              <button
-                type="button"
-                onClick={retry}
-                className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-[var(--auth-field-edge)] bg-[var(--auth-field)] px-5 text-xs font-bold text-[var(--auth-ink)] hover:bg-[var(--auth-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-              >
+            <div role="alert" className="rounded-2xl border border-rose-400/40 bg-white p-6 text-center dark:bg-[#0c1b30]">
+              <p className="m-0 text-sm font-bold text-slate-900 dark:text-white">{error}</p>
+              <button type="button" onClick={retry} className={`${GHOST_BUTTON} mt-4`}>
                 <RefreshCw size={15} aria-hidden="true" /> Try again
               </button>
             </div>
           )}
 
           {overview && (
-            <>
-              <InviteCodeCard overview={overview} />
-              <StatTiles totals={overview.totals} />
-              {/*
-                grid-cols-1 is minmax(0,1fr): without it a long name or chip widens the track past the phone's width.
-                Two columns start at xl, not lg: at 1024px the sidebar leaves the main area about 740px wide, and a
-                380px side column squeezes the friends list to a sliver. The last row takes the spare height, so the
-                side cards hug their content instead of stretching to match a long friends list.
-              */}
-              <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px] xl:grid-rows-[auto_auto_1fr] xl:items-start">
-                <div className="min-w-0 xl:col-start-2 xl:row-start-1 empty:hidden">
-                  <ReferredBySection overview={overview} redeem={redeem} detach={detach} />
-                </div>
-                <div className="min-w-0 xl:col-start-1 xl:row-span-3 xl:row-start-1">
-                  <FriendsList friends={overview.friends} campaign={overview.campaign} serverNow={overview.serverNow} />
-                </div>
-                <div className="min-w-0 xl:col-start-2 xl:row-start-2"><PackProgress pack={overview.pack} /></div>
-                <div className="min-w-0 xl:col-start-2 xl:row-start-3"><HowItWorks campaign={overview.campaign} /></div>
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+              <div className="min-w-0 xl:col-span-7"><CrewCodeCard overview={overview} /></div>
+              <div className="min-w-0 xl:col-span-5"><CrewPulse totals={overview.totals} /></div>
+              <div className="min-w-0 empty:hidden xl:col-span-12">
+                <ReferredBySection overview={overview} redeem={redeem} detach={detach} />
               </div>
-            </>
+              <div className="min-w-0 xl:col-span-12"><InvitationJourney totals={overview.totals} campaign={overview.campaign} /></div>
+              <div className="min-w-0 xl:col-span-7"><CrewList friends={overview.friends} campaign={overview.campaign} serverNow={overview.serverNow} /></div>
+              <div className="min-w-0 xl:col-span-5"><NostalgiaVault pack={overview.pack} /></div>
+              <div className="min-w-0 xl:col-span-7"><HowItWorksStrip campaign={overview.campaign} /></div>
+              <div className="min-w-0 xl:col-span-5"><PrivacyPanel /></div>
+            </div>
           )}
-        </main>
+        </div>
       </div>
     </AppLayout>
   );

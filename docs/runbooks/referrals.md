@@ -90,9 +90,18 @@ Referral coins appear in wallet history as **Friend Bonus** (principal `system:r
 and `invitee_bonus` to 0 to stop paying without touching any row (the rollback script does exactly that).
 
 **The page.** `/referrals` (capability `viewReferrals`, members only, linked from Player HQ as "Invite friends") reads
-`referral_overview`: the code with copy/share/WhatsApp, totals, the friends who joined with their bonuses, who
-invited the member, Nostalgia Pack progress and the rules. `/referrals` and `/invite/` are disallowed in
-`robots.txt` and never prerendered.
+`referral_overview` and is drawn as **Crew Quest**, which follows the app's theme: navy glass by night, warm paper with white panels by day,
+and a hero that stays a dark illustrated banner in both (components in
+`client/src/features/referrals/crew/`): a hero; the code with **Share Invite** as the one primary action and
+WhatsApp / Copy Link / Email beneath it; a four-tile Crew Pulse (joined, played together, waiting, coins on the way,
+with what was received folded in); a five-stage Invitation Journey (invite sent, friend joins, play together, verify
+match, both get rewards) where the gold stage is where the member is now; Your Crew, one progress card per friend
+(Joined / Verifying / Rewarded / Window ended, the days left to play, and the day, time and countdown a held bonus
+arrives); the Nostalgia Pack as a vault; a four-step How It Works; and a privacy panel. "View Full Rules" opens the
+complete rules in a dialog. A member who may still add a friend's code, or who has one to remove, sees that box
+under the code row. The stage and badge logic is pure (`crew/crewProgress.ts`) and unit-tested. The wide
+two-column grid starts at `xl` (1280px), because the app sidebar leaves only about 680px at 1024px. `/referrals` and
+`/invite/` are disallowed in `robots.txt` and never prerendered.
 
 **Invitation promos.** The home page (between the games grid and "What are we playing") shows a large showcase,
 "Bring your last-bench gang": a dark panel with the friends photograph, count-up reward chips, a tilted gold

@@ -13,7 +13,7 @@ const CHOICE =
  * friend's name to the create-room sheet (the same hand-off a Mandali's "Start a game" uses); the room's
  * share card then names the friend. A match only counts for the bonus if that friend really joins it.
  */
-export function PlayTogetherButton({ friendName }: { friendName: string }) {
+export function PlayTogetherButton({ friendName, label, className = "mt-3" }: { friendName: string; label?: string; className?: string }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const listId = useId();
@@ -23,9 +23,9 @@ export function PlayTogetherButton({ friendName }: { friendName: string }) {
   }
 
   return (
-    <div className="mt-3">
-      <button type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} aria-controls={listId} className={TRIGGER}>
-        <Gamepad2 size={16} aria-hidden="true" /> Play with {friendName}
+    <div className={className}>
+      <button type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} aria-controls={listId} aria-label={`Play with ${friendName}`} className={TRIGGER}>
+        <Gamepad2 size={16} aria-hidden="true" /> {label ?? `Play with ${friendName}`}
       </button>
       {open && (
         <div id={listId} role="group" aria-label={`Pick a game to play with ${friendName}`} className="mt-2 space-y-2 rounded-2xl border border-[var(--auth-card-edge)] bg-[var(--auth-card)] p-3">

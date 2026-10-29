@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { inviteMessage, inviteUrl, whatsappUrl } from "./referralShare";
+import { emailUrl, inviteMessage, inviteUrl, whatsappUrl } from "./referralShare";
 
 const FEEDBACK_MS = 1800;
 
@@ -60,5 +60,6 @@ export function useInviteActions(shareCode: string, bonusCoins: number) {
     copyLink: () => copy("link", inviteUrl(shareCode, origin)),
     share,
     whatsappHref: whatsappUrl(shareCode, bonusCoins, origin),
+    emailHref: emailUrl(shareCode, bonusCoins, origin),
   };
 }

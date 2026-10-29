@@ -19,6 +19,8 @@ vi.mock("../../store/authStore", () => ({
   useAuthStore: (select: (s: { capabilities: { viewReferrals: boolean } }) => unknown) => select({ capabilities: { viewReferrals: mocks.canView } }),
 }));
 vi.mock("../../hooks/useReferralOverview", () => ({ useReferralOverview: (enabled: boolean) => mocks.hook(enabled) }));
+// The friend's picture reads the full auth store (for cosmetics); this page test swaps that store for a bare selector.
+vi.mock("../../components/mandali/album/AlbumAvatar", () => ({ AlbumAvatar: () => <span data-testid="friend-avatar" /> }));
 vi.mock("../../lib/referrals", async importOriginal => ({
   ...await importOriginal<typeof import("../../lib/referrals")>(),
   checkReferralCode: (code: string) => mocks.check(code),
@@ -109,12 +111,12 @@ describe("ReferralsPage", () => {
       }),
     });
     const { container } = open();
-    const friends = screen.getByRole("region", { name: /friends who joined with your code/i });
+    const friends = screen.getByRole("region", { name: /^your crew$/i });
     expect(within(friends).getAllByRole("listitem")).toHaveLength(2);
     expect(screen.getByText("Asha")).toBeInTheDocument();
     expect(screen.getByText("Ravi")).toBeInTheDocument();
     expect(screen.getByText(/2,000 coins received/)).toBeInTheDocument();
-    expect(screen.getByText(/waiting for a first match \(29 days left\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/29 days left/i)).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/@|birth|dob/i);
     // Only a friend who has joined and not yet played is offered a match.
     expect(screen.getByRole("button", { name: /play with ravi/i })).toBeInTheDocument();
@@ -190,5 +192,86 @@ describe("ReferralsPage", () => {
     state({ overview: overview({ canEnterCode: false }) });
     open();
     expect(screen.queryByLabelText(/your friend's code/i)).not.toBeInTheDocument();
+  });
+
+  describe("the Crew Quest layout", () => {
+    const verifyingFriend = {
+      ordinal: 1, displayName: "Asha", avatarId: null, joinedAt: NOW - DAY, expiresAt: NOW + 29 * DAY,
+      qualifiedAt: NOW - 3_600_000, status: "QUALIFIED", via: "code",
+      yourBonus: { ...none, state: "VESTING", vestingUntil: NOW + 3 * 3_600_000 },
+      theirBonus: { ...none, state: "VESTING", vestingUntil: NOW + 3 * 3_600_000 },
+    } as const;
+
+    it("folds the numbers into four tiles, with what was received inside the coins tile", () => {
+      state({ overview: overview({ totals: { joined: 3, qualified: 1, waiting: 2, expired: 0, bonusCredited: 0, bonusPending: 2000 } }) });
+      open();
+      const pulse = screen.getByRole("region", { name: /your crew pulse/i });
+      expect(within(pulse).getByText("Joined").previousElementSibling).toHaveTextContent("3");
+      expect(within(pulse).getByText("Played Together").previousElementSibling).toHaveTextContent("1");
+      expect(within(pulse).getByText("Waiting").previousElementSibling).toHaveTextContent("2");
+      expect(within(pulse).getByText("Coins on the way").previousElementSibling).toHaveTextContent("2,000");
+      expect(within(pulse).getByText(/held for a day, then paid/i)).toBeInTheDocument();
+    });
+
+    it("marks where the invitation is now: a played match that is still in its hold is 'Verify Match'", () => {
+      state({ overview: overview({ totals: { joined: 3, qualified: 1, waiting: 2, expired: 0, bonusCredited: 0, bonusPending: 2000 }, friends: [verifyingFriend] }) });
+      open();
+      const journey = screen.getByRole("region", { name: /the invitation journey/i });
+      const items = within(journey).getAllByRole("listitem");
+      expect(items).toHaveLength(5);
+      expect(items.find(item => item.getAttribute("aria-current") === "step")).toHaveTextContent(/verify match/i);
+    });
+
+    it("tells a friend whose match is being verified when the coins arrive, in time and in hours", () => {
+      state({ overview: overview({ friends: [verifyingFriend], totals: { joined: 1, qualified: 1, waiting: 0, expired: 0, bonusCredited: 0, bonusPending: 2000 } }) });
+      open();
+      const crew = screen.getByRole("region", { name: /your crew$/i });
+      expect(within(crew).getByText("Verifying")).toBeInTheDocument();
+      expect(within(crew).getAllByText(/2,000 coins arriving .* at .*\(in 3 hr\)/).length).toBe(2);
+      expect(within(crew).queryByRole("button", { name: /play with asha/i })).not.toBeInTheDocument();
+    });
+
+    it("opens the complete rules in a dialog and closes it again", () => {
+      state({ overview: overview() });
+      open();
+      fireEvent.click(screen.getByRole("button", { name: /view full rules/i }));
+      const dialog = screen.getByRole("dialog", { name: /complete reward rules/i });
+      expect(within(dialog).getByText(/no cash value/i)).toBeInTheDocument();
+      expect(within(dialog).getAllByRole("listitem")).toHaveLength(5);
+      fireEvent.click(within(dialog).getByRole("button", { name: /got it/i }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("shows the pack as a vault: how many crew matches are done and how many remain", () => {
+      state({ overview: overview({ pack: { granted: false, qualifiedFriends: 1, target: 3 } }) });
+      open();
+      expect(screen.getByText("1 / 3 crew matches completed")).toBeInTheDocument();
+      expect(screen.getByText("2 more qualifying crew matches to unlock")).toBeInTheDocument();
+      expect(screen.getByText("Golden Reunion")).toBeInTheDocument();
+    });
+
+    it("shows only the first three friends until 'View all' is pressed", () => {
+      const friend = (ordinal: number) => ({ ...verifyingFriend, ordinal, displayName: `Friend ${ordinal}` });
+      state({ overview: overview({ friends: [1, 2, 3, 4, 5].map(friend) }) });
+      open();
+      expect(screen.queryByText("Friend 4")).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: /view all \(5\)/i }));
+      expect(screen.getByText("Friend 5")).toBeInTheDocument();
+    });
+
+    it("follows the app's light or dark theme instead of forcing night", () => {
+      state({ overview: overview() });
+      const { container } = open();
+      expect(container.querySelector("[data-theme]")).toBeNull();
+      // Every colour on the page is a light value with a `dark:` partner, so the panel is white by day.
+      expect(screen.getByRole("region", { name: /your crew pulse/i }).className).toMatch(/bg-white.*dark:bg-\[#0c1b30\]/);
+    });
+
+    it("says in plain words that no contacts are read and no device is tracked", () => {
+      state({ overview: overview() });
+      open();
+      expect(screen.getByText("No contacts uploaded")).toBeInTheDocument();
+      expect(screen.getByText("No device tracking")).toBeInTheDocument();
+    });
   });
 });
