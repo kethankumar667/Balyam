@@ -96,6 +96,19 @@ function isRetryableStatus(status: number | undefined): boolean {
 }
 
 const scoreEndpoint = (playerId: string) => `/api/profile/${playerId}/scorecards/record`;
+
+/**
+ * A result that was queued while the server was unreachable can still turn out to be a record when it finally
+ * lands. The player earned it, so they get the popup then rather than never; a reply that cannot be read is skipped.
+ */
+async function announceSavedRecord(res: Response): Promise<void> {
+  try {
+    const data = (await res.json()) as { result?: RecordScoreResult };
+    if (data?.result?.isNewPersonalBest) useNewRecordStore.getState().announce(data.result);
+  } catch {
+    // The score is saved either way; only the celebration is lost.
+  }
+}
 const flushesInFlight = new Map<string, Promise<{ sent: number; remaining: number }>>();
 
 export const useScorecardStore = create<ScorecardState>((set, get) => ({
@@ -133,7 +146,10 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
           });
           if (res.ok || !isRetryableStatus(res.status)) {
             removeScore(playerId, entry.payload);
-            if (res.ok) sent += 1;
+            if (res.ok) {
+              sent += 1;
+              await announceSavedRecord(res);
+            }
             continue;
           }
         } catch (err) {
@@ -226,13 +242,16 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
 
       if (data?.result) {
         const result = data.result;
-        if (generation !== scorecardFetchGeneration) return result;
 
-        // If new personal best, queue celebratory overdrive modal
+        // The record is a fact about this match, so it is announced before the staleness check below: that check
+        // only protects the archive and the chip, and a refetch that began while this save was in flight (a
+        // refocus, a sign-in sync) must not swallow the one popup the player is waiting for.
         if (result.isNewPersonalBest) {
-          set({ lastNewPB: result });
           useNewRecordStore.getState().announce(result);
         }
+        if (generation !== scorecardFetchGeneration) return result;
+
+        if (result.isNewPersonalBest) set({ lastNewPB: result });
 
         // Re-fetch archive in background to update UI
         get().fetchScorecards(effectivePlayerId);

@@ -178,6 +178,42 @@ describe("scorecardStore — scores that could not be saved are kept and sent ag
     resetNewRecordStore();
   });
 
+  const beatenResult = (matchId: string) => ({
+    game: "nokiacricket", isNewPersonalBest: true, deltaFromPrevious: 6, previousBest: 12, totalPersonalBestsBeaten: 1,
+    scorecard: { modeId: "classic_1", modeDisplayName: "Classic", bestScore: 18, bestScoreMatchId: matchId, scoringDirection: "HIGHER_IS_BETTER" },
+  });
+
+  it("still asks for the popup when an account refresh starts while the score is being saved", async () => {
+    const { resetNewRecordStore, useNewRecordStore } = await import("../newRecordStore");
+    resetNewRecordStore();
+    let finishSave!: (value: unknown) => void;
+    mockApiFetch.mockReturnValueOnce(new Promise((resolve) => { finishSave = resolve; }));
+    mockApiJson.mockResolvedValue({ archive: archiveFor("playerA") });
+
+    const saving = useScorecardStore.getState().recordScore("playerA", payload("m-slow"));
+    await useScorecardStore.getState().fetchScorecards("playerA");
+    finishSave({ ok: true, status: 200, json: async () => ({ result: beatenResult("m-slow") }) });
+    await saving;
+
+    expect(useNewRecordStore.getState().queue.map((r) => r.scorecard.bestScoreMatchId)).toEqual(["m-slow"]);
+    resetNewRecordStore();
+  });
+
+  it("asks for the popup when a score that was queued earlier lands as a new record", async () => {
+    const { resetNewRecordStore, useNewRecordStore } = await import("../newRecordStore");
+    resetNewRecordStore();
+    mockApiFetch.mockResolvedValueOnce({ ok: false, status: 503 });
+    await useScorecardStore.getState().recordScore("playerA", payload("m-late"));
+    expect(useNewRecordStore.getState().queue).toHaveLength(0);
+    mockApiFetch.mockReset();
+    mockApiFetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({ result: beatenResult("m-late") }) });
+
+    await useScorecardStore.getState().flushPendingScores("playerA");
+
+    expect(useNewRecordStore.getState().queue.map((r) => r.scorecard.bestScoreMatchId)).toEqual(["m-late"]);
+    resetNewRecordStore();
+  });
+
   it("queues a score the server could not take, and says it will be sent again", async () => {
     mockApiFetch.mockResolvedValueOnce({ ok: false, status: 503 });
 
