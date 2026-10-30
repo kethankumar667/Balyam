@@ -93,6 +93,25 @@ describe("useReferralLive", () => {
     expect(mocks.show.mock.calls[0]![3].action).toBeUndefined();
   });
 
+  it.each(["/room/ABC123", "/watch/ABC123", "/tv/ABC123"])(
+    "still tells the player at a table (%s), but with no link that would walk them out of their match",
+    (path) => {
+      const atATable = ({ children }: { children: ReactNode }) => <MemoryRouter initialEntries={[path]}>{children}</MemoryRouter>;
+      renderHook(() => useReferralLive(), { wrapper: atATable });
+      send({ kind: "friend_joined", friendName: "Meera", at: AT });
+      expect(mocks.show).toHaveBeenCalledOnce();
+      expect(mocks.show.mock.calls[0]![0]).toBe("Meera joined with your code.");
+      expect(mocks.show.mock.calls[0]![3].action).toBeUndefined();
+    },
+  );
+
+  it("offers the link again on an ordinary page", () => {
+    const home = ({ children }: { children: ReactNode }) => <MemoryRouter initialEntries={["/games"]}>{children}</MemoryRouter>;
+    renderHook(() => useReferralLive(), { wrapper: home });
+    send({ kind: "friend_joined", friendName: "Meera", at: AT });
+    expect(mocks.show.mock.calls[0]![3].action).toBeDefined();
+  });
+
   it("ignores a malformed payload: no toast, no refresh, no wallet reload", () => {
     renderHook(() => useReferralLive(), { wrapper });
     send({ kind: "free_coins", friendName: "Meera" });

@@ -6,7 +6,6 @@ import AppSidebar from "./AppSidebar";
 import Breadcrumbs from "../navigation/Breadcrumbs";
 import { type BreadcrumbItem } from "../navigation/breadcrumbsConfig";
 import { useMandaliInbox } from "../../hooks/useMandaliInbox";
-import { useReferralLive } from "../../hooks/useReferralLive";
 import { type BhalyamGameSlug } from "../bhalyam/data";
 import { useTheme } from "../../lib/useTheme";
 import { useAuthStore } from "../../store/authStore";
@@ -135,8 +134,6 @@ export default function AppLayout({
   const [profileInitialView, setProfileInitialView] = useState<"profile" | "notifications">("profile");
   // Real Mandali notifications, live — see useMandaliInbox. Guests get none.
   const { items: notifications, update: setNotifications } = useMandaliInbox();
-  // Referral moments ("Meera joined", "your coins landed"), live, on every page. Guests get none.
-  useReferralLive();
 
   // Automatically close mobile menu on route change
   useEffect(() => {
