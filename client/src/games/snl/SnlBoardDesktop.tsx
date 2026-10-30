@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
@@ -17,12 +18,19 @@ import { SNL_TUTORIAL } from "../tutorials";
 import { SnlWinnerCelebration } from "./SnlAnimations";
 
 /**
+ * Sized to the window height (header + room rail take ~250px; the board is
+ * 100:112) so the whole table is on screen at 1440×900 without scrolling,
+ * never below 420px and never above 720px.
+ */
+const DESKTOP_BOARD_SIZE = "max-w-[min(94vw,720px,max(420px,calc((100dvh_-_250px)_*_0.893)))]";
+
+/**
  * Snakes & Ladders — desktop shell.
  *
  * Two-column: a large board on the left and a persistent right rail carrying
- * the dice tray, roster and live event feed so nothing collapses behind a
- * sheet. Uses the extra width deliberately rather than stretching the phone
- * layout.
+ * the dice console, roster (with progress to 100) and live event feed so
+ * nothing collapses behind a sheet. Uses the extra width deliberately rather
+ * than stretching the phone layout, and adds a keyboard shortcut: Space rolls.
  */
 export default function SnlBoardDesktop(props: SnlBoardProps) {
   const { state, players, selfId, messages, roomCode, roomPhase } = props;
@@ -34,8 +42,25 @@ export default function SnlBoardDesktop(props: SnlBoardProps) {
   // while it is their turn. See GameTutorial.tsx's useTutorialGate doc.
   const tut = useTutorialGate(SNL_TUTORIAL.key, !m.myTurn);
 
+  // Space rolls — unless focus is on something that already owns Space (a
+  // button, a text field, a disclosure) or the tutorial is open.
+  const { canRoll, rolling, doRoll } = m;
+  const tutorialOpen = tut.open;
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code !== "Space" || e.repeat || tutorialOpen || !canRoll || rolling) return;
+      const target = e.target as HTMLElement | null;
+      const ownsSpace = !!target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT|BUTTON|A|SUMMARY)$/.test(target.tagName));
+      if (ownsSpace) return;
+      e.preventDefault();
+      doRoll();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [canRoll, rolling, doRoll, tutorialOpen]);
+
   return (
-    <div className="rounded-2xl border border-slate-700/80 bg-[radial-gradient(circle_at_50%_0%,rgba(250,204,21,0.16),transparent_34%),linear-gradient(135deg,#0f172a,#020617)] p-4 lg:p-5 space-y-4 shadow-2xl">
+    <div className="space-y-4 rounded-2xl border border-cyan-300/15 bg-[radial-gradient(circle_at_50%_0%,rgba(56,225,255,0.14),transparent_38%),linear-gradient(160deg,#0b1424,#04070d)] p-4 shadow-2xl lg:p-5">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <SnlHeader state={state} turnPlayer={m.turnPlayer} turnColor={m.turnColor} />
@@ -52,11 +77,13 @@ export default function SnlBoardDesktop(props: SnlBoardProps) {
         messages={messages}
       />
 
-      <div className="grid grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
+      <div className="grid grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
         {/* Board column */}
         <div className="space-y-4 min-w-0">
           <SnlBoardSvg
             state={state}
+            players={players}
+            sizeClass={DESKTOP_BOARD_SIZE}
             coinColorOf={m.coinColorOf}
             initialOf={m.initialOf}
             squareGroups={m.squareGroups}

@@ -1,109 +1,35 @@
-import { useMemo } from "react";
+import { Dices, Trophy } from "lucide-react";
 import type { CoinColor, Player, SnlEvent, SnlState } from "@shared/types";
 import { COIN_COLOR_HEX } from "../../components/CoinColorPicker";
 import { Dice } from "../ludo/Dice";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import SeatProfileButton from "../../components/room/SeatProfileButton";
-import { SnakeBiteOverlay, LadderClimbOverlay } from "./SnlAnimations";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 import { useRoomStore } from "../../store/roomStore";
+import { SnakeBiteOverlay, LadderClimbOverlay } from "./SnlAnimations";
+import { BOARD_ASPECT, BoardGlowLayer, BoardStaticLayer, TokensLayer } from "./snl-board-art";
+import {
+  BACKDROP_CENTER,
+  BACKDROP_EDGE,
+  EVENT_BOUNCE,
+  EVENT_LADDER,
+  EVENT_SNAKE,
+  EVENT_WIN,
+  FRAME_LED,
+  FRAME_METAL_BOTTOM,
+  FRAME_METAL_TOP,
+  HOLO_CYAN,
+} from "./snl-theme";
+
+export { cellInfo } from "./snl-geometry";
 
 /**
  * Snakes & Ladders — shared presentational layer.
  *
- * Every constant, pure geometry helper and dumb sub-component the board needs
- * lives here so the mobile and desktop shells import ONE source of truth and
- * never duplicate the (sizeable) SVG board markup. Logic/state live in
- * useSnlBoard; this file is render-only.
+ * The mobile and desktop shells import ONE source of truth for the board and
+ * every HUD widget; only the arrangement differs (`variant` / `layout` props).
+ * Logic and state live in useSnlBoard; this file is render-only.
  */
-
-const BOARD_SIZE = 100;
-const CELL = BOARD_SIZE / 10;
-const START_ZONE_Y = 105.5;
-
-// Cell palette: five muted jewel tones cycled across the grid. Bright
-// enough to read as a "real board" yet desaturated so they sit politely
-// under the snake/ladder graphics. Numbers print in deep walnut on every
-// tone — the palette is tuned so dark walnut hits ≥4.5:1 contrast across
-// all five cells.
-const CELL_COLORS = [
-  "#FBE7D2", // warm peach
-  "#D8E8C8", // soft sage
-  "#F8E1A0", // butter cream
-  "#C8DBE8", // dusty blue
-  "#E4D0E8", // soft lavender
-];
-const CELL_DARK   = ["#A88248", "#A88248", "#A88248", "#A88248", "#A88248"];
-const CELL_BORDER  = "#C8A66B";
-const CELL_INK     = "#2B1B0F";
-const FINISH_GOLD  = "#E0AE3B";
-const FINISH_GOLD_DEEP = "#9A6E1A";
-
-// Snake palettes — dignified, muted, scaled-creature feel.
-//   body+gradEnd → linear gradient down the spine
-//   outline      → thin dark contour
-//   spot         → small accent dots that hint at scale pattern
-const SNAKE_PALETTES = [
-  { body: "#4D7C3A", gradEnd: "#22421E", outline: "#0F2A0E", spot: "#A8C879" }, // forest green
-  { body: "#A86E2F", gradEnd: "#5A3B16", outline: "#2F1A06", spot: "#E5BE7E" }, // bronze
-  { body: "#48556C", gradEnd: "#1F2937", outline: "#0F172A", spot: "#94A3B8" }, // slate
-  { body: "#7C5295", gradEnd: "#3F2A52", outline: "#1E0F2E", spot: "#D4B8E5" }, // plum
-  { body: "#B65441", gradEnd: "#6B2918", outline: "#2C0F08", spot: "#F5C4B5" }, // terracotta
-];
-
-// Ladder wood tones.
-const LADDER_WOOD_TOP    = "#B07740";
-const LADDER_WOOD_BOTTOM = "#6E4422";
-const LADDER_WOOD_DARK   = "#3F2412";
-const LADDER_RUNG        = "#8E5B30";
-
-export function cellInfo(n: number): { x: number; y: number; row: number; col: number; color: string; dark: string } {
-  const idx = n - 1;
-  const row = Math.floor(idx / 10);
-  let col = idx % 10;
-  if (row % 2 === 1) col = 9 - col;
-  const colorIdx = (row + col) % CELL_COLORS.length;
-  return {
-    x: col * CELL + CELL / 2,
-    y: (9 - row) * CELL + CELL / 2,
-    row,
-    col,
-    color: CELL_COLORS[colorIdx],
-    dark: CELL_DARK[colorIdx],
-  };
-}
-
-function squareCenter(n: number, slot: number, totalAtStart: number): { x: number; y: number } {
-  if (n <= 0) {
-    // Spread up to 10 spots evenly across the start zone (x in [6, 94]).
-    const span = totalAtStart > 1 ? 88 / (totalAtStart - 1) : 0;
-    return { x: 6 + slot * span, y: START_ZONE_Y };
-  }
-  const info = cellInfo(n);
-  return { x: info.x, y: info.y };
-}
-
-function tokenFanOffset(slot: number, total: number): { dx: number; dy: number; r: number } {
-  if (total <= 1) return { dx: 0, dy: 0, r: 2.4 };
-  const angle = (slot / total) * Math.PI * 2 - Math.PI / 2;
-  const ringR = total <= 4 ? 1.8 : total <= 6 ? 2.0 : 2.3;
-  const tokenR = total <= 4 ? 2.0 : total <= 7 ? 1.55 : 1.3;
-  return { dx: Math.cos(angle) * ringR, dy: Math.sin(angle) * ringR, r: tokenR };
-}
-
-function bezierPoint(
-  p0: { x: number; y: number },
-  p1: { x: number; y: number },
-  p2: { x: number; y: number },
-  p3: { x: number; y: number },
-  t: number
-): { x: number; y: number } {
-  const u = 1 - t;
-  return {
-    x: u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x,
-    y: u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y,
-  };
-}
 
 // Auto-assign coin colors to players who didn't pick in the lobby.
 const AUTO_FALLBACK_ORDER: CoinColor[] = [
@@ -130,537 +56,72 @@ export function resolveCoinColors(playerOrder: string[], players: Player[]): Rec
   return map;
 }
 
+/** Shared glass surface for every HUD panel. */
+const GLASS_PANEL =
+  "rounded-2xl border border-white/10 bg-[linear-gradient(160deg,rgba(30,41,59,0.78),rgba(8,13,26,0.92))] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_10px_30px_rgba(0,0,0,0.35)]";
+const PANEL_LABEL = "text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-200/80";
+const FOCUS_RING = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400";
+
+function playerNameOf(id: string, players: Player[]): string {
+  return players.find((p) => p.id === id)?.name ?? useRoomStore.getState().knownPlayers[id]?.name ?? "Player";
+}
+
 /* ─────────────────────────── Difficulty badge ─────────────────────────── */
 
-// Hoisted out of render — the meta table is static, no reason to rebuild it
-// on every paint.
-const DIFFICULTY_META: Record<
-  SnlState["config"]["difficulty"],
-  { emoji: string; label: string; color: string }
-> = {
-  easy:    { emoji: "🌱", label: "Easy",    color: "#22c55e" },
-  medium:  { emoji: "⚖️", label: "Medium",  color: "#3b82f6" },
-  hard:    { emoji: "🔥", label: "Hard",    color: "#f97316" },
-  extreme: { emoji: "💀", label: "Extreme", color: "#ef4444" },
+const DIFFICULTY_META: Record<SnlState["config"]["difficulty"], { label: string; color: string }> = {
+  easy: { label: "Easy", color: "#22c55e" },
+  medium: { label: "Medium", color: "#3b82f6" },
+  hard: { label: "Hard", color: "#f97316" },
+  extreme: { label: "Extreme", color: "#ef4444" },
 };
 
 export function DifficultyBadge({ difficulty }: { difficulty: SnlState["config"]["difficulty"] }) {
   const m = DIFFICULTY_META[difficulty] ?? DIFFICULTY_META.medium;
   return (
-    <span
-      className="text-xs px-2 py-0.5 rounded-full font-extrabold flex items-center gap-1"
-      style={{ background: m.color, color: "#0f172a" }}
-    >
-      <span>{m.emoji}</span>
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-xs font-bold text-slate-100">
+      <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: m.color, boxShadow: `0 0 8px ${m.color}` }} />
       {m.label}
     </span>
   );
 }
 
-/* ─────────────────────────── Board SVG layers ─────────────────────────── */
+/* ─────────────────────────── The board ─────────────────────────── */
 
-/**
- * SVG <defs> block — gradients, filters, and patterns reused across the
- * board so individual cells/snakes/ladders stay declarative.
- */
-function BoardDefs({ ladderCount, snakeCount }: { ladderCount: number; snakeCount: number }) {
-  // Per-snake body gradients depend only on the snake count — memoise so a
-  // dice/turn re-render doesn't regenerate the gradient nodes.
-  const snakeGradients = useMemo(
-    () =>
-      Array.from({ length: snakeCount }, (_, i) => {
-        const p = SNAKE_PALETTES[i % SNAKE_PALETTES.length];
-        return (
-          <linearGradient key={`snake-grad-${i}`} id={`snl-snake-${i}`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor={p.body} />
-            <stop offset="100%" stopColor={p.gradEnd} />
-          </linearGradient>
-        );
-      }),
-    [snakeCount]
-  );
-  return (
-    <defs>
-      {/* Ladder wood — rails get a vertical gradient so they read as round
-          poles instead of flat lines. */}
-      <linearGradient id="snl-ladder-rail" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stopColor={LADDER_WOOD_DARK} />
-        <stop offset="38%" stopColor={LADDER_WOOD_TOP} />
-        <stop offset="58%" stopColor="#D6A06A" />
-        <stop offset="100%" stopColor={LADDER_WOOD_BOTTOM} />
-      </linearGradient>
-
-      {/* Subtle drop shadow used by ladders + snakes so they appear to sit
-          ABOVE the board cells instead of flat with them. */}
-      <filter id="snl-drop" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="0.35" />
-        <feOffset dx="0" dy="0.45" result="off" />
-        <feComponentTransfer><feFuncA type="linear" slope="0.45" /></feComponentTransfer>
-        <feMerge>
-          <feMergeNode />
-          <feMergeNode in="SourceGraphic" />
-        </feMerge>
-      </filter>
-
-      {/* Square 100 — gold finish square uses a sun-burst gradient. */}
-      <radialGradient id="snl-finish" cx="50%" cy="50%" r="65%">
-        <stop offset="0%" stopColor="#FFF1B8" />
-        <stop offset="45%" stopColor={FINISH_GOLD} />
-        <stop offset="100%" stopColor={FINISH_GOLD_DEEP} />
-      </radialGradient>
-
-      {snakeGradients}
-
-      {/* Reserved for ladder shadow indexing — keeps prop unused but ready. */}
-      <metadata>{ladderCount}</metadata>
-    </defs>
-  );
+function boardLabel(state: SnlState, players: Player[]): string {
+  const where = state.playerOrder
+    .map((id) => {
+      const sq = state.positions[id] ?? 0;
+      return `${playerNameOf(id, players)} ${sq <= 0 ? "at start" : `on square ${sq}`}`;
+    })
+    .join(", ");
+  return `Snakes and Ladders board, 100 squares. ${where}.`;
 }
 
-// The 100-cell grid is fully static — compute it ONCE at module load instead
-// of re-running cellInfo 100× on every render.
-const BOARD_GRID_CELLS: JSX.Element[] = (() => {
-  const cells: JSX.Element[] = [];
-  for (let n = 1; n <= 100; n++) {
-    const info = cellInfo(n);
-    const x = info.x - CELL / 2;
-    const y = info.y - CELL / 2;
-    const isFinish = n === 100;
-    cells.push(
-      <g key={n}>
-        {/* Base cell — small inset so a hairline of board parchment shows
-            between cells, giving the grid a subtle relief. */}
-        <rect
-          x={x + 0.12}
-          y={y + 0.12}
-          width={CELL - 0.24}
-          height={CELL - 0.24}
-          rx={0.7}
-          fill={isFinish ? "url(#snl-finish)" : info.color}
-          stroke={CELL_BORDER}
-          strokeWidth={0.18}
-        />
-        {/* Inner highlight — thin top stroke that suggests a beveled edge. */}
-        <line
-          x1={x + 0.5}
-          y1={y + 0.5}
-          x2={x + CELL - 0.5}
-          y2={y + 0.5}
-          stroke="#FFFFFF"
-          strokeOpacity={0.55}
-          strokeWidth={0.12}
-        />
-        {/* Number — top-left, deep walnut for both tones, hairline halo. */}
-        <text
-          x={x + 1.2}
-          y={y + 3.2}
-          fontSize="2.6"
-          fill={CELL_INK}
-          fontWeight="800"
-          fontFamily="ui-sans-serif, system-ui, sans-serif"
-          style={{
-            paintOrder: "stroke",
-            stroke: "#FFFFFF",
-            strokeWidth: 0.45,
-            strokeOpacity: 0.7,
-          }}
-        >
-          {n}
-        </text>
-        {isFinish && (
-          <>
-            {/* A simple flag glyph; sits in the lower-right so it doesn't
-                fight the "100" number. */}
-            <g transform={`translate(${info.x + 1.5}, ${info.y + 2.0})`}>
-              <line x1={0} y1={-1.8} x2={0} y2={2.4} stroke={FINISH_GOLD_DEEP} strokeWidth={0.35} strokeLinecap="round" />
-              <path d="M 0 -1.8 L 2.4 -1.2 L 0 -0.4 Z" fill={FINISH_GOLD_DEEP} />
-            </g>
-          </>
-        )}
-      </g>
-    );
-  }
-  return cells;
-})();
-
-function StartZone({ count }: { count: number }) {
-  return (
-    <g>
-      <rect
-        x={1.5}
-        y={101.5}
-        width={97}
-        height={9}
-        rx={1.4}
-        fill="#FBF4DE"
-        stroke="#6B4422"
-        strokeWidth={0.35}
-      />
-      {/* Inner gold bevel */}
-      <rect
-        x={2.0}
-        y={102.0}
-        width={96}
-        height={8}
-        rx={1.1}
-        fill="none"
-        stroke={FINISH_GOLD}
-        strokeWidth={0.18}
-        opacity={0.85}
-      />
-      <text
-        x={3.5}
-        y={107.8}
-        fontSize="2.4"
-        fill={CELL_INK}
-        fontWeight="900"
-        letterSpacing="0.3"
-      >
-        START
-      </text>
-      {count > 0 && (
-        <text x={96.5} y={107.6} fontSize="1.8" fill="#5C3A1A" fontWeight="700" textAnchor="end">
-          {count} waiting
-        </text>
-      )}
-    </g>
-  );
-}
-
-function LaddersLayer({ ladders }: { ladders: Record<number, number> }) {
-  // Geometry is a pure function of the ladder config; memoise so a roll/turn
-  // re-render doesn't recompute every rail + rung.
-  const parts = useMemo(() => {
-    const out: JSX.Element[] = [];
-    for (const [startStr, endN] of Object.entries(ladders)) {
-      const startN = Number(startStr);
-      const a = cellInfo(startN);
-      const b = cellInfo(endN);
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const len = Math.hypot(dx, dy);
-      const nx = -dy / len;
-      const ny = dx / len;
-      // Rail separation (a touch wider than before for a sturdier look).
-      const w = 1.7;
-      const ax1 = a.x + nx * w, ay1 = a.y + ny * w;
-      const ax2 = a.x - nx * w, ay2 = a.y - ny * w;
-      const bx1 = b.x + nx * w, by1 = b.y + ny * w;
-      const bx2 = b.x - nx * w, by2 = b.y - ny * w;
-      const rungs = Math.max(3, Math.floor(len / 3.0));
-      const rungLines: JSX.Element[] = [];
-      for (let i = 1; i < rungs; i++) {
-        const t = i / rungs;
-        const rx1 = ax1 + (bx1 - ax1) * t;
-        const ry1 = ay1 + (by1 - ay1) * t;
-        const rx2 = ax2 + (bx2 - ax2) * t;
-        const ry2 = ay2 + (by2 - ay2) * t;
-        rungLines.push(
-          <g key={`r-${startN}-${i}`}>
-            {/* Rung shadow under the rung gives it depth */}
-            <line
-              x1={rx1}
-              y1={ry1 + 0.18}
-              x2={rx2}
-              y2={ry2 + 0.18}
-              stroke={LADDER_WOOD_DARK}
-              strokeWidth={0.85}
-              strokeLinecap="round"
-              opacity={0.55}
-            />
-            <line
-              x1={rx1}
-              y1={ry1}
-              x2={rx2}
-              y2={ry2}
-              stroke={LADDER_RUNG}
-              strokeWidth={0.75}
-              strokeLinecap="round"
-            />
-            {/* Thin upper highlight on the rung */}
-            <line
-              x1={rx1}
-              y1={ry1 - 0.18}
-              x2={rx2}
-              y2={ry2 - 0.18}
-              stroke="#E0B981"
-              strokeWidth={0.18}
-              strokeLinecap="round"
-              opacity={0.7}
-            />
-          </g>
-        );
-      }
-      out.push(
-        <g key={`ladder-${startN}`} filter="url(#snl-drop)">
-          {/* Rail outline */}
-          <line x1={ax1} y1={ay1} x2={bx1} y2={by1} stroke={LADDER_WOOD_DARK} strokeWidth={1.5} strokeLinecap="round" />
-          <line x1={ax2} y1={ay2} x2={bx2} y2={by2} stroke={LADDER_WOOD_DARK} strokeWidth={1.5} strokeLinecap="round" />
-          {/* Rail wood */}
-          <line x1={ax1} y1={ay1} x2={bx1} y2={by1} stroke="url(#snl-ladder-rail)" strokeWidth={1.1} strokeLinecap="round" />
-          <line x1={ax2} y1={ay2} x2={bx2} y2={by2} stroke="url(#snl-ladder-rail)" strokeWidth={1.1} strokeLinecap="round" />
-          {/* Subtle rail highlight strip on the lit edge */}
-          <line
-            x1={ax1 - nx * 0.18}
-            y1={ay1 - ny * 0.18}
-            x2={bx1 - nx * 0.18}
-            y2={by1 - ny * 0.18}
-            stroke="#F2C78A"
-            strokeWidth={0.18}
-            strokeLinecap="round"
-            opacity={0.7}
-          />
-          <line
-            x1={ax2 + nx * 0.18}
-            y1={ay2 + ny * 0.18}
-            x2={bx2 + nx * 0.18}
-            y2={by2 + ny * 0.18}
-            stroke="#F2C78A"
-            strokeWidth={0.18}
-            strokeLinecap="round"
-            opacity={0.7}
-          />
-          {rungLines}
-        </g>
-      );
-    }
-    return out;
-  }, [ladders]);
-  return <>{parts}</>;
-}
-
-function SnakesLayer({ snakes }: { snakes: Record<number, number> }) {
-  // A realistic serpent: a TAPERED filled body (thick at the head, thinning to
-  // the tail) winding along a multi-bend spine, with a dorsal diamond pattern,
-  // a belly highlight, a wedge head with eyes + nostrils, and a flicking forked
-  // tongue. Pure function of the snake config, so it's memoised.
-  const parts = useMemo(() => {
-    const entries = Object.entries(snakes)
-      .map(([h, t]) => [Number(h), t] as const)
-      .sort((a, b) => a[0] - b[0]);
-    return entries.map(([headN, tailN], idx) => {
-      const palette = SNAKE_PALETTES[idx % SNAKE_PALETTES.length];
-      const gradientId = `snl-snake-${idx}`;
-      const head = cellInfo(headN);
-      const tail = cellInfo(tailN);
-      const dx = tail.x - head.x;
-      const dy = tail.y - head.y;
-      const len = Math.hypot(dx, dy) || 1;
-      const ux = dx / len, uy = dy / len;       // head → tail unit
-      const px = -uy, py = ux;                   // left-perpendicular
-
-      // Serpentine centreline: lerp head→tail + a sine sway that's zero at both
-      // ends (even number of half-waves), more bends for longer snakes.
-      const bends = Math.max(1, Math.round(len / 24));
-      const amp = Math.min(6.5, len * 0.15);
-      const STEPS = 30;
-      const center = (t: number) => {
-        const off = amp * Math.sin(t * Math.PI * 2 * bends);
-        return { x: head.x + dx * t + px * off, y: head.y + dy * t + py * off };
-      };
-      const pts = Array.from({ length: STEPS + 1 }, (_, s) => center(s / STEPS));
-
-      // Body width tapers from head to tail.
-      const wHead = 2.7, wTail = 0.45;
-      const widthAt = (t: number) => wTail + (wHead - wTail) * Math.pow(1 - t, 0.85);
-
-      // Local tangent/normal per sample (finite difference).
-      const norm = pts.map((p, i) => {
-        const a = pts[Math.max(0, i - 1)];
-        const b = pts[Math.min(STEPS, i + 1)];
-        const tx = b.x - a.x, ty = b.y - a.y;
-        const tl = Math.hypot(tx, ty) || 1;
-        return { x: -ty / tl, y: tx / tl };
-      });
-
-      // Tapered outline: left edge head→tail, then right edge tail→head.
-      const left = pts.map((p, i) => {
-        const w = widthAt(i / STEPS) / 2;
-        return `${(p.x + norm[i].x * w).toFixed(2)} ${(p.y + norm[i].y * w).toFixed(2)}`;
-      });
-      const right = pts
-        .map((p, i) => {
-          const w = widthAt(i / STEPS) / 2;
-          return `${(p.x - norm[i].x * w).toFixed(2)} ${(p.y - norm[i].y * w).toFixed(2)}`;
-        })
-        .reverse();
-      const bodyPath = `M ${left[0]} L ${left.slice(1).join(" L ")} L ${right.join(" L ")} Z`;
-
-      // Dorsal diamond pattern down the spine.
-      const diamonds = [0.2, 0.33, 0.46, 0.58, 0.7, 0.8].map((t, i) => {
-        const si = Math.round(t * STEPS);
-        const p = pts[si];
-        const n = norm[si];
-        const w = widthAt(t) * 0.34;
-        const fb = ux * (widthAt(t) * 0.55), fbq = uy * (widthAt(t) * 0.55);
-        const a = `${p.x + n.x * w},${p.y + n.y * w}`;
-        const b = `${p.x + fb},${p.y + fbq}`;
-        const c = `${p.x - n.x * w},${p.y - n.y * w}`;
-        const d2 = `${p.x - fb},${p.y - fbq}`;
-        return (
-          <polygon
-            key={`dia-${headN}-${i}`}
-            points={`${a} ${b} ${c} ${d2}`}
-            fill={palette.gradEnd}
-            opacity={0.5}
-          />
-        );
-      });
-
-      // Head frame: wedge oriented along the initial tangent.
-      const t0 = { x: pts[1].x - pts[0].x, y: pts[1].y - pts[0].y };
-      const headDeg = (Math.atan2(t0.y, t0.x) * 180) / Math.PI;
-      const n0 = norm[0];
-      // Tongue base sits just ahead of the head tip (opposite the body dir).
-      const tipX = head.x - ux * 2.6, tipY = head.y - uy * 2.6;
-
-      return (
-        <g key={`snake-${headN}`} filter="url(#snl-drop)">
-          {/* Forked tongue — drawn under the head so the head overlaps its base */}
-          <g stroke="#C2272D" strokeWidth={0.34} fill="none" strokeLinecap="round">
-            <path d={`M ${head.x - ux * 1.4} ${head.y - uy * 1.4} L ${tipX} ${tipY}`} />
-            <path d={`M ${tipX} ${tipY} L ${tipX - ux * 1.0 + n0.x * 0.9} ${tipY - uy * 1.0 + n0.y * 0.9}`} />
-            <path d={`M ${tipX} ${tipY} L ${tipX - ux * 1.0 - n0.x * 0.9} ${tipY - uy * 1.0 - n0.y * 0.9}`} />
-          </g>
-
-          {/* Body: dark outline + gradient fill + belly highlight */}
-          <path d={bodyPath} fill={palette.outline} />
-          <path d={bodyPath} fill={`url(#${gradientId})`} transform="" />
-          <path
-            d={`M ${left[0]} L ${left.slice(1).join(" L ")}`}
-            fill="none"
-            stroke="#FBF4DE"
-            strokeWidth={0.3}
-            opacity={0.4}
-            strokeLinecap="round"
-          />
-          {diamonds}
-
-          {/* Head */}
-          <g transform={`translate(${head.x}, ${head.y}) rotate(${headDeg})`}>
-            {/* wedge: tip points away from the body (−x in local frame) */}
-            <path
-              d="M -2.9 0 L -0.6 -1.9 L 2.0 -1.5 L 2.0 1.5 L -0.6 1.9 Z"
-              fill={palette.outline}
-            />
-            <path
-              d="M -2.5 0 L -0.4 -1.55 L 1.7 -1.2 L 1.7 1.2 L -0.4 1.55 Z"
-              fill={palette.body}
-            />
-            <ellipse cx={0.4} cy={-0.95} rx={1.0} ry={0.42} fill={palette.gradEnd} opacity={0.5} />
-            <ellipse cx={0.4} cy={0.95} rx={1.0} ry={0.42} fill={palette.gradEnd} opacity={0.5} />
-            {/* eyes */}
-            <circle cx={-0.2} cy={-0.85} r={0.46} fill="#F8E9B0" />
-            <circle cx={-0.2} cy={0.85} r={0.46} fill="#F8E9B0" />
-            <ellipse cx={-0.25} cy={-0.85} rx={0.18} ry={0.3} fill="#0F172A" />
-            <ellipse cx={-0.25} cy={0.85} rx={0.18} ry={0.3} fill="#0F172A" />
-            {/* nostrils near the tip */}
-            <circle cx={-2.0} cy={-0.45} r={0.16} fill={palette.outline} />
-            <circle cx={-2.0} cy={0.45} r={0.16} fill={palette.outline} />
-          </g>
-
-          {/* Tail point */}
-          <circle cx={pts[STEPS].x} cy={pts[STEPS].y} r={0.3} fill={palette.outline} />
-        </g>
-      );
-    });
-  }, [snakes]);
-  return <>{parts}</>;
-}
-
-function TokensLayer({
-  positions,
-  playerOrder,
-  turnPlayerId,
-  coinColorOf,
-  initialOf,
-  squareGroups,
-}: {
-  positions: Record<string, number>;
-  playerOrder: string[];
-  turnPlayerId: string;
-  coinColorOf: Record<string, CoinColor>;
-  initialOf: Record<string, string>;
-  squareGroups: Map<number, string[]>;
-}) {
+/** Four glowing corner brackets on the bezel — pure decoration. */
+function BezelCorners() {
+  const base = "pointer-events-none absolute h-4 w-4 border-cyan-300/80";
   return (
     <>
-      {playerOrder.map((id) => {
-        const sq = positions[id] ?? 0;
-        const groupIds = squareGroups.get(sq) ?? [id];
-        const slotInGroup = groupIds.indexOf(id);
-        const total = groupIds.length;
-        const startTotal = (squareGroups.get(0) ?? []).length;
-
-        let cx: number, cy: number, r: number;
-        if (sq <= 0) {
-          const start = squareCenter(0, slotInGroup, startTotal);
-          cx = start.x;
-          cy = start.y;
-          r = 2.2;
-        } else {
-          const center = cellInfo(sq);
-          const { dx, dy, r: ringR } = tokenFanOffset(slotInGroup, total);
-          cx = center.x + dx;
-          cy = center.y + dy;
-          r = ringR;
-        }
-
-        const isActive = id === turnPlayerId;
-        const colorKey = coinColorOf[id];
-        const palette = COIN_COLOR_HEX[colorKey];
-
-        return (
-          <g
-            key={id}
-            style={{
-              transform: `translate(${cx}px, ${cy}px)`,
-              transition: "transform 520ms cubic-bezier(.34,1.56,.64,1)",
-            }}
-          >
-            {isActive && (
-              <circle
-                r={r + 0.85}
-                fill="none"
-                stroke={palette.fill}
-                strokeWidth={0.5}
-                opacity={0.95}
-                className="snl-token-pulse"
-              />
-            )}
-            {/* Shadow */}
-            <ellipse cx={0} cy={r + 0.3} rx={r * 0.7} ry={r * 0.25} fill="rgba(0,0,0,0.35)" />
-            {/* Coin body */}
-            <circle r={r} fill={palette.fill} stroke="#0f172a" strokeWidth={0.4} />
-            <circle r={r - 0.35} fill="none" stroke={palette.dark} strokeWidth={0.25} opacity={0.6} />
-            {/* Highlight */}
-            <circle r={r * 0.42} cx={-r * 0.3} cy={-r * 0.35} fill="#ffffff" opacity={0.5} />
-            {/* Initial */}
-            <text
-              x={0}
-              y={r * 0.45}
-              fontSize={r * 1.15}
-              textAnchor="middle"
-              fill="#ffffff"
-              fontWeight="900"
-              fontFamily="ui-sans-serif, system-ui, sans-serif"
-              style={{ paintOrder: "stroke", stroke: palette.dark, strokeWidth: 0.3 }}
-            >
-              {initialOf[id]}
-            </text>
-          </g>
-        );
-      })}
+      <span aria-hidden="true" className={`${base} left-1.5 top-1.5 rounded-tl-md border-l-2 border-t-2`} />
+      <span aria-hidden="true" className={`${base} right-1.5 top-1.5 rounded-tr-md border-r-2 border-t-2`} />
+      <span aria-hidden="true" className={`${base} bottom-1.5 left-1.5 rounded-bl-md border-b-2 border-l-2`} />
+      <span aria-hidden="true" className={`${base} bottom-1.5 right-1.5 rounded-br-md border-b-2 border-r-2`} />
     </>
   );
 }
 
+const DEFAULT_BOARD_SIZE = "max-w-[min(94vw,720px)]";
+
+type BoardEventOverlay ={ playerName: string; from: number; to: number; x: number; y: number } | null;
+
 /**
- * The full felt board: the SVG (cells + snakes + ladders + tokens) plus the
- * floating event toast and GAL overlays. Shared verbatim by both shells.
+ * The full table: a graphite bezel with an LED edge around three stacked SVG
+ * layers (tiles/ladders/snakes, glow, tokens), plus the event toast and the
+ * snake-bite / ladder-climb overlays. Shared verbatim by both shells.
  */
 export function SnlBoardSvg({
   state,
+  players,
   coinColorOf,
   initialOf,
   squareGroups,
@@ -668,38 +129,41 @@ export function SnlBoardSvg({
   toast,
   activeSnakeBite,
   activeLadderClimb,
+  sizeClass = DEFAULT_BOARD_SIZE,
 }: {
   state: SnlState;
+  players: Player[];
   coinColorOf: Record<string, CoinColor>;
   initialOf: Record<string, string>;
   squareGroups: Map<number, string[]>;
   startCount: number;
   toast: { text: string; emoji: string; color: string } | null;
-  activeSnakeBite?: { playerName: string; from: number; to: number; x: number; y: number } | null;
-  activeLadderClimb?: { playerName: string; from: number; to: number; x: number; y: number } | null;
+  activeSnakeBite?: BoardEventOverlay;
+  activeLadderClimb?: BoardEventOverlay;
+  /** Tailwind width classes; each shell sizes the board for its own screen. */
+  sizeClass?: string;
 }) {
   return (
-    <div className="relative">
-      <svg
-        viewBox="0 0 100 112"
-        className="w-full max-w-[min(92vw,720px)] mx-auto block rounded-2xl"
+    <div
+      className={`relative mx-auto w-full rounded-[22px] p-2.5 sm:p-3 ${sizeClass}`}
+      style={{
+        background: `linear-gradient(145deg, ${FRAME_METAL_TOP}, ${FRAME_METAL_BOTTOM} 70%)`,
+        boxShadow: `0 24px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08), 0 0 28px ${FRAME_LED}33, inset 0 1px 0 rgba(255,255,255,0.18)`,
+      }}
+    >
+      <BezelCorners />
+      <div
+        role="img"
+        aria-label={boardLabel(state, players)}
+        className="relative w-full rounded-2xl"
         style={{
-          aspectRatio: "100 / 112",
-          background:
-            "radial-gradient(ellipse at 50% 35%, #FBF4DE 0%, #EFD7A6 65%, #DCBE83 100%)",
-          border: "6px solid #3F2412",
-          boxShadow:
-            "0 22px 58px rgba(0,0,0,0.55), inset 0 0 0 2px #E0AE3B, inset 0 0 0 4px #6B4422",
+          aspectRatio: BOARD_ASPECT,
+          background: `radial-gradient(ellipse at 50% 30%, ${BACKDROP_CENTER} 0%, ${BACKDROP_EDGE} 100%)`,
+          boxShadow: `inset 0 0 0 1px ${FRAME_LED}55, inset 0 6px 24px rgba(0,0,0,0.6)`,
         }}
       >
-        <BoardDefs
-          ladderCount={Object.keys(state.config.ladders).length}
-          snakeCount={Object.keys(state.config.snakes).length}
-        />
-        {BOARD_GRID_CELLS}
-        <StartZone count={startCount} />
-        <LaddersLayer ladders={state.config.ladders} />
-        <SnakesLayer snakes={state.config.snakes} />
+        <BoardStaticLayer ladders={state.config.ladders} snakes={state.config.snakes} waiting={startCount} />
+        <BoardGlowLayer ladders={state.config.ladders} snakes={state.config.snakes} />
         <TokensLayer
           positions={state.positions}
           playerOrder={state.playerOrder}
@@ -708,49 +172,48 @@ export function SnlBoardSvg({
           initialOf={initialOf}
           squareGroups={squareGroups}
         />
-      </svg>
 
-      {/* GAL: Snake Bite Animation */}
-      {activeSnakeBite && (
-        <SnakeBiteOverlay
-          playerName={activeSnakeBite.playerName}
-          from={activeSnakeBite.from}
-          to={activeSnakeBite.to}
-          x={activeSnakeBite.x}
-          y={activeSnakeBite.y}
-        />
-      )}
+        {activeSnakeBite && (
+          <SnakeBiteOverlay
+            playerName={activeSnakeBite.playerName}
+            from={activeSnakeBite.from}
+            to={activeSnakeBite.to}
+            x={activeSnakeBite.x}
+            y={activeSnakeBite.y}
+          />
+        )}
+        {activeLadderClimb && (
+          <LadderClimbOverlay
+            playerName={activeLadderClimb.playerName}
+            from={activeLadderClimb.from}
+            to={activeLadderClimb.to}
+            x={activeLadderClimb.x}
+            y={activeLadderClimb.y}
+          />
+        )}
 
-      {/* GAL: Ladder Climb Animation */}
-      {activeLadderClimb && (
-        <LadderClimbOverlay
-          playerName={activeLadderClimb.playerName}
-          from={activeLadderClimb.from}
-          to={activeLadderClimb.to}
-          x={activeLadderClimb.x}
-          y={activeLadderClimb.y}
-        />
-      )}
-
-      {toast && (
-        <div
-          className="absolute left-1/2 -translate-x-1/2 top-3 px-4 py-2 rounded-full shadow-2xl text-sm font-bold toast-in pointer-events-none"
-          style={{
-            background: toast.color,
-            color: "#fff",
-            boxShadow: `0 0 24px ${toast.color}, 0 4px 12px rgba(0,0,0,0.4)`,
-          }}
-        >
-          <span className="mr-2">{toast.emoji}</span>
-          {toast.text}
-        </div>
-      )}
+        {toast && (
+          <div
+            className="toast-in pointer-events-none absolute left-1/2 top-3 z-30 flex max-w-[92%] -translate-x-1/2 items-center gap-2 rounded-full border bg-slate-950/90 px-4 py-2 text-sm font-bold text-white"
+            style={{ borderColor: toast.color, boxShadow: `0 0 22px ${toast.color}88, 0 6px 16px rgba(0,0,0,0.5)` }}
+          >
+            <span aria-hidden="true" style={{ color: toast.color }}>
+              {toast.emoji}
+            </span>
+            <span className="truncate">{toast.text}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-/* ─────────────────────────── Side-rail widgets ─────────────────────────── */
+/* ─────────────────────────── Dice console ─────────────────────────── */
 
+/**
+ * The roll control. `dock` is the phone version (dice + a full-width, thumb-sized
+ * Roll button on one row); `panel` is the desktop rail card with a keyboard hint.
+ */
 export function DiceTray({
   value,
   rolling,
@@ -759,6 +222,7 @@ export function DiceTray({
   phase,
   turnName,
   onRoll,
+  variant = "panel",
 }: {
   value: number | null;
   rolling: boolean;
@@ -767,58 +231,79 @@ export function DiceTray({
   phase: SnlState["phase"];
   turnName: string;
   onRoll: () => void;
+  variant?: "dock" | "panel";
 }) {
   const finished = phase === "finished";
+  const isDock = variant === "dock";
+  const status = finished
+    ? "Game over"
+    : myTurn
+      ? canRoll
+        ? "Your turn — roll the dice"
+        : "Resolving your move…"
+      : canRoll
+        ? `Waiting for ${turnName} to roll…`
+        : `${turnName} is moving…`;
+
   return (
-    <div
-      className={`rounded-2xl border border-slate-700/70 bg-slate-950/70 p-3 transition ${
-        myTurn ? "" : "opacity-60"
-      }`}
-      style={{
-        background: "linear-gradient(160deg, #1e293b 0%, #0f172a 100%)",
-      }}
+    <section
+      aria-label="Dice"
+      className={`${GLASS_PANEL} ${isDock ? "p-3" : "p-4"} transition-opacity ${myTurn || finished ? "" : "opacity-80"}`}
+      style={myTurn && canRoll && !finished ? { boxShadow: `inset 0 1px 0 rgba(255,255,255,0.08), 0 0 24px ${HOLO_CYAN}40` } : undefined}
     >
-      <div className="flex items-center justify-center gap-4">
+      <div className={`flex items-center ${isDock ? "gap-3" : "flex-col gap-3"}`}>
         <div className="flex flex-col items-center gap-1">
-          <span className="text-[10px] uppercase tracking-wider font-bold text-amber-300">
-            {myTurn ? "Your dice" : `${turnName}'s dice`}
-          </span>
-          <Dice value={value} rolling={rolling} highlight={myTurn && canRoll && !finished} />
+          <span className={PANEL_LABEL}>{myTurn ? "Your dice" : `${turnName}'s dice`}</span>
+          <Dice value={value} rolling={rolling} highlight={myTurn && canRoll && !finished} size={isDock ? "3.5rem" : "4.5rem"} />
         </div>
 
-        {myTurn ? (
-          <button
-            onClick={onRoll}
-            disabled={!canRoll || rolling || finished}
-            className="rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 disabled:opacity-40 px-5 py-3 font-bold transition"
-          >
-            🎲 Roll
-          </button>
-        ) : (
-          <div className="text-sm text-slate-300 max-w-[12rem]">
-            <span className="block font-semibold">{turnName}'s turn</span>
-            <span className="block text-xs text-slate-400">
-              {finished
-                ? "Game over"
-                : canRoll
-                ? "Waiting for them to roll…"
-                : "Waiting for move to resolve…"}
-            </span>
-          </div>
-        )}
-
-        {value === 6 && !rolling && !finished && (
-          <span className="text-amber-300 text-xs whitespace-nowrap">Six! Roll again if rules allow.</span>
-        )}
+        <div className={`flex min-w-0 flex-1 flex-col gap-2 ${isDock ? "" : "w-full"}`}>
+          <p className="text-sm font-semibold text-slate-100" aria-live="polite">
+            {status}
+          </p>
+          {myTurn ? (
+            <button
+              type="button"
+              onClick={onRoll}
+              disabled={!canRoll || rolling || finished}
+              aria-label="Roll the dice"
+              className={`inline-flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-xl px-5 text-base font-extrabold text-[#04121C] transition active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 ${FOCUS_RING}`}
+              style={{
+                background: `linear-gradient(180deg, #7DEBFF, ${HOLO_CYAN})`,
+                boxShadow: `0 0 22px ${HOLO_CYAN}66, inset 0 1px 0 rgba(255,255,255,0.6)`,
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              <Dices className="h-5 w-5" aria-hidden="true" />
+              Roll
+              {!isDock && (
+                <kbd className="ml-1 rounded border border-black/30 bg-black/10 px-1.5 text-[11px] font-bold">Space</kbd>
+              )}
+            </button>
+          ) : null}
+          {value === 6 && !rolling && !finished && <p className="text-xs font-semibold text-amber-300">Rolled a six</p>}
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 
+/* ─────────────────────────── Roster ─────────────────────────── */
+
+interface RosterReactionProps {
+  /** From useSeatReactions() — registers this row as the anchor a targeted
+   *  reaction flies to/from and shakes on landing. Optional so this
+   *  component still renders fine anywhere reactions aren't wired up. */
+  registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
+  onTarget?: (playerId: string) => void;
+  activeTargetId?: string | null;
+  onCloseTarget?: () => void;
+}
+
 /**
- * SnlPlayerRail — the in-board roster (coin colour + square + climb/bite
- * stats). Renamed from the original in-file `PlayerList` so it no longer
- * shadows the shared `components/PlayerList` (a different roster widget).
+ * SnlPlayerRail — the in-board roster (coin colour, square, progress to 100,
+ * climb/bite stats). `strip` is the phone version: one swipeable row of chips.
+ * `list` is the desktop version: a card per player with a progress bar.
  */
 export function SnlPlayerRail({
   players,
@@ -826,6 +311,7 @@ export function SnlPlayerRail({
   coinColorOf,
   initialOf,
   selfId,
+  layout = "list",
   registerCardRef,
   onTarget,
   activeTargetId,
@@ -836,151 +322,225 @@ export function SnlPlayerRail({
   coinColorOf: Record<string, CoinColor>;
   initialOf: Record<string, string>;
   selfId: string | null;
-  /** From useSeatReactions() — registers this row as the anchor a targeted
-   *  reaction flies to/from and shakes on landing. Optional so this
-   *  component still renders fine anywhere reactions aren't wired up. */
-  registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
-  onTarget?: (playerId: string) => void;
-  activeTargetId?: string | null;
-  onCloseTarget?: () => void;
-}) {
+  layout?: "strip" | "list";
+} & RosterReactionProps) {
+  const isStrip = layout === "strip";
   return (
-    <div
-      className="rounded-xl p-2 space-y-1.5 max-h-[280px] overflow-y-auto"
-      style={{
-        background: "linear-gradient(160deg, #1e293b 0%, #0f172a 100%)",
-        border: "1px solid #334155",
-      }}
-    >
-      <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400 dark:text-slate-300 px-1 pt-1">
-        Players ({state.playerOrder.length})
-      </div>
-      {state.playerOrder.map((id) => {
-        const p = players.find((pp) => pp.id === id);
-        const pos = state.positions[id] ?? 0;
-        const stats = state.stats[id];
-        const isTurn = state.turnPlayerId === id;
-        const finished = state.finishedOrder.includes(id);
-        const palette = COIN_COLOR_HEX[coinColorOf[id]];
-        const isTargetActive = activeTargetId === id;
-        return (
-          <div
-            key={id}
-            ref={registerCardRef?.(id)}
-            className={`relative flex items-center gap-2 p-1.5 rounded-lg transition ${
-              isTurn ? "bg-slate-800/80" : "bg-slate-800/30"
-            }${id !== selfId ? " cursor-pointer hover:bg-slate-700/50 active:scale-[0.99]" : ""}`}
-            onClick={id !== selfId ? () => onTarget?.(id) : undefined}
-            title={id !== selfId ? `Tap to react at ${p?.name ?? "player"}` : undefined}
-            style={{
-              backgroundImage: isTurn
-                ? `linear-gradient(90deg, ${palette.fill}38, transparent 55%)`
-                : undefined,
-              boxShadow: isTurn ? `0 0 10px ${palette.fill}40` : undefined,
-            }}
-          >
-            {isTargetActive && onCloseTarget && (
-              <SeatTargetReactionWheel
-                game="snl"
-                targetPlayerId={id}
-                targetPlayerName={p?.name}
-                onClose={onCloseTarget}
-                position="top"
-              />
-            )}
-            <div
-              className="flex items-center justify-center w-7 h-7 rounded-full text-[10px] font-extrabold flex-shrink-0"
-              style={{
-                background: palette.fill,
-                color: "#fff",
-                boxShadow: `inset 0 -2px 0 ${palette.dark}`,
-              }}
+    <section aria-label="Players" className={`${GLASS_PANEL} ${isStrip ? "p-2" : "p-3"}`}>
+      {!isStrip && <h3 className={`${PANEL_LABEL} px-1 pb-2`}>Players ({state.playerOrder.length})</h3>}
+      <ul
+        className={
+          isStrip
+            ? "touch-pan-x -mx-0.5 flex snap-x gap-2 overflow-x-auto px-0.5 pb-1"
+            : "max-h-[340px] space-y-2 overflow-y-auto pr-0.5"
+        }
+      >
+        {state.playerOrder.map((id) => {
+          const p = players.find((pp) => pp.id === id);
+          const name = p?.name ?? "—";
+          const pos = state.positions[id] ?? 0;
+          const stats = state.stats[id];
+          const isTurn = state.turnPlayerId === id;
+          const finished = state.finishedOrder.includes(id);
+          const palette = COIN_COLOR_HEX[coinColorOf[id]];
+          const isSelf = id === selfId;
+          const canReact = !isSelf && !!onTarget;
+          const progress = Math.max(0, Math.min(100, pos)) / 100;
+
+          const identity = (
+            <>
+              <span
+                aria-hidden="true"
+                className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold text-white"
+                style={{
+                  background: `radial-gradient(circle at 35% 30%, #fff8, ${palette.fill} 35%, ${palette.dark})`,
+                  boxShadow: `0 0 ${isTurn ? 12 : 0}px ${palette.fill}`,
+                }}
+              >
+                {initialOf[id]}
+              </span>
+              <span className="min-w-0 flex-1 text-left">
+                <span className="flex items-center gap-1 text-xs font-semibold text-slate-100">
+                  {/* The phone chip already carries the coin; the avatar would squeeze the name. */}
+                  {!isStrip && (
+                    <SeatAvatar avatar={p?.avatar} playerId={id} name={name} className="h-5 w-5" textClassName="text-[8px]" />
+                  )}
+                  <span className="truncate">{name}</span>
+                  {!isStrip && isSelf && <span className="text-[10px] font-normal text-slate-300">(you)</span>}
+                  {!isStrip && finished && <span className="text-[10px] font-bold text-amber-300">FINISHED</span>}
+                </span>
+                <span className="flex gap-2 text-[11px] text-slate-300">
+                  <span>
+                    sq <b className="font-mono text-slate-50">{pos}</b>
+                  </span>
+                  {isStrip && isSelf && <span>you</span>}
+                  {isStrip && finished && <span className="font-bold text-amber-300">finished</span>}
+                  {!isStrip && stats && (
+                    <>
+                      <span title="Ladders climbed">▲ {stats.laddersClimbed}</span>
+                      <span title="Snake bites">▼ {stats.snakesBitten}</span>
+                    </>
+                  )}
+                </span>
+              </span>
+            </>
+          );
+
+          return (
+            <li
+              key={id}
+              ref={registerCardRef?.(id)}
+              className={`relative flex-shrink-0 snap-start rounded-xl border transition ${
+                isStrip ? "w-[11.5rem] min-h-[52px]" : ""
+              } ${isTurn ? "border-white/25 bg-white/10" : "border-white/5 bg-white/[0.04]"}`}
+              style={{ boxShadow: isTurn ? `0 0 14px ${palette.fill}55, inset 3px 0 0 ${palette.fill}` : `inset 3px 0 0 ${palette.fill}66` }}
+              aria-current={isTurn ? "true" : undefined}
             >
-              {initialOf[id]}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-xs text-slate-100 font-semibold truncate flex items-center gap-1">
-                <SeatAvatar
-                  avatar={p?.avatar}
-                  playerId={id}
-                  name={p?.name ?? "—"}
-                  className="w-5 h-5"
-                  textClassName="text-[8px]"
+              {activeTargetId === id && onCloseTarget && (
+                <SeatTargetReactionWheel
+                  game="snl"
+                  targetPlayerId={id}
+                  targetPlayerName={p?.name}
+                  onClose={onCloseTarget}
+                  position="top"
                 />
-                {p?.name ?? "—"}
-                {id === selfId && <span className="text-[9px] text-slate-400 dark:text-slate-300 font-normal">(you)</span>}
-                {finished && <span title="Finished">🏁</span>}
-              </div>
-              <div className="text-[9px] text-slate-400 flex gap-1.5">
-                <span>sq <b className="text-slate-200">{pos}</b></span>
-                {stats && (
-                  <>
-                    <span title="Ladders">🪜{stats.laddersClimbed}</span>
-                    <span title="Snake bites">🐍{stats.snakesBitten}</span>
-                  </>
+              )}
+              <div className="flex items-center gap-1 p-1.5">
+                {canReact ? (
+                  <button
+                    type="button"
+                    onClick={() => onTarget?.(id)}
+                    title={`React at ${name}`}
+                    aria-label={`React at ${name}`}
+                    className={`flex min-h-[44px] min-w-0 flex-1 touch-manipulation items-center gap-2 rounded-lg text-left hover:bg-white/5 ${FOCUS_RING}`}
+                  >
+                    {identity}
+                  </button>
+                ) : (
+                  <div className="flex min-h-[44px] min-w-0 flex-1 items-center gap-2">{identity}</div>
                 )}
+                {p && <SeatProfileButton player={p} isSelf={isSelf} compact className="text-slate-300 hover:text-white" />}
               </div>
-            </div>
-            {p && <SeatProfileButton player={p} isSelf={id === selfId} compact className="text-slate-300 hover:text-white" />}
-          </div>
-        );
-      })}
-    </div>
+              {!isStrip && (
+                <div
+                  role="progressbar"
+                  aria-label={`${name} progress to square 100`}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={pos}
+                  className="mx-2 mb-2 h-1.5 overflow-hidden rounded-full bg-black/40"
+                >
+                  <div
+                    className="h-full origin-left rounded-full transition-transform duration-500"
+                    style={{ transform: `scaleX(${progress})`, background: `linear-gradient(90deg, ${palette.dark}, ${palette.fill})` }}
+                  />
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
+/* ─────────────────────────── Feed ─────────────────────────── */
+
+interface FeedLine {
+  glyph: string;
+  color: string;
+  text: string;
+}
+
+function describeEvent(e: SnlEvent, name: (id: string) => string): FeedLine | null {
+  switch (e.kind) {
+    case "roll":
+      return { glyph: "◆", color: HOLO_CYAN, text: `${name(e.playerId)} rolled ${e.roll}` };
+    case "ladder":
+      return { glyph: "▲", color: EVENT_LADDER, text: `${name(e.playerId)} climbed ${e.from} → ${e.to}` };
+    case "snake":
+      return { glyph: "▼", color: EVENT_SNAKE, text: `${name(e.playerId)} bitten at ${e.from} → ${e.to}` };
+    case "bounce":
+      return { glyph: "↩", color: EVENT_BOUNCE, text: `${name(e.playerId)} bounced back to ${e.landing}` };
+    case "stay":
+      return { glyph: "•", color: "#94a3b8", text: `${name(e.playerId)} stayed put` };
+    case "win":
+      return { glyph: "★", color: EVENT_WIN, text: `${name(e.playerId)} reached 100!` };
+    default:
+      return null;
+  }
+}
+
+/**
+ * The live feed. A visually hidden polite live region always announces the
+ * latest event; `compact` (phone) folds the list behind the newest line so the
+ * board and the dice stay on screen.
+ */
 export function EventFeed({
   events,
   players,
+  compact = false,
 }: {
   events: SnlEvent[];
   players: Player[];
+  compact?: boolean;
 }) {
-  const recent = events.slice(-6).reverse();
-  function name(id: string): string {
-    return players.find((p) => p.id === id)?.name ?? useRoomStore.getState().knownPlayers[id]?.name ?? "?";
-  }
+  const name = (id: string) => playerNameOf(id, players);
+  const lines = events
+    .slice(-6)
+    .reverse()
+    .map((e, i) => ({ key: `${e.ts}-${i}`, line: describeEvent(e, name) }))
+    .filter((l): l is { key: string; line: FeedLine } => l.line !== null);
+  const latest = lines[0]?.line;
+
+  const rows = lines.map(({ key, line }) => (
+    <li key={key} className="flex items-start gap-2 px-1 py-0.5 text-[12px] leading-snug text-slate-200">
+      <span aria-hidden="true" className="w-3 flex-shrink-0 text-center font-bold" style={{ color: line.color }}>
+        {line.glyph}
+      </span>
+      <span>{line.text}</span>
+    </li>
+  ));
+
   return (
-    <div
-      className="rounded-xl p-2 space-y-0.5 max-h-[180px] overflow-y-auto"
-      style={{
-        background: "linear-gradient(160deg, #1e293b 0%, #0f172a 100%)",
-        border: "1px solid #334155",
-      }}
-    >
-      <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400 dark:text-slate-300 px-1 pt-1">Feed</div>
-      {recent.length === 0 ? (
-        <div className="text-[11px] text-slate-500 dark:text-slate-300 italic px-1 py-2">Waiting for first roll…</div>
+    <section aria-label="Match feed" className={`${GLASS_PANEL} ${compact ? "px-3 py-2" : "p-3"}`}>
+      <p className="sr-only" aria-live="polite">
+        {latest?.text ?? ""}
+      </p>
+      {compact ? (
+        <details className="group">
+          <summary className={`flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-2 rounded-lg ${FOCUS_RING}`}>
+            <span className="flex min-w-0 items-center gap-2 text-xs text-slate-200">
+              <span className={PANEL_LABEL}>Feed</span>
+              <span className="truncate">{latest ? latest.text : "Waiting for the first roll…"}</span>
+            </span>
+            <span aria-hidden="true" className="text-slate-400 transition-transform group-open:rotate-180">
+              ▾
+            </span>
+          </summary>
+          <ul className="max-h-[180px] overflow-y-auto pb-1">{rows}</ul>
+        </details>
       ) : (
-        recent.map((e, i) => (
-          <div key={`${e.ts}-${i}`} className="text-[11px] text-slate-300 px-1 py-0.5 leading-snug">
-            {renderEvent(e, name)}
-          </div>
-        ))
+        <>
+          <h3 className={`${PANEL_LABEL} px-1 pb-2`}>Live feed</h3>
+          {lines.length === 0 ? (
+            <p className="px-1 py-2 text-xs italic text-slate-300">Waiting for the first roll…</p>
+          ) : (
+            <ul className="max-h-[200px] space-y-0.5 overflow-y-auto">{rows}</ul>
+          )}
+        </>
       )}
-    </div>
+    </section>
   );
 }
 
-function renderEvent(e: SnlEvent, name: (id: string) => string): string {
-  switch (e.kind) {
-    case "roll":   return `🎲 ${name(e.playerId)} rolled ${e.roll}`;
-    case "ladder": return `🪜 ${name(e.playerId)} climbed ${e.from} → ${e.to}`;
-    case "snake":  return `🐍 ${name(e.playerId)} bit at ${e.from} → ${e.to}`;
-    case "bounce": return `↩ ${name(e.playerId)} bounced back to ${e.landing}`;
-    case "stay":   return `· ${name(e.playerId)} stayed put`;
-    case "win":    return `🏆 ${name(e.playerId)} reached 100!`;
-    default:       return "";
-  }
-}
-
 export function toastForEvent(e: SnlEvent, players: Player[]): { text: string; emoji: string; color: string } | null {
-  const n = players.find((p) => p.id === e.playerId)?.name ?? useRoomStore.getState().knownPlayers[e.playerId]?.name ?? "Player";
+  const n = playerNameOf(e.playerId, players);
   switch (e.kind) {
-    case "ladder": return { text: `${n} climbed to ${e.to}!`, emoji: "🪜", color: "#16a34a" };
-    case "snake":  return { text: `${n} got bit! Down to ${e.to}`, emoji: "🐍", color: "#dc2626" };
-    case "bounce": return { text: `${n} bounced back to ${e.landing}`, emoji: "↩", color: "#ea580c" };
-    case "win":    return { text: `${n} wins!`, emoji: "🏆", color: "#a855f7" };
+    case "ladder": return { text: `${n} climbed to ${e.to}!`, emoji: "▲", color: EVENT_LADDER };
+    case "snake":  return { text: `${n} got bitten! Down to ${e.to}`, emoji: "▼", color: EVENT_SNAKE };
+    case "bounce": return { text: `${n} bounced back to ${e.landing}`, emoji: "↩", color: EVENT_BOUNCE };
+    case "win":    return { text: `${n} wins!`, emoji: "★", color: EVENT_WIN };
     default:       return null;
   }
 }
@@ -996,57 +556,41 @@ export function SnlHeader({
   turnPlayer: Player | undefined;
   turnColor: CoinColor | undefined;
 }) {
+  const accent = turnColor ? COIN_COLOR_HEX[turnColor].fill : HOLO_CYAN;
   return (
-    <div className="flex items-center justify-between flex-wrap gap-2">
+    <header className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex items-center gap-2">
-        <div className="text-xs uppercase tracking-[0.2em] text-slate-400 font-bold">
-          🐍 Snakes &amp; Ladders
-        </div>
+        <h2 className="font-display text-base tracking-wide text-slate-50 sm:text-lg">
+          Snakes <span style={{ color: HOLO_CYAN }}>&amp;</span> Ladders
+        </h2>
         <DifficultyBadge difficulty={state.config.difficulty} />
       </div>
-      <div className="text-sm flex items-center gap-2">
-        <span className="text-slate-400">Turn:</span>
+      <p className="flex items-center gap-2 text-sm" aria-live="polite">
+        <span className="text-slate-300">Turn</span>
         {turnColor && (
           <span
-            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-extrabold"
-            style={{
-              background: COIN_COLOR_HEX[turnColor].fill,
-              color: "#0f172a",
-              boxShadow: `0 0 12px ${COIN_COLOR_HEX[turnColor].fill}88`,
-            }}
+            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-extrabold text-slate-50"
+            style={{ borderColor: accent, background: `${accent}26`, boxShadow: `0 0 14px ${accent}55` }}
           >
+            <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: accent }} />
             {turnPlayer?.name ?? "—"}
           </span>
         )}
-      </div>
-    </div>
+      </p>
+    </header>
   );
 }
 
-export function SnlFinishedBanner({
-  players,
-  winnerId,
-}: {
-  players: Player[];
-  winnerId: string | null;
-}) {
-  const winnerName =
-    players.find((p) => p.id === winnerId)?.name ??
-    (winnerId ? useRoomStore.getState().knownPlayers[winnerId]?.name : undefined) ??
-    "Someone";
+export function SnlFinishedBanner({ players, winnerId }: { players: Player[]; winnerId: string | null }) {
+  const winnerName = winnerId ? playerNameOf(winnerId, players) : "Someone";
   return (
     <div
-      className="rounded-xl p-4 text-center"
-      style={{
-        background: "linear-gradient(135deg, #064e3b 0%, #022c22 100%)",
-        border: "2px solid #10b981",
-        boxShadow: "0 0 32px rgba(16,185,129,0.4)",
-      }}
+      role="status"
+      className="flex items-center justify-center gap-3 rounded-2xl border border-amber-300/60 bg-[linear-gradient(135deg,rgba(120,80,10,0.55),rgba(20,14,4,0.9))] p-4 text-center"
+      style={{ boxShadow: "0 0 32px rgba(245,184,61,0.35)" }}
     >
-      <div className="text-3xl mb-1">🏆</div>
-      <div className="text-xl font-bold text-emerald-200">
-        {winnerName} reached 100!
-      </div>
+      <Trophy className="h-7 w-7 text-amber-300" aria-hidden="true" />
+      <p className="text-lg font-bold text-amber-100">{winnerName} reached 100!</p>
     </div>
   );
 }

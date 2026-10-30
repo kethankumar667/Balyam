@@ -1956,6 +1956,29 @@ body, #root, .bhalyam-paper {
   transform-box: fill-box;
 }
 
+/* SnL — a token slides to its square with a little overshoot. */
+.snl-token {
+  transition: transform 520ms cubic-bezier(.34, 1.56, .64, 1);
+  will-change: transform;
+}
+
+/* SnL — the glow layer (ladder rungs, snake eyes, finish halo) breathes.
+   Opacity only, on the <svg> itself, so it composites without a repaint. */
+@keyframes snl-fx-breathe {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+.snl-fx-breathe {
+  animation: snl-fx-breathe 3.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .snl-token { transition-duration: 0ms; }
+  .snl-token-pulse,
+  .snl-fx-breathe { animation: none; }
+  .snl-fx-breathe { opacity: 0.85; }
+}
+
 /* SnL — dice idle bob when it's your turn */
 @keyframes snl-dice-bob {
   0%, 100% { transform: translateY(0)    rotate(-2deg); }
