@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import AppHeader from "./AppHeader";
 import AppSidebar from "./AppSidebar";
+import MobileTabBar from "./MobileTabBar";
 import Breadcrumbs from "../navigation/Breadcrumbs";
 import { type BreadcrumbItem } from "../navigation/breadcrumbsConfig";
 import { useMandaliInbox } from "../../hooks/useMandaliInbox";
@@ -325,12 +326,21 @@ export default function AppLayout({
                   />
                 </div>
               )}
-              <div className="w-full min-w-0 flex-1 min-h-0 flex flex-col">
+              {/* Keyed by path so each screen change replays the arrival animation, in the persistent family
+                  layouts too (their header stays put; only this area changes). */}
+              <div
+                key={pathname}
+                className={`w-full min-w-0 flex-1 min-h-0 flex flex-col ${chrome ? "route-enter" : "route-fade"}`}
+              >
                 {children}
               </div>
             </div>
           </main>
         </div>
+
+        {/* Phone-and-tablet primary navigation. A flex sibling of the body, not an overlay, so the page above it
+            simply ends where the bar begins. Gone with the rest of the chrome while a match is on screen. */}
+        {chrome && <MobileTabBar onOpenJoin={() => setJoinOpen(true)} />}
 
         {/* Browser-only overlays are not part of the static page. */}
         {mounted && (

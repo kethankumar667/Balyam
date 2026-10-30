@@ -83,10 +83,71 @@
       href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Righteous&family=Caveat:wght@400;500;600;700&family=Kalam:wght@300;400;700&family=Patrick+Hand&family=Architects+Daughter&family=Indie+Flower&family=Gochi+Hand&family=Playfair+Display:wght@600;700&family=Fredoka:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+Telugu:wght@400;500;700&family=Nunito:wght@300;400;500;600;700;800&family=VT323&family=Special+Elite&display=swap"
       rel="stylesheet"
     />
+    <style>
+      /* Instant branded splash, so the first thing anyone sees is BHALYAM, not a blank white page.
+         Plain HTML + CSS on purpose: the CSP forbids inline script, and a sibling AFTER #root rather than a child
+         of it, because prerendered routes hydrate into #root and anything extra inside breaks hydration. It
+         hides itself the moment React (or a prerendered page) puts content into #root — no script involved. */
+      #app-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        background: radial-gradient(ellipse at 50% 38%, #fff9ea 0%, #f7e8c4 62%, #ebd3a0 100%);
+        color: #6d4323;
+        font: 800 13px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        letter-spacing: 0.42em;
+        text-indent: 0.42em;
+      }
+      #root:not(:empty) ~ #app-splash {
+        display: none;
+      }
+      #app-splash img {
+        width: min(44vw, 168px);
+        height: auto;
+        aspect-ratio: 1;
+        /* Static on purpose: a filter on an animating element is re-rendered every frame, which a budget phone
+           feels. The moving bar below is the "loading" signal. */
+        filter: drop-shadow(0 14px 22px rgba(109, 67, 35, 0.28));
+      }
+      #app-splash .bar {
+        position: relative;
+        width: min(40vw, 148px);
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(109, 67, 35, 0.16);
+        overflow: hidden;
+      }
+      #app-splash .bar i {
+        position: absolute;
+        inset: 0;
+        width: 45%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #e4b128, #f6d36b);
+        animation: splash-run 1.3s ease-in-out infinite;
+      }
+      @keyframes splash-run {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(222%); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #app-splash .bar i { animation: none; width: 100%; }
+      }
+    </style>
   </head>
   <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
 
     <div id="root"></div>
+    <div id="app-splash" role="status" aria-label="Loading BHALYAM">
+      <img src="/Bhalyam-logo.webp" alt="" width="168" height="168" decoding="async" />
+      <span aria-hidden="true">BHALYAM</span>
+      <span class="bar" aria-hidden="true"><i></i></span>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -398,7 +398,7 @@ function InlineButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="relative w-9 h-9 rounded-full flex items-center justify-center transition-colors"
+      className="relative w-11 h-11 lg:w-9 lg:h-9 rounded-full flex items-center justify-center transition-colors"
       style={{ background: bg, color, border, cursor: "pointer" }}
     >
       {children}
@@ -499,7 +499,7 @@ function EmojiPopover({
             key={e}
             onClick={() => onPick(e)}
             disabled={cooldown}
-            className="text-2xl hover:scale-125 active:scale-110 transition disabled:opacity-50 leading-none w-9 h-9 flex items-center justify-center"
+            className="text-2xl hover:scale-125 active:scale-110 transition disabled:opacity-50 leading-none w-11 h-11 lg:w-9 lg:h-9 flex items-center justify-center"
             title={`React with ${e}`}
           >
             {e}
@@ -522,7 +522,7 @@ function EmojiPopover({
                 key={e}
                 onClick={() => onPick(e)}
                 disabled={cooldown}
-                className="text-2xl hover:scale-125 active:scale-110 transition disabled:opacity-50 leading-none w-9 h-9 flex items-center justify-center"
+                className="text-2xl hover:scale-125 active:scale-110 transition disabled:opacity-50 leading-none w-11 h-11 lg:w-9 lg:h-9 flex items-center justify-center"
                 title={`React with ${e}`}
               >
                 {e}

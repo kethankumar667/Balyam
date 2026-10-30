@@ -2111,14 +2111,14 @@ export default function Room() {
                   onClick={toggleRoomFullscreen}
                   aria-label={roomIsFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
                   title={roomIsFullscreen ? "Exit fullscreen" : "Fullscreen"}
-                  className="pointer-events-auto mr-2 text-sm bg-[#4A3F35] hover:bg-[#3F352C] dark:bg-slate-800/90 dark:hover:bg-slate-700 dark:border dark:border-slate-700/60 text-[#FFF3E3] dark:text-white px-3 py-1.5 rounded-lg shadow-lg transition font-medium"
+                  className="pointer-events-auto mr-2 text-sm bg-[#4A3F35] hover:bg-[#3F352C] dark:bg-slate-800/90 dark:hover:bg-slate-700 dark:border dark:border-slate-700/60 text-[#FFF3E3] dark:text-white px-3 py-1.5 max-md:min-h-[44px] max-md:min-w-[44px] short-land:min-h-[44px] short-land:min-w-[44px] rounded-lg shadow-lg transition font-medium"
                 >
                   {roomIsFullscreen ? "🗗" : "⛶"}
                 </button>
               )}
               <button
                 onClick={requestLeaveConfirmation}
-                className="pointer-events-auto text-sm bg-[#4A3F35] hover:bg-[#3F352C] dark:bg-slate-800/90 dark:hover:bg-red-950/60 dark:hover:text-red-300 dark:border dark:border-slate-700/60 text-[#FFF3E3] dark:text-white px-3.5 py-1.5 rounded-lg shadow-lg transition font-medium"
+                className="pointer-events-auto text-sm bg-[#4A3F35] hover:bg-[#3F352C] dark:bg-slate-800/90 dark:hover:bg-red-950/60 dark:hover:text-red-300 dark:border dark:border-slate-700/60 text-[#FFF3E3] dark:text-white px-3.5 py-1.5 max-md:min-h-[44px] short-land:min-h-[44px] rounded-lg shadow-lg transition font-medium"
               >
                 Leave
               </button>

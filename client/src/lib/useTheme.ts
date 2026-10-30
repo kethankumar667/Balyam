@@ -49,9 +49,30 @@ function subscribeTheme(sync: () => void): () => void {
   return () => window.removeEventListener(EVENT_NAME, sync);
 }
 
+/**
+ * Paint the browser's own chrome (Android address/status bar, iOS Safari top
+ * bar) the colour of the app's header, so the app reads as one surface instead
+ * of a page inside a brown frame.
+ *
+ * Reads the `--chrome-panel` token the header and the bottom tab bar are drawn
+ * with, rather than a copy of the palette, so it cannot drift from the theme.
+ * A custom property resolves the instant `data-theme` changes; the body's
+ * computed background would not (it animates, so right after a switch it still
+ * reports the old colour). An empty token leaves the meta as it was.
+ */
+export function syncThemeColor(): void {
+  if (typeof document === "undefined") return;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) return;
+  const panel = getComputedStyle(document.documentElement).getPropertyValue("--chrome-panel").trim();
+  if (!panel) return;
+  meta.setAttribute("content", panel);
+}
+
 export function setTheme(next: AppTheme): void {
   if (typeof document === "undefined" || typeof window === "undefined") return;
   document.documentElement.setAttribute("data-theme", next);
+  syncThemeColor();
   try {
     window.localStorage.setItem(STORAGE_KEY, next);
   } catch {

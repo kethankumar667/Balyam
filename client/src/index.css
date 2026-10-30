@@ -406,6 +406,39 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* App feel — the page behaves like an app shell, not a document.
+   - No pull-to-refresh or rubber-band: a downward swipe in a match must never reload or drag the page.
+   - No iOS long-press link/image sheet floating over the UI (text can still be selected and copied).
+   - Buttons press IN. Uses the standalone `scale` property, which composes with Tailwind's `transform`
+     utilities instead of replacing them, and sets no `transition`, so it cannot clobber one. Opt out with
+     `data-no-press` (anything draggable already is). */
+html,
+body {
+  overscroll-behavior-y: none;
+}
+body {
+  -webkit-touch-callout: none;
+}
+/* Screen transitions — a page arrives instead of cutting in. `backwards` fill only: nothing is left applied
+   after the animation, so no permanent transform (which would trap fixed-position descendants). A live game
+   screen gets the fade alone (`route-fade`): a board that measures itself on mount must never see an offset. */
+@keyframes route-enter {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+}
+@keyframes route-fade {
+  from { opacity: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .route-enter { animation: route-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+  .route-fade { animation: route-fade 200ms ease-out backwards; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  button:not(:disabled):not([draggable="true"]):not([data-no-press]):active,
+  [role="button"]:not([aria-disabled="true"]):not([draggable="true"]):not([data-no-press]):active {
+    scale: 0.97;
+  }
+}
+
 #root {
   min-height: 100%;
   width: 100%;

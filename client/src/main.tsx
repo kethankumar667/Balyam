@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AudioProvider } from "./context/AudioContext";
-import { resolveTheme } from "./lib/useTheme";
+import { resolveTheme, syncThemeColor } from "./lib/useTheme";
 import { initLayoutGuard } from "./lib/layoutGuard";
 import { initErrorMonitoring } from "./lib/errorMonitoring";
 import { purgeRetiredStorage } from "./lib/retiredStorage";
@@ -15,6 +15,7 @@ if (typeof document !== "undefined") {
   initErrorMonitoring();
   timelineRecorder.start();
   document.documentElement.setAttribute("data-theme", resolveTheme());
+  syncThemeColor();
   initLayoutGuard();
 
   // Self-heal when Vite dynamic import fails due to stale chunk hashes or HMR updates
