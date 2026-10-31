@@ -302,7 +302,12 @@ export default function MandaliHubPage(): JSX.Element {
   };
 
   return (
-    <AppLayout customTail={activeMandali ? `@${activeMandali.handle}` : undefined}>
+    // The phone layout of a group you belong to carries its own bottom tabs and a back arrow to the list, so the
+    // global bar steps aside (a stranger's storefront and the desktop layout have no tabs of their own).
+    <AppLayout
+      customTail={activeMandali ? `@${activeMandali.handle}` : undefined}
+      tabBar={!(isCurrentMember && viewport === "mobile")}
+    >
       <div className="flex-1 min-h-0 h-full w-full flex flex-col overflow-hidden relative select-none">
         {isCurrentMember && (
           <IncomingCoinRequestBanner requests={incomingCoinRequests} members={members} onPay={fundCoinRequest} />

@@ -65,6 +65,12 @@ interface AppLayoutProps {
    * yet needs an ordinary way back.
    */
   chrome?: boolean;
+  /**
+   * The phone's bottom tab bar (defaults to true). A screen that draws its own bottom navigation, like an
+   * open Mandali with Chat / Play / Memories / People, turns it off: two bars of tabs stacked on one
+   * 375px screen read as a bug, and that screen already has a way back.
+   */
+  tabBar?: boolean;
   sidebar?: boolean;
   /** Optional custom breadcrumbs override */
   breadcrumbs?: BreadcrumbItem[];
@@ -85,6 +91,7 @@ export default function AppLayout({
   children,
   onSelectGame,
   chrome = true,
+  tabBar = true,
   sidebar = true,
   breadcrumbs,
   customTail,
@@ -341,7 +348,7 @@ export default function AppLayout({
 
         {/* Phone-and-tablet primary navigation. A flex sibling of the body, not an overlay, so the page above it
             simply ends where the bar begins. Gone with the rest of the chrome while a match is on screen. */}
-        {chrome && <MobileTabBar onOpenJoin={() => setJoinOpen(true)} />}
+        {chrome && tabBar && <MobileTabBar onOpenJoin={() => setJoinOpen(true)} />}
 
         {/* Browser-only overlays are not part of the static page. */}
         {mounted && (
