@@ -319,7 +319,8 @@ export default function AppLayout({
             )}
             <div className="relative z-10 flex-1 min-h-0 flex flex-col">
               {chrome && showBreadcrumbs && (
-                <div className="flex-shrink-0 z-20 border-b border-[var(--chrome-hairline)] bg-[var(--chrome-panel)]">
+                // Desktop only: below `lg` the bottom tab bar already says where you are and Home is one tap away.
+                <div className="hidden lg:block flex-shrink-0 z-20 border-b border-[var(--chrome-hairline)] bg-[var(--chrome-panel)]">
                   <Breadcrumbs
                     crumbs={breadcrumbs}
                     customTail={customTail}
