@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
 import ProfileOverviewPage from "../ProfileOverviewPage";
@@ -8,6 +8,8 @@ import { ACHIEVEMENT_CATALOG, type Achievement } from "@shared/profile/Achieveme
 
 const exportPlayer = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/privacy/exportData", () => ({ downloadPlayerExport: exportPlayer }));
+const viewport = vi.hoisted(() => ({ current: "desktop" as "mobile" | "desktop" }));
+vi.mock("../../lib/useViewport", () => ({ useViewport: () => viewport.current }));
 
 const profile = {
   playerId: "player_1",
@@ -192,5 +194,43 @@ describe("ProfileOverviewPage redesign", () => {
 
     expect(screen.getByText("No mastery data yet")).toBeDefined();
     expect(screen.getByText("Your battle log is ready")).toBeDefined();
+  });
+});
+
+/** A phone opens straight on the game record: no level card or headline tiles ahead of it. */
+describe("ProfileOverviewPage on a phone", () => {
+  afterEach(() => { viewport.current = "desktop"; });
+
+  it("opens on the game record without the level card or the four headline tiles", () => {
+    viewport.current = "mobile";
+    renderOverview();
+
+    expect(screen.queryByRole("heading", { name: "Player command center" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Matches played" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Career metrics" })).toBeNull();
+    expect(screen.getByRole("region", { name: "Game mastery" }).textContent).toContain("Ludo");
+  });
+
+  it("keeps everything from Game mastery down, including the profile controls", () => {
+    viewport.current = "mobile";
+    const context = renderOverview();
+
+    expect(screen.getByRole("region", { name: "Recent activity" })).toBeDefined();
+    expect(screen.getByRole("region", { name: "Achievement highlights" })).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "Edit personal information" }));
+    expect(context.openEditModal).toHaveBeenCalledOnce();
+  });
+
+  it("does not show a career-metrics error where the tiles used to be", () => {
+    viewport.current = "mobile";
+    renderOverview({ resources: {
+      profile: { status: "ready", data: profile },
+      stats: { status: "error", data: stats, message: "Stats offline" },
+      achievements: { status: "ready", data: [] },
+      recentMatches: { status: "ready", data: [] },
+    } });
+
+    expect(screen.queryByText("Career metrics unavailable")).toBeNull();
+    expect(screen.getByText("Mastery unavailable")).toBeDefined();
   });
 });

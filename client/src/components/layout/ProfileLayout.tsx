@@ -7,6 +7,7 @@ import type { PlayerProfile } from "@shared/profile/PlayerProfile";
 import { useAudio } from "../../hooks/useAudio";
 import { AUDIO } from "../../constants/audio";
 import { HapticsManager } from "../../services/HapticsManager";
+import { useViewport } from "../../lib/useViewport";
 
 interface ProfileLayoutProps {
   children: ReactNode;
@@ -34,6 +35,10 @@ export default function ProfileLayout({
 }: ProfileLayoutProps) {
   const { pathname } = useLocation();
   const { play } = useAudio();
+  // On a phone the overview opens straight on the game record. The app header already carries the avatar and
+  // level, the bottom bar covers "back", and every section below links to its own page, so the back row, the
+  // identity hero and the section tabs would only push the record 360px down. The other profile routes keep them.
+  const isPhoneOverview = useViewport() === "mobile" && pathname === "/profile";
 
   const handleNavigation = (active: boolean) => {
     if (active) return;
@@ -50,7 +55,7 @@ export default function ProfileLayout({
       </div>
 
       <div className="relative z-10 mx-auto w-full max-w-7xl space-y-4 sm:space-y-5">
-        <div className="flex items-center justify-between gap-3">
+        {!isPhoneOverview && <div className="flex items-center justify-between gap-3">
           <Link
             to="/games"
             onClick={() => play(AUDIO.UI_CLICK)}
@@ -68,9 +73,9 @@ export default function ProfileLayout({
             <Settings className="h-4 w-4" aria-hidden="true" />
             <span className="hidden sm:inline">Preferences</span>
           </Link>
-        </div>
+        </div>}
 
-        {profile && (
+        {profile && !isPhoneOverview && (
           <ProfileHeader
             profile={profile}
             isMember={isMember}
@@ -80,7 +85,7 @@ export default function ProfileLayout({
           />
         )}
 
-        <nav
+        {!isPhoneOverview && <nav
           aria-label="Profile sections"
           className="sticky top-0 z-30 -mx-3 border-y border-stone-300/80 bg-surface-0/95 px-3 py-2 backdrop-blur-xl sm:mx-0 sm:rounded-xl sm:border dark:border-slate-700/80"
         >
@@ -110,7 +115,7 @@ export default function ProfileLayout({
               );
             })}
           </ul>
-        </nav>
+        </nav>}
 
         <div id="profile-route-content" tabIndex={-1} className="min-h-[24rem] scroll-mt-24 focus:outline-none">
           {children}

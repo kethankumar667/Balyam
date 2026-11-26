@@ -1,8 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import ProfileLayout from "../ProfileLayout";
 import type { PlayerProfile } from "@shared/profile/PlayerProfile";
+
+const viewport = vi.hoisted(() => ({ current: "desktop" as "mobile" | "desktop" }));
+vi.mock("../../../lib/useViewport", () => ({ useViewport: () => viewport.current }));
 
 const PROFILE: PlayerProfile = {
   playerId: "player_1",
@@ -39,5 +42,50 @@ describe("ProfileLayout", () => {
 
     expect(screen.queryByText(/Pro League/i)).toBeNull();
     expect(screen.queryByText(/22ms/i)).toBeNull();
+  });
+});
+
+function renderAt(path: string) {
+  render(
+    <MemoryRouter initialEntries={[path]}>
+      <ProfileLayout profile={PROFILE} name="Live player" onEditName={vi.fn()}>
+        <div>Route content</div>
+      </ProfileLayout>
+    </MemoryRouter>,
+  );
+}
+
+/**
+ * On a phone the overview opens straight on the game record: the app header already shows the avatar and
+ * level, so the back row, the identity hero and the section tabs are left out of THAT route only.
+ */
+describe("ProfileLayout on a phone", () => {
+  afterEach(() => { viewport.current = "desktop"; });
+
+  it("leaves out the back row, the hero and the section tabs on the overview", () => {
+    viewport.current = "mobile";
+    renderAt("/profile");
+
+    expect(screen.getByText("Route content")).toBeDefined();
+    expect(screen.queryByRole("navigation", { name: "Profile sections" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Live player" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit display name" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Games" })).toBeNull();
+  });
+
+  it("keeps them on the other profile routes, where the tabs are the way between sections", () => {
+    viewport.current = "mobile";
+    renderAt("/profile/achievements");
+
+    expect(screen.getByRole("navigation", { name: "Profile sections" })).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Live player" })).toBeDefined();
+  });
+
+  it("keeps them on the overview at tablet and desktop widths", () => {
+    viewport.current = "desktop";
+    renderAt("/profile");
+
+    expect(screen.getByRole("navigation", { name: "Profile sections" })).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Live player" })).toBeDefined();
   });
 });
