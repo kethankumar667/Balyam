@@ -11,7 +11,6 @@ import LevelJourneyCard from "../features/profile/LevelJourneyCard";
 import { VaultAchievementCard } from "../features/profile/VaultAchievementCard";
 import { AchievementRevealModal } from "../features/profile/AchievementRevealModal";
 import { describeXpJourney } from "../lib/xpJourney";
-import { useViewport } from "../lib/useViewport";
 import type { ProfileFamilyOutletContext } from "../components/layout/ProfileFamilyLayout";
 import type { Achievement } from "@shared/profile/Achievements";
 import type { GameStats } from "@shared/profile/PlayerStats";
@@ -30,9 +29,6 @@ export default function ProfileOverviewPage() {
   const [activeAchievement, setActiveAchievement] = useState<Achievement | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
-  // The phone opens straight on the game record: the level card and the four headline tiles are a long scroll
-  // before it, and the header already shows the level. Not rendered at all, so their art and data are skipped too.
-  const isPhone = useViewport() === "mobile";
   const statsReady = resources.stats.status === "ready" && stats !== null && !stats.demo;
   const achievementsReady = resources.achievements.status === "ready";
 
@@ -72,16 +68,16 @@ export default function ProfileOverviewPage() {
       : <ProfileEmptyState icon={Award} title={emptyTitle} description={emptyDescription} />;
 
   return <div className="profile-command trophy-vault space-y-4 text-ink-hi sm:space-y-5">
-    {!isPhone && <LevelJourneyCard experiencePoints={profile.experiencePoints} playerId={effectivePlayerId ?? undefined} onPlay={() => navigate("/games")} />}
+    <LevelJourneyCard experiencePoints={profile.experiencePoints} playerId={effectivePlayerId ?? undefined} onPlay={() => navigate("/games")} />
 
-    {!isPhone && (resources.stats.status === "loading" ? <ProfilePanelSkeleton rows={2} /> : statsReady ? (
+    {resources.stats.status === "loading" ? <ProfilePanelSkeleton rows={2} /> : statsReady ? (
       <section aria-label="Career metrics" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <ProfileMetricTile label="Matches played" value={stats.totalMatches.toLocaleString()} detail="Completed matches" icon={Gamepad2} accent="cyan" />
         <ProfileMetricTile label="Win rate" value={`${Math.round(stats.winRate)}%`} detail={`${stats.wins.toLocaleString()} wins`} icon={Target} accent="green" />
         <ProfileMetricTile label="Achievements" value={achievementsReady ? `${unlocked} / ${achievements.length}` : "—"} detail={achievementsReady ? `${completion}% complete` : resources.achievements.status === "loading" ? "Loading collection" : "Unavailable"} icon={Trophy} accent="gold" />
         <ProfileMetricTile label="Best streak" value={stats.bestWinStreak.toLocaleString()} detail="Consecutive wins" icon={Flame} accent="coral" />
       </section>
-    ) : <ProfileErrorState title="Career metrics unavailable" description={resources.stats.status === "error" ? resources.stats.message : "Verified career statistics are not available yet."} onRetry={retryProfileData} />)}
+    ) : <ProfileErrorState title="Career metrics unavailable" description={resources.stats.status === "error" ? resources.stats.message : "Verified career statistics are not available yet."} onRetry={retryProfileData} />}
 
     <div className="grid items-start gap-4 lg:grid-cols-2 sm:gap-5">
       <ProfileSection id="mastery" title="Game mastery" description="Your record across games. Bars show win rate." icon={BarChart3} accent="cyan" className="scroll-mt-24"
