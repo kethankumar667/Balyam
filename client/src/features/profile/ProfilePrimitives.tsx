@@ -68,23 +68,27 @@ export interface ProfileMetricTileProps {
   detail: string;
   icon: LucideIcon;
   accent: ProfileAccent;
+  /** Phone density: no icon tile, shorter, so four of them fit in a 2x2 grid without a scroll. */
+  compact?: boolean;
 }
 
-export function ProfileMetricTile({ label, value, detail, icon: Icon, accent }: ProfileMetricTileProps) {
+export function ProfileMetricTile({ label, value, detail, icon: Icon, accent, compact = false }: ProfileMetricTileProps) {
   return (
     <div
       role="group"
       aria-label={label}
-      className="relative min-h-28 overflow-hidden rounded-xl border border-stone-300/80 bg-surface-1 p-3.5 shadow-[0_18px_40px_-34px_rgba(74,37,8,0.5)] dark:border-slate-700/80 dark:shadow-[0_20px_42px_-34px_rgba(0,0,0,0.95)] sm:p-4"
+      className={`relative overflow-hidden rounded-xl border border-stone-300/80 bg-surface-1 shadow-[0_18px_40px_-34px_rgba(74,37,8,0.5)] dark:border-slate-700/80 dark:shadow-[0_20px_42px_-34px_rgba(0,0,0,0.95)] ${compact ? "p-3" : "min-h-28 p-3.5 sm:p-4"}`}
     >
       <span className={`absolute inset-y-0 left-0 w-0.5 ${ACCENT_BAR[accent]}`} aria-hidden="true" />
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs font-semibold text-ink-mid">{label}</p>
-        <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${ACCENT_ICON[accent]}`}>
-          <Icon className="h-4 w-4" aria-hidden="true" />
-        </span>
+        {compact ? null : (
+          <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${ACCENT_ICON[accent]}`}>
+            <Icon className="h-4 w-4" aria-hidden="true" />
+          </span>
+        )}
       </div>
-      <p className="mt-2 font-mono text-2xl font-black tracking-[-0.04em] text-ink-hi tabular-nums sm:text-3xl">{value}</p>
+      <p className={`mt-2 font-mono text-2xl font-black tracking-[-0.04em] text-ink-hi tabular-nums ${compact ? "" : "sm:text-3xl"}`}>{value}</p>
       <p className={`mt-1 text-[11px] font-semibold ${ACCENT_TEXT[accent]}`}>{detail}</p>
     </div>
   );
@@ -141,16 +145,20 @@ export interface ProfileProgressBarProps {
   value: number;
   accent: ProfileAccent;
   showValue?: boolean;
+  /** The row already says what the bar is; the label stays as the bar's accessible name only. */
+  hideLabel?: boolean;
 }
 
-export function ProfileProgressBar({ label, value, accent, showValue = true }: ProfileProgressBarProps) {
+export function ProfileProgressBar({ label, value, accent, showValue = true, hideLabel = false }: ProfileProgressBarProps) {
   const safeValue = Math.min(100, Math.max(0, Math.round(value)));
   return (
     <div>
-      <div className="mb-1.5 flex items-center justify-between gap-3 text-xs">
-        <span className="font-medium text-ink-mid">{label}</span>
-        {showValue ? <span className={`font-mono font-bold tabular-nums ${ACCENT_TEXT[accent]}`}>{safeValue}%</span> : null}
-      </div>
+      {hideLabel ? null : (
+        <div className="mb-1.5 flex items-center justify-between gap-3 text-xs">
+          <span className="font-medium text-ink-mid">{label}</span>
+          {showValue ? <span className={`font-mono font-bold tabular-nums ${ACCENT_TEXT[accent]}`}>{safeValue}%</span> : null}
+        </div>
+      )}
       <div
         role="progressbar"
         aria-label={label}

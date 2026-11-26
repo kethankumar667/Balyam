@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
 import { Check, Copy, Pencil, ShieldCheck } from "lucide-react";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import { useCopyPlayerId } from "./useCopyPlayerId";
 import type { PlayerProfile } from "@shared/profile/PlayerProfile";
 
 interface ProfileHeaderProps {
@@ -14,7 +14,7 @@ interface ProfileHeaderProps {
   badgeLabel?: string;
 }
 
-function formatMemberDate(timestamp: number): string {
+export function formatMemberDate(timestamp: number): string {
   return new Intl.DateTimeFormat("en", {
     month: "short",
     year: "numeric",
@@ -28,28 +28,11 @@ export default function ProfileHeader({
   name,
   avatar,
 }: ProfileHeaderProps) {
-  const [copied, setCopied] = useState(false);
-  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { copied, copy: handleCopyPlayerId } = useCopyPlayerId(profile.playerId);
   const effectiveName = (name ?? profile.displayName).trim() || "Player";
   const effectiveAvatar = avatar !== undefined ? avatar ?? undefined : profile.avatar;
   const currentLevelStart = Math.max(0, (profile.level - 1) * 100);
   const levelProgress = Math.min(100, Math.max(0, profile.experiencePoints - currentLevelStart));
-
-  useEffect(() => () => {
-    if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
-  }, []);
-
-  const handleCopyPlayerId = async () => {
-    if (!navigator.clipboard) return;
-    try {
-      await navigator.clipboard.writeText(profile.playerId);
-      setCopied(true);
-      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
-      resetTimerRef.current = setTimeout(() => setCopied(false), 2_000);
-    } catch {
-      setCopied(false);
-    }
-  };
 
   return (
     <header className="relative overflow-hidden rounded-[1.35rem] border border-stone-300/80 bg-sand-100 shadow-[0_22px_60px_-42px_rgba(74,37,8,0.55)] dark:border-slate-700/80 dark:bg-sand-900 dark:shadow-[0_28px_70px_-42px_rgba(0,0,0,0.95)]">

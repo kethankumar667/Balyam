@@ -11,6 +11,8 @@ import LevelJourneyCard from "../features/profile/LevelJourneyCard";
 import { VaultAchievementCard } from "../features/profile/VaultAchievementCard";
 import { AchievementRevealModal } from "../features/profile/AchievementRevealModal";
 import { describeXpJourney } from "../lib/xpJourney";
+import { useViewport } from "../lib/useViewport";
+import ProfileOverviewPhone from "../features/profile/phone/ProfileOverviewPhone";
 import type { ProfileFamilyOutletContext } from "../components/layout/ProfileFamilyLayout";
 import type { Achievement } from "@shared/profile/Achievements";
 import type { GameStats } from "@shared/profile/PlayerStats";
@@ -29,6 +31,8 @@ export default function ProfileOverviewPage() {
   const [activeAchievement, setActiveAchievement] = useState<Achievement | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
+  // Phones get a leaner composition of the same data (see ProfileOverviewPhone); tablet and desktop keep this one.
+  const isPhone = useViewport() === "mobile";
   const statsReady = resources.stats.status === "ready" && stats !== null && !stats.demo;
   const achievementsReady = resources.achievements.status === "ready";
 
@@ -68,6 +72,19 @@ export default function ProfileOverviewPage() {
       : <ProfileEmptyState icon={Award} title={emptyTitle} description={emptyDescription} />;
 
   return <div className="profile-command trophy-vault space-y-4 text-ink-hi sm:space-y-5">
+    {isPhone ? <ProfileOverviewPhone
+      experiencePoints={profile.experiencePoints}
+      playerId={effectivePlayerId ?? undefined}
+      stats={stats}
+      statsReady={statsReady}
+      achievements={achievements}
+      achievementsReady={achievementsReady}
+      mastery={mastery}
+      recentMatches={recentMatches}
+      resources={resources}
+      onRetry={retryProfileData}
+      onPlay={() => navigate("/games")}
+    /> : <>
     <LevelJourneyCard experiencePoints={profile.experiencePoints} playerId={effectivePlayerId ?? undefined} onPlay={() => navigate("/games")} />
 
     {resources.stats.status === "loading" ? <ProfilePanelSkeleton rows={2} /> : statsReady ? (
@@ -103,6 +120,7 @@ export default function ProfileOverviewPage() {
           </li>)}</ul> : <ProfileEmptyState icon={History} title="Your battle log is ready" description="Completed matches will appear here with their recorded result." actionLabel="Play a game" onAction={() => navigate("/games")} />}
       </ProfileSection>
     </div>
+    </>}
 
     <div className="grid items-start gap-4 lg:grid-cols-[1.6fr_1fr] sm:gap-5">
       <ProfileSection title="Achievement highlights" description="Your most recent unlocks." icon={Trophy} accent="gold"

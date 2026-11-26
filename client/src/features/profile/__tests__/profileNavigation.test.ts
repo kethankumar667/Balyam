@@ -15,6 +15,12 @@ describe("profile navigation contract", () => {
     expect(PROFILE_NAV_ITEMS.every((item) => item.shortLabel.length > 0)).toBe(true);
   });
 
+  it("labels the first phone tab Overview, because the bottom bar already has a Home tab", () => {
+    expect(PROFILE_NAV_ITEMS[0].path).toBe("/profile");
+    expect(PROFILE_NAV_ITEMS[0].shortLabel).toBe("Overview");
+    expect(PROFILE_NAV_ITEMS.map((item) => item.shortLabel)).not.toContain("Home");
+  });
+
   it("preserves every legacy profile destination", () => {
     expect(PROFILE_ROUTE_REDIRECTS).toEqual({
       "/profile/overview": "/profile",

@@ -19,7 +19,8 @@ export const PROFILE_NAV_ITEMS: readonly ProfileNavigationItem[] = [
   {
     path: "/profile",
     label: "Overview",
-    shortLabel: "Home",
+    // Not "Home": the bottom bar already has a Home tab, and two of them mean different places.
+    shortLabel: "Overview",
     description: "Career overview and game mastery",
     icon: LayoutDashboard,
     accent: "gold",

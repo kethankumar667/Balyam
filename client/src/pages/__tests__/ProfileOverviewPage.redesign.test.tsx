@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
 import ProfileOverviewPage from "../ProfileOverviewPage";
@@ -8,6 +8,8 @@ import { ACHIEVEMENT_CATALOG, type Achievement } from "@shared/profile/Achieveme
 
 const exportPlayer = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/privacy/exportData", () => ({ downloadPlayerExport: exportPlayer }));
+const viewport = vi.hoisted(() => ({ current: "desktop" as "mobile" | "desktop" }));
+vi.mock("../../lib/useViewport", () => ({ useViewport: () => viewport.current }));
 
 const profile = {
   playerId: "player_1",
@@ -69,6 +71,7 @@ function renderOverview(overrides: Partial<ProfileFamilyOutletContext> = {}) {
         <Route element={<Outlet context={context} />}>
           <Route path="/profile" element={<ProfileOverviewPage />} />
         </Route>
+        <Route path="/games" element={<p>Games page</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -192,5 +195,69 @@ describe("ProfileOverviewPage redesign", () => {
 
     expect(screen.getByText("No mastery data yet")).toBeDefined();
     expect(screen.getByText("Your battle log is ready")).toBeDefined();
+  });
+});
+
+/** A phone gets a leaner composition of the same data; everything below Recent activity is shared. */
+describe("ProfileOverviewPage on a phone", () => {
+  afterEach(() => { viewport.current = "desktop"; });
+
+  it("opens on the next-move card with Play now as the action, not the desktop command center", () => {
+    viewport.current = "mobile";
+    renderOverview();
+
+    expect(screen.getByText("Your next move")).toBeDefined();
+    expect(screen.getByRole("button", { name: "Play now" })).toBeDefined();
+    expect(screen.queryByText("Your career, your next move")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Level Roadmap" })).toBeNull();
+  });
+
+  it("leaves tablet and desktop on the existing command center", () => {
+    viewport.current = "desktop";
+    renderOverview();
+
+    expect(screen.getByText("Your career, your next move")).toBeDefined();
+    expect(screen.getByRole("button", { name: "Level Roadmap" })).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Play now" })).toBeNull();
+  });
+
+  it("still shows the career numbers and a mastery preview from the real data", () => {
+    viewport.current = "mobile";
+    renderOverview();
+
+    expect(screen.getByRole("group", { name: "Matches played" }).textContent).toContain("18");
+    expect(screen.getByRole("group", { name: "Win rate" }).textContent).toContain("61%");
+    const mastery = screen.getByRole("region", { name: "Game mastery" });
+    expect(mastery.textContent).toContain("Ludo");
+    expect(mastery.textContent).toContain("8 matches · 5 wins");
+  });
+
+  it("opens the full level roadmap from the next-reward link", () => {
+    viewport.current = "mobile";
+    renderOverview();
+
+    fireEvent.click(screen.getByRole("button", { name: /View level roadmap/ }));
+
+    expect(screen.getByRole("dialog")).toBeDefined();
+  });
+
+  it("keeps the shared sections and account controls below the preview", () => {
+    viewport.current = "mobile";
+    const context = renderOverview();
+
+    expect(screen.getByRole("region", { name: "Achievement highlights" })).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "Edit personal information" }));
+    expect(context.openEditModal).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+    expect(screen.getByRole("dialog", { name: "Delete your account?" })).toBeDefined();
+  });
+
+  it("takes the player to the games from Play now", () => {
+    viewport.current = "mobile";
+    renderOverview();
+
+    fireEvent.click(screen.getByRole("button", { name: "Play now" }));
+
+    expect(screen.getByText("Games page")).toBeDefined();
   });
 });

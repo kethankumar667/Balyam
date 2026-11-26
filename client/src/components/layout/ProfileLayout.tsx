@@ -7,6 +7,8 @@ import type { PlayerProfile } from "@shared/profile/PlayerProfile";
 import { useAudio } from "../../hooks/useAudio";
 import { AUDIO } from "../../constants/audio";
 import { HapticsManager } from "../../services/HapticsManager";
+import { useViewport } from "../../lib/useViewport";
+import ProfilePhoneIdentity from "../../features/profile/phone/ProfilePhoneIdentity";
 
 interface ProfileLayoutProps {
   children: ReactNode;
@@ -34,6 +36,10 @@ export default function ProfileLayout({
 }: ProfileLayoutProps) {
   const { pathname } = useLocation();
   const { play } = useAudio();
+  // The phone overview is a first-class destination (the "You" tab), not a page you came to from Games, so it
+  // opens with a "Profile" heading and a compact identity instead of a back link and the full hero. Matches,
+  // Trophies and Scores keep the hero; the section tabs below are the same on every profile route.
+  const isPhoneOverview = useViewport() === "mobile" && pathname === "/profile";
 
   const handleNavigation = (active: boolean) => {
     if (active) return;
@@ -42,7 +48,9 @@ export default function ProfileLayout({
   };
 
   return (
-    <div className="relative min-h-full shrink-0 overflow-hidden bg-surface-0 px-3 pb-24 pt-4 text-ink-hi sm:px-5 sm:pt-5 lg:px-8 lg:pb-16 lg:pt-7">
+    // The bottom tab bar is a sibling of the scroller, not an overlay, so the phone overview needs no spare
+    // room for it; the other routes keep their existing bottom padding.
+    <div className={`relative min-h-full shrink-0 overflow-hidden bg-surface-0 px-3 pt-4 text-ink-hi sm:px-5 sm:pt-5 lg:px-8 lg:pb-16 lg:pt-7 ${isPhoneOverview ? "pb-8" : "pb-24"}`}>
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         <div className="absolute -right-24 -top-28 h-80 w-80 rounded-full bg-info/10 blur-3xl dark:bg-info/15" />
         <div className="absolute -left-24 top-64 h-72 w-72 rounded-full bg-lamp-500/10 blur-3xl" />
@@ -50,6 +58,24 @@ export default function ProfileLayout({
       </div>
 
       <div className="relative z-10 mx-auto w-full max-w-7xl space-y-4 sm:space-y-5">
+        {isPhoneOverview ? (
+          <>
+            <header className="flex items-center justify-between gap-3">
+              <h1 className="font-display text-2xl text-ink-hi">Profile</h1>
+              <Link
+                to="/settings/preferences"
+                onClick={() => play(AUDIO.UI_CLICK)}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl px-3 text-sm font-semibold text-ink-mid transition hover:bg-surface-1 hover:text-ink-hi active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp-500"
+              >
+                <Settings className="h-4 w-4" aria-hidden="true" />
+                Settings
+              </Link>
+            </header>
+            {profile && (
+              <ProfilePhoneIdentity profile={profile} isMember={isMember} name={name} avatar={avatar} onEditName={onEditName} />
+            )}
+          </>
+        ) : (<>
         <div className="flex items-center justify-between gap-3">
           <Link
             to="/games"
@@ -79,6 +105,7 @@ export default function ProfileLayout({
             avatar={avatar}
           />
         )}
+        </>)}
 
         <nav
           aria-label="Profile sections"
