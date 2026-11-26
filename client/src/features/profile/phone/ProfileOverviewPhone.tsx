@@ -5,6 +5,7 @@ import { formatRelativeDay } from "../../../lib/relativeDay";
 import type { RecentMatchItem } from "../CareerMetrics";
 import { getProfileGameLabel } from "../gameLabel";
 import { ProfileEmptyState, ProfileErrorState, ProfileMetricTile, ProfilePanelSkeleton, ProfileProgressBar } from "../ProfilePrimitives";
+import GameTileArt from "./GameTileArt";
 import PhoneSection from "./PhoneSection";
 import { NextMoveCard } from "./NextMoveCard";
 import type { Achievement } from "@shared/profile/Achievements";
@@ -93,8 +94,9 @@ export default function ProfileOverviewPhone({
               const label = getProfileGameLabel(game.game);
               return (
                 <li key={game.game} className="py-3">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <div className="min-w-0">
+                  <div className="flex items-center gap-3">
+                    <GameTileArt game={game.game} />
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-bold text-ink-hi">{label}</p>
                       <p className="mt-0.5 text-xs text-ink-mid">
                         {game.matchesPlayed} {plural(game.matchesPlayed, "match", "matches")} · {game.wins} {plural(game.wins, "win", "wins")}
@@ -102,7 +104,8 @@ export default function ProfileOverviewPhone({
                     </div>
                     <span className="font-mono text-sm font-bold text-[var(--command-cyan)]">{Math.round(game.winRate)}%</span>
                   </div>
-                  <div className="mt-2">
+                  {/* ml-14 = the 44px tile + its 12px gap, so the bar lines up under the name. */}
+                  <div className="ml-14 mt-2">
                     <ProfileProgressBar label={`${label} win rate`} value={game.winRate} accent="cyan" showValue={false} hideLabel />
                   </div>
                 </li>
@@ -120,8 +123,9 @@ export default function ProfileOverviewPhone({
         ) : recentMatches.length ? (
           <ul className="divide-y divide-[var(--command-edge)]">
             {recentMatches.slice(0, RECENT_PREVIEW_LIMIT).map((match, index) => (
-              <li key={match.id ?? `${match.game}-${index}`} className="flex items-center justify-between gap-3 py-3">
-                <div className="min-w-0">
+              <li key={match.id ?? `${match.game}-${index}`} className="flex items-center gap-3 py-3">
+                <GameTileArt game={match.game} />
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-ink-hi">{getProfileGameLabel(match.game)}</p>
                   <p className="mt-0.5 text-xs text-ink-mid">{formatRelativeDay(match.playedAt)}</p>
                 </div>

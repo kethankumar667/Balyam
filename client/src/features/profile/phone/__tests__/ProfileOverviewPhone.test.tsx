@@ -206,6 +206,27 @@ describe("ProfileOverviewPhone", () => {
       expect(bars[1].getAttribute("aria-valuenow")).toBe("0");
     });
 
+    it("puts each game's tile before its name", () => {
+      renderPhone();
+      const rows = within(screen.getByRole("region", { name: "Game mastery" })).getAllByRole("listitem");
+
+      expect(rows[0].querySelector("img")?.getAttribute("src")).toBe("/RummyTile.png");
+      expect(rows[1].querySelector("img")?.getAttribute("src")).toBe("/RPSTile.png");
+      expect(rows[2].querySelector("img")?.getAttribute("src")).toBe("/Bingo%20Tile.png");
+      // The tile comes first in the row, ahead of the game's name.
+      const tile = rows[0].querySelector("picture") as Element;
+      const name = within(rows[0]).getByText("Indian Rummy");
+      expect(tile.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it("keeps a clean row for a game that has no tile art", () => {
+      renderPhone({ mastery: [game("a-game-without-a-tile" as GameStats["game"], 4, 1)] });
+      const row = within(screen.getByRole("region", { name: "Game mastery" })).getAllByRole("listitem")[0];
+
+      expect(row.querySelector("img")).toBeNull();
+      expect(row.textContent).toContain("4 matches · 1 win");
+    });
+
     it("pluralises correctly for a single match", () => {
       renderPhone({ mastery: [game("rummy", 1, 1)] });
 
@@ -243,6 +264,18 @@ describe("ProfileOverviewPhone", () => {
       expect(rows[1].textContent).toContain("Draw");
       expect(rows[2].textContent).toContain("3 days ago");
       expect(rows[2].textContent).toContain("Lost");
+    });
+
+    it("puts each game's tile before its name here too", () => {
+      renderPhone();
+      const rows = within(screen.getByRole("region", { name: "Recent activity" })).getAllByRole("listitem");
+
+      expect(rows[0].querySelector("img")?.getAttribute("src")).toBe("/RummyTile.png");
+      expect(rows[1].querySelector("img")?.getAttribute("src")).toBe("/Bingo%20Tile.png");
+      expect(rows[2].querySelector("img")?.getAttribute("src")).toBe("/ColorCardsTile.png");
+      const tile = rows[0].querySelector("picture") as Element;
+      const name = within(rows[0]).getByText("Indian Rummy");
+      expect(tile.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
     it("links 'View all' to the full match history", () => {
