@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Gamepad2 } from "lucide-react";
-import { tileImageForGame } from "../../myrecords/records";
+import { tileImageForGame } from "../myrecords/records";
 
 const FRAME =
-  "flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--command-edge)] bg-surface-0";
+  "flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-stone-300/80 bg-surface-0 dark:border-slate-700/80";
 
 /**
  * A game's tile picture as a small square, shown before its name in a list row.
@@ -19,7 +19,7 @@ export default function GameTileArt({ game }: { game: string }) {
 
   if (!art || failed) {
     return (
-      <span aria-hidden="true" className={`${FRAME} text-[var(--command-cyan)]`}>
+      <span aria-hidden="true" className={`${FRAME} text-ink-mid`}>
         <Gamepad2 className="h-5 w-5" />
       </span>
     );

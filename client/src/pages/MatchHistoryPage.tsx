@@ -25,6 +25,7 @@ import {
   ProfilePanelSkeleton,
   ProfileSection,
 } from "../features/profile/ProfilePrimitives";
+import GameTileArt from "../features/profile/GameTileArt";
 import { getProfileGameLabel } from "../features/profile/gameLabel";
 import type { ProfileFamilyOutletContext } from "../components/layout/ProfileFamilyLayout";
 import type { GameStats } from "@shared/profile/PlayerStats";
@@ -240,9 +241,7 @@ export default function MatchHistoryPage() {
                   className="group grid min-h-[76px] w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-xl border border-stone-300/80 bg-surface-0 p-3 text-left transition hover:border-lamp-500/60 hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp-500 dark:border-slate-700/80 sm:p-4"
                   aria-label={`Open ${getProfileGameLabel(match.game)} match from ${formatMatchDate(match.finishedAt)}`}
                 >
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-chest-100 text-chest-700 dark:bg-chest-500/15 dark:text-chest-300">
-                    <Swords className="h-5 w-5" aria-hidden="true" />
-                  </span>
+                  <GameTileArt game={match.game} />
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-bold text-ink-hi">{getProfileGameLabel(match.game)}</span>
                     <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-mid">

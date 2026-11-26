@@ -5,7 +5,7 @@ import { formatRelativeDay } from "../../../lib/relativeDay";
 import type { RecentMatchItem } from "../CareerMetrics";
 import { getProfileGameLabel } from "../gameLabel";
 import { ProfileEmptyState, ProfileErrorState, ProfileMetricTile, ProfilePanelSkeleton, ProfileProgressBar } from "../ProfilePrimitives";
-import GameTileArt from "./GameTileArt";
+import GameTileArt from "../GameTileArt";
 import PhoneSection from "./PhoneSection";
 import { NextMoveCard } from "./NextMoveCard";
 import type { Achievement } from "@shared/profile/Achievements";
