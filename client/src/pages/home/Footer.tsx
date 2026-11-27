@@ -6,7 +6,6 @@ import { useAuthStore } from "../../store/authStore";
 import { useTranslation } from "../../hooks/useTranslation";
 import { LOCALE_BY_ID } from "../../i18n/types";
 import { BASE_URL } from "../../seo/metadata";
-import { FooterSystemPulse } from "./FooterSystemPulse";
 import { PlaygroundSignoff, VerandaScene } from "./FooterArtwork";
 import { WhatsappGlyph } from "./icons";
 
@@ -125,7 +124,6 @@ export function Footer() {
         <h2 className="mt-5 font-display text-3xl leading-tight tracking-tight text-footer-ink sm:text-4xl">Same games.<br /><span className="text-footer-gold">Bigger memories.</span></h2>
         <p className="mt-4 max-w-sm text-sm leading-relaxed text-footer-soft">A timeless multiplayer lounge for nostalgic games, friendly banter, and fair competition.</p>
         <p className="mt-4 flex items-center gap-2 text-xs text-footer-soft"><Heart size={13} className="shrink-0 text-footer-gold" aria-hidden="true" />Made for memories, built for fair play.</p>
-        <FooterSystemPulse />
       </section>
 
       <nav aria-label="Footer navigation" className="order-3 grid min-w-0 gap-3 lg:order-2 lg:col-span-8 lg:grid-cols-3 lg:items-start">

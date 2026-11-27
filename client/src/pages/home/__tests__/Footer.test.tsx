@@ -119,7 +119,9 @@ describe("Nostalgia Network Hub footer", () => {
 
   it("does not advertise fixed telemetry or impossible cheat/privacy guarantees", () => {
     show();
-    expect(screen.getByRole("region", { name: "System pulse" })).toBeInTheDocument();
+    // The System Pulse (a live /health latency readout) was removed: no panel, and no request.
+    expect(screen.queryByRole("region", { name: "System pulse" })).not.toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalled();
     expect(screen.queryByText(/All systems operational|~24ms|India gateway|Zero client cheat vectors|low-latency/i)).not.toBeInTheDocument();
     for (const label of ["Fair play engine", "Instant access", "Player-first", "Room voice"]) {
       expect(screen.getByRole("heading", { name: label })).toBeInTheDocument();

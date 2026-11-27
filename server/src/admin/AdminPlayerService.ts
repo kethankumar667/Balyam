@@ -22,7 +22,7 @@ const PRIMARY_SECTIONS: ReadonlySet<string> = new Set(["account", "profile", "ma
 /** Rows per page of every record table on the admin player page; the client asks for the same number. */
 export const DEFAULT_RECORDS_PAGE_SIZE = 10;
 const ACTIVE: AdminSuspensionState = { isSuspended: false, reason: null, updatedAt: null, revision: 0 };
-export const RECORD_SECTIONS = ["account", "profile", "matches", "participants", "xp", "achievements", "challenges", "progression", "wallet", "ledger", "rewards", "reward_audit", "friends", "friend_requests", "mandali", "moderation"] as const;
+export const RECORD_SECTIONS = ["account", "profile", "matches", "participants", "xp", "achievements", "challenges", "progression", "wallet", "ledger", "rewards", "reward_audit", "friends", "mandali", "moderation"] as const;
 type RecordKey = typeof RECORD_SECTIONS[number];
 
 export interface AdminPlayerStore {
@@ -98,7 +98,6 @@ export class MemoryAdminPlayerStore implements AdminPlayerStore {
       case "challenges": return pageRecords(key, asRows(await this.repo.listChallengeClaims(id)), page, pageSize);
       case "reward_audit": return pageRecords(key, asRows(await this.repo.listRewardAudit(id, Number.MAX_SAFE_INTEGER)), page, pageSize);
       case "friends": return pageRecords(key, asRows(await this.repo.listFriends(id)), page, pageSize);
-      case "friend_requests": return pageRecords(key, asRows(await this.repo.listFriendRequests(id)), page, pageSize);
       case "moderation": return pageRecords(key, [...(this.audit.get(id) ?? [])].reverse(), page, pageSize);
       default: return { ...pageRecords(key, [], page, pageSize), total: null, unavailable: "Not recorded by this process-lifetime inspection store." };
     }

@@ -123,61 +123,6 @@ export interface FriendEdge {
   createdAt: number;
 }
 
-export type FriendRequestStatus = "PENDING" | "ACCEPTED" | "DECLINED";
-
-export interface FriendRequestRecord {
-  id: string;
-  senderId: string;
-  recipientId: string;
-  senderName?: string | null;
-  senderAvatar?: string | null;
-  status: FriendRequestStatus;
-  createdAt: number;
-  updatedAt: number;
-}
-
-/**
- * The status values of the `parties` table. The Social Hub that wrote parties was removed on
- * 2026-11-27 (and with it `shared/party/Party.ts`), so nothing writes or reads these rows any
- * more; the shape stays because the table and its CHECK constraint are still deployed.
- */
-export type PartyStatus = "CREATED" | "INVITING" | "READY" | "IN_MATCH" | "DISBANDED";
-
-export interface PartyMemberRecord {
-  playerId: string;
-  displayName?: string | null;
-  avatar?: string | null;
-  isLeader: boolean;
-  isReady: boolean;
-  joinedAt: number;
-}
-
-export interface PartyRecord {
-  id: string;
-  leaderId: string;
-  maxMembers: number;
-  status: PartyStatus;
-  targetGame?: string | null;
-  targetRoomCode?: string | null;
-  targetTournamentId?: string | null;
-  members: PartyMemberRecord[];
-  createdAt: number;
-  updatedAt: number;
-}
-
-/** The status values of the `party_invitations` table (no longer written; see PartyStatus). */
-export type InvitationStatus = "PENDING" | "ACCEPTED" | "DECLINED";
-
-export interface PartyInvitationRecord {
-  id: string;
-  partyId: string;
-  inviterId: string;
-  inviteeId: string;
-  inviterName?: string | null;
-  status: InvitationStatus;
-  createdAt: number;
-}
-
 export interface MatchParticipantRecord {
   playerId: string;
   displayName?: string | null;
@@ -315,20 +260,6 @@ export interface ProgressionRepository {
   addFriend(edge: FriendEdge): Promise<Applied>;
   removeFriend(playerId: string, friendPlayerId: string): Promise<boolean>;
   listFriends(playerId: string): Promise<FriendEdge[]>;
-
-  /* friend requests */
-  saveFriendRequest(record: FriendRequestRecord): Promise<void>;
-  getFriendRequest(id: string): Promise<FriendRequestRecord | null>;
-  listFriendRequests(playerId: string): Promise<FriendRequestRecord[]>;
-
-  /* parties */
-  saveParty(record: PartyRecord): Promise<void>;
-  deleteParty(partyId: string): Promise<void>;
-  getParty(partyId: string): Promise<PartyRecord | null>;
-  listParties(): Promise<PartyRecord[]>;
-  saveInvitation(record: PartyInvitationRecord): Promise<void>;
-  getInvitation(id: string): Promise<PartyInvitationRecord | null>;
-  listInvitations(playerId: string): Promise<PartyInvitationRecord[]>;
 
   /* matches */
   recordMatch(record: MatchSummaryRecord): Promise<Applied>;

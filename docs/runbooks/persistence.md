@@ -8,9 +8,12 @@ What to set, what to run, and how to tell whether it worked.
 
 **Durable** (Supabase Postgres, `20260818000000_progression_persistence.sql`):
 player identities, profiles, the XP ledger, achievement unlocks, challenge
-claims, friendships, friend requests, parties, party invitations, match
-summaries, tournament records, season stats, season reward claims, season
-snapshots, reward audit.
+claims, friendships (the leaderboard's friend list), match summaries,
+tournament records, season stats, season reward claims, season snapshots,
+reward audit. Friend requests, parties and party invitations were durable too,
+until the Social Hub was removed and `20261114000000_drop_social_hub_tables.sql`
+dropped their tables (deploy the server build without the Social Hub first, then
+apply that migration; its rollback restores the tables empty, not their rows).
 
 **Personal records** (`20261106000000_account_scorecards.sql`):
 `player_scorecard_archives` stores one revisioned archive per canonical player
@@ -214,9 +217,11 @@ select cron.schedule(
 It returns a row per table with the number deleted, so a scheduled run is
 verifiable rather than hopeful.
 
-What it removes: expired room timelines (30d), expired operational telemetry
-(14d), pending friend requests older than 30 days, pending party invitations
-older than 7 days, and disbanded or day-old parties.
+What it removes: expired room timelines (30d) and expired operational
+telemetry (14d). Before `20261114000000` it also pruned pending friend requests,
+pending party invitations and day-old parties; that migration replaces the
+function, because dropping those tables under the old body would make the whole
+job fail.
 
 ---
 

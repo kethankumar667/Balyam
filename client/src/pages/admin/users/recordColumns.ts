@@ -177,15 +177,6 @@ const SECTION_SPECS: Record<string, SectionSpec> = {
       { field: "created_at", label: "Friends since", kind: "date" },
     ],
   },
-  friend_requests: {
-    layout: "table",
-    columns: [
-      { field: "created_at", label: "Sent", kind: "date" },
-      { field: "sender_name", label: "From" },
-      { field: "status", label: "Status", kind: "slug" },
-      { field: "updated_at", label: "Updated", kind: "date" },
-    ],
-  },
   // The section id is the database's own name for it (`admin_player_records` matches `'mandali'`); the label is "Gang".
   mandali: {
     layout: "table",

@@ -176,7 +176,7 @@ a digital route ending at the emblem. Decorative SVGs are noninteractive
 and hidden from assistive technology. Only the playground scene is visible
 on mobile; the small veranda vignette is desktop-only.
 
-Desktop pairs the brand/System Pulse with three glass navigation groups,
+Desktop pairs the brand with three glass navigation groups,
 then Dispatch, a four-card trust grid, the signoff and one utility bar.
 Mobile moves Dispatch above native-button accordions and uses a 2x2 trust
 grid. Closed mobile panels are not keyboard-focusable; all groups remain
@@ -185,14 +185,10 @@ and reduced-motion alternatives. Specialist links appear in an Admin tools
 disclosure via `accessAdminPanel`; this is navigation presentation, not a
 replacement for route/API authorization.
 
-System Pulse makes a credential-free, uncached `/health` request only while
-the footer and browser tab are visible, at most one request in flight.
-A healthy response is `status: "healthy"`. The measured response time is a
-browser-to-server HTTP health request, **not** gameplay ping, an India gateway,
-or an all-services guarantee. Each request times out after 5 seconds, retries
-are explicit, and visible checks repeat every 60 seconds. Hidden/unmounted
-checks are aborted and timers cleaned up. A sparkline uses only the last eight
-successful measurements and appears after two; no sample history is invented.
+The footer makes no network request. A live "System pulse" latency readout used
+to sit under the brand block; it was removed on 2026-11-27 and must not come
+back as a footer element (a browser-to-server `/health` time is not gameplay
+ping, and the footer should not poll a server on every home visit).
 
 Veranda Dispatch is explicitly **not accepting signups**. Its labelled input
 and button are disabled; no email is collected, saved, sent or reported as

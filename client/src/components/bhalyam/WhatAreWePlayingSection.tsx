@@ -75,7 +75,11 @@ export default function WhatAreWePlayingSection({
   ];
 
   return (
-    <section className="my-8 sm:my-10 space-y-6">
+    // Desktop only (1024px and up). Phones and tablets do not get this section at all: `hidden`
+    // removes it from layout, from the accessibility tree and from image loading, and doing it in
+    // CSS rather than with a viewport hook keeps the prerendered home page and the client's first
+    // render identical, so there is no hydration mismatch or flash of the section on a phone.
+    <section className="hidden lg:block my-8 sm:my-10 space-y-6">
       {/* ── Section Title ── */}
       <div className="flex items-center gap-2">
         <h2 className="bhalyam-display text-[22px] sm:text-[28px] font-black text-[#2A221B] dark:text-white tracking-tight">

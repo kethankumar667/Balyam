@@ -464,7 +464,7 @@ function contractSuite(name: string, make: () => Promise<ProgressionRepository>)
       expect(duplicates.length).toBeGreaterThanOrEqual(2);
     });
 
-    /* ── seasons, tournaments, parties, requests ── */
+    /* ── seasons and tournaments ── */
 
     it("upserts season stats and orders a board by season XP", async () => {
       await repo.upsertSeasonStats({
@@ -518,68 +518,6 @@ function contractSuite(name: string, make: () => Promise<ProgressionRepository>)
       expect(rows[0]?.placing).toBe(1);
     });
 
-    it("round-trips a friend request through its states", async () => {
-      const rec = {
-        id: freshId("req"), senderId: PLAYER, recipientId: OTHER,
-        senderName: "Me", senderAvatar: null,
-        status: "PENDING" as const, createdAt: Date.now(), updatedAt: Date.now(),
-      };
-      await repo.saveFriendRequest(rec);
-      expect((await repo.getFriendRequest(rec.id))?.status).toBe("PENDING");
-
-      await repo.saveFriendRequest({ ...rec, status: "ACCEPTED", updatedAt: Date.now() + 1 });
-      expect((await repo.getFriendRequest(rec.id))?.status).toBe("ACCEPTED");
-      expect((await repo.listFriendRequests(OTHER)).some((r) => r.id === rec.id)).toBe(true);
-    });
-
-    it("round-trips a party and its members, then deletes it", async () => {
-      const now = Date.now();
-      const partyId = freshId("party");
-      const party = {
-        id: partyId, leaderId: PLAYER, maxMembers: 4,
-        status: "INVITING" as const,
-        targetGame: null, targetRoomCode: null, targetTournamentId: null,
-        createdAt: now, updatedAt: now,
-        members: [
-          { playerId: PLAYER, displayName: "Me", isLeader: true, isReady: true, joinedAt: now },
-          { playerId: OTHER, displayName: "Them", isLeader: false, isReady: false, joinedAt: now },
-        ],
-      };
-      await repo.saveParty(party);
-      const found = await repo.getParty(party.id);
-      expect(found?.members).toHaveLength(2);
-      expect(found?.members.find((m) => m.playerId === PLAYER)?.isLeader).toBe(true);
-
-      // Membership is replaced wholesale, so a departure must actually depart.
-      await repo.saveParty({ ...party, members: [party.members[0]!], updatedAt: now + 1 });
-      expect((await repo.getParty(party.id))?.members).toHaveLength(1);
-
-      await repo.deleteParty(party.id);
-      expect(await repo.getParty(party.id)).toBeNull();
-    });
-
-    it("round-trips a party invitation", async () => {
-      const now = Date.now();
-      const partyId2 = freshId("party");
-      await repo.saveParty({
-        id: partyId2, leaderId: PLAYER, maxMembers: 4, status: "CREATED",
-        targetGame: null, targetRoomCode: null, targetTournamentId: null,
-        createdAt: now, updatedAt: now,
-        members: [{ playerId: PLAYER, displayName: "Me", isLeader: true, isReady: true, joinedAt: now }],
-      });
-      const invite = {
-        id: freshId("pinv"), partyId: partyId2,
-        inviterId: PLAYER, inviteeId: OTHER, inviterName: "Me",
-        status: "PENDING" as const, createdAt: now,
-      };
-      await repo.saveInvitation(invite);
-      expect((await repo.getInvitation(invite.id))?.inviteeId).toBe(OTHER);
-      expect((await repo.listInvitations(OTHER)).some((i) => i.id === invite.id)).toBe(true);
-
-      await repo.saveInvitation({ ...invite, status: "ACCEPTED" });
-      expect((await repo.getInvitation(invite.id))?.status).toBe("ACCEPTED");
-      await repo.deleteParty(partyId2);
-    });
   });
 }
 

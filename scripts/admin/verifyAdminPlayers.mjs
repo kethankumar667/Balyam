@@ -117,7 +117,7 @@ async function recordChecks(db, service, target) {
     new Set([...first.records, ...second.records].map((row) => row.id)).size === 105,
   { total: first.total, pageLengths: [first.records.length, second.records.length] });
   const available = ["account", "profile", "matches", "participants", "xp", "achievements", "challenges",
-    "progression", "reward_audit", "friends", "friend_requests", "moderation"];
+    "progression", "reward_audit", "friends", "moderation"];
   for (const section of available) {
     const result = await records(section);
     check(`records section ${section}`, result.key === section && Array.isArray(result.records) &&
