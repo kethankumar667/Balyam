@@ -53,6 +53,8 @@ interface InvitationRow {
 }
 interface JoinRequestRow {
   id: string; mandali_id: string; requester_identity_id: string; invitation_id: string | null;
+  /** Null on a request made before migration 20261116000000, which added them. */
+  requester_display_name?: string | null; requester_avatar?: string | null;
   status: string; reviewer_identity_id: string | null; created_at: string; decided_at: string | null;
 }
 interface CoinRequestRow {
@@ -120,6 +122,7 @@ function rowToInviteLink(r: InvitationRow, token?: string): GangInviteLink {
 function rowToJoinRequest(r: JoinRequestRow): GangJoinRequestRecord {
   return {
     id: r.id, gangId: r.mandali_id, requesterIdentityId: r.requester_identity_id,
+    requesterDisplayName: r.requester_display_name ?? null, requesterAvatar: r.requester_avatar ?? null,
     invitationId: r.invitation_id, status: r.status as GangJoinRequestRecord["status"],
     reviewerIdentityId: r.reviewer_identity_id, createdAt: toMs(r.created_at),
     decidedAt: r.decided_at ? toMs(r.decided_at) : null,

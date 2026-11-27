@@ -3,6 +3,7 @@ import type { DeleteGangFailure, GangService } from "./GangService.js";
 import { rateLimitByCaller, callerIp } from "../lib/httpRateLimiter.js";
 import { memberAvatar } from "./avatarInput.js";
 import { requireSelfParam } from "../auth/identity.js";
+import { sanitizePlayerName } from "@shared/playerName.js";
 
 /** HTTP status for each way a delete can be refused. */
 const DELETE_FAILURE_STATUS: Record<DeleteGangFailure, number> = {
@@ -261,7 +262,9 @@ export function createGangRouter(gangService: GangService): Router {
       return;
     }
 
-    const displayName = req.body.displayName || "Member";
+    // This name is shown to the admins who decide the request, so it is vetted like any other name a client
+    // sends that the server re-broadcasts: normalised, stripped of invisible/markup characters, capped.
+    const displayName = sanitizePlayerName(req.body.displayName) || "Member";
     const avatar = memberAvatar(req.body.avatar);
     const statement = req.body.statement;
     const invitationId = typeof req.body.invitationId === "string" ? req.body.invitationId : undefined;

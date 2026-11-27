@@ -301,6 +301,12 @@ export interface GangJoinRequestRecord {
   id: string;
   gangId: string;
   requesterIdentityId: string;
+  /**
+   * The name and avatar the applicant asked with, so an admin can tell who is knocking. Null for a request
+   * made before these were stored; the panel then falls back to "Member" and a short id.
+   */
+  requesterDisplayName?: string | null;
+  requesterAvatar?: string | null;
   invitationId?: string | null;
   status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" | "EXPIRED";
   reviewerIdentityId?: string | null;

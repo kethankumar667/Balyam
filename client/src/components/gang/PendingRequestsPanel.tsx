@@ -5,11 +5,10 @@
  * join-approval setting is on. Owners/admins only; the caller decides
  * whether to mount this at all (see GroupInfoModal's joinApproval toggle).
  *
- * Known gap: `mandali_join_requests` stores only the requester's identity
- * id, not a display name/avatar (a requester isn't a member yet, so there's
- * no membership row to read one from). Until the schema carries a snapshot
- * name, this shows the raw id — good enough to approve/decline by, not a
- * finished admin UX. Follow-up, not blocking.
+ * Each row shows the name and avatar the applicant asked with (stored on the
+ * request itself, since a requester isn't a member yet and has no membership
+ * row to read them from). A request made before those were stored carries
+ * neither, so it reads "Member" plus a short id rather than a bare uuid.
  *
  * Requirements:
  * - Dual light/dark theme support.
@@ -21,6 +20,16 @@ import { useState } from "react";
 import { UserCheck, Check, X } from "lucide-react";
 import Modal from "../Modal.js";
 import type { GangJoinRequestRecord } from "@shared/gang/types.js";
+import { AlbumAvatar } from "./album/AlbumAvatar";
+
+/** How many characters of an identity id to show when a request has no name. */
+const SHORT_ID_LENGTH = 8;
+
+/** What an admin reads for this applicant: their name, or "Member · a82d6ab1" for an old nameless request. */
+export function requesterLabel(request: Pick<GangJoinRequestRecord, "requesterDisplayName" | "requesterIdentityId">): string {
+  const name = request.requesterDisplayName?.trim();
+  return name ? name : `Member · ${request.requesterIdentityId.slice(0, SHORT_ID_LENGTH)}`;
+}
 
 export interface PendingRequestsPanelProps {
   open: boolean;
@@ -73,13 +82,16 @@ export default function PendingRequestsPanel({ open, onClose, requests, onDecide
                   key={request.id}
                   className="flex items-center justify-between gap-3 px-2.5 py-3 rounded-xl hover:bg-album-field transition-colors"
                 >
-                  <div className="min-w-0">
-                    <p className="text-[15px] font-semibold text-album-ink truncate">
-                      {request.requesterIdentityId}
-                    </p>
-                    <p className="text-[13px] text-album-ink3">
-                      Requested {new Date(request.createdAt).toLocaleDateString()}
-                    </p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <AlbumAvatar avatar={request.requesterAvatar ?? undefined} name="" />
+                    <div className="min-w-0">
+                      <p className="text-[15px] font-semibold text-album-ink truncate">
+                        {requesterLabel(request)}
+                      </p>
+                      <p className="text-[13px] text-album-ink3">
+                        Requested {new Date(request.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
