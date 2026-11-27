@@ -219,7 +219,7 @@ This document details the development epics, user stories, acceptance criteria, 
 - **I want** a dedicated "📺 TV Mode" button on the room share card,
 - **So that** I can instantly open or cast the TV spectator screen without manually typing URLs.
 - **Acceptance Criteria**:
-  - Rendered in `RoomShareCard.tsx` alongside Share and Mandali buttons.
+  - Rendered in `RoomShareCard.tsx` alongside Share and Gang buttons.
   - Opens `/tv/:code` in a new window with one tap.
 - **Status**: Verified in `RoomShareCard.tsx` and `RoomShareCard.test.tsx`.
 

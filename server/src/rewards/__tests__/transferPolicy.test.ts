@@ -3,8 +3,8 @@ import { TransferPolicy, type TransferLedgerSource } from "../TransferPolicy.js"
 import { RiskService } from "../RiskService.js";
 import { TrustService, TIER_REQUIREMENTS, type TrustProviders } from "../TrustService.js";
 import { REASON } from "../types.js";
-import { MandaliRepository } from "../../mandali/MandaliRepository.js";
-import { MandaliService } from "../../mandali/MandaliService.js";
+import { GangRepository } from "../../gang/GangRepository.js";
+import { GangService } from "../../gang/GangService.js";
 import { EconomyService } from "../../economy/EconomyService.js";
 import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
 import { TransferCapExceededError } from "../../persistence/EconomyRepository.js";
@@ -32,12 +32,12 @@ const sent = (amount: number, at = T0 - 1_000): LedgerEntry => ({ entryType: "P2
 
 /** Providers that give a player exactly the tier's requirements. */
 function providersForTier(tier: 1 | 2 | 3 | 4): TrustProviders {
-  const need = (key: "age" | "matches" | "opponents" | "mandalis") =>
+  const need = (key: "age" | "matches" | "opponents" | "gangs") =>
     tier === 1 ? 0 : (TIER_REQUIREMENTS[tier].find((c) => c.key === key)?.min ?? 0);
   return {
     accountAgeDays: () => need("age"),
     opponentStats: () => ({ realPeopleMatches: need("matches"), distinctOpponents: need("opponents") }),
-    activeMandalis: async () => need("mandalis"),
+    activeGangs: async () => need("gangs"),
   };
 }
 
@@ -169,13 +169,13 @@ describe("failing closed", () => {
   });
 });
 
-describe("Mandali sending, end to end", () => {
+describe("Gang sending, end to end", () => {
   const SENDER = "p_rajesh_ludo";
   const RECIPIENT = "p_sai_kittu";
   let economyRepo: InMemoryEconomyRepository;
   let economy: EconomyService;
-  let repository: MandaliRepository;
-  let service: MandaliService;
+  let repository: GangRepository;
+  let service: GangService;
   let risk: RiskService;
   let trust: TrustService;
 
@@ -205,12 +205,12 @@ describe("Mandali sending, end to end", () => {
 
   const balance = async (id: string) => BigInt((await economy.getWallet(id)).balance);
   const send = () =>
-    service.transferCoins("mandali_ludo_kings", SENDER, { toPlayerId: RECIPIENT, amount: 100, type: "SEND" });
+    service.transferCoins("gang_ludo_kings", SENDER, { toPlayerId: RECIPIENT, amount: 100, type: "SEND" });
   const policyAt = (now: number) =>
     new TransferPolicy({ ledger: economy, risk, trust, now: () => now });
 
   beforeEach(async () => {
-    repository = new MandaliRepository();
+    repository = new GangRepository();
     economyRepo = new InMemoryEconomyRepository();
     economy = new EconomyService(economyRepo);
     economyRepo.testFixture.seedIdentity(SENDER, "member");
@@ -220,7 +220,7 @@ describe("Mandali sending, end to end", () => {
     risk = new RiskService();
     trust = new TrustService();
     trust.setProviders(providersForTier(1));
-    service = new MandaliService(repository, undefined, undefined, economy);
+    service = new GangService(repository, undefined, undefined, economy);
     service.setTransferPolicy(policyAt(Date.now()));
   });
 
@@ -271,21 +271,21 @@ describe("Mandali sending, end to end", () => {
     expect(await balance(SENDER)).toBe(senderBefore);
 
     // Receiving is never limited: the other member can still pay them.
-    const paid = await service.transferCoins("mandali_ludo_kings", RECIPIENT, { toPlayerId: SENDER, amount: 100, type: "SEND" });
+    const paid = await service.transferCoins("gang_ludo_kings", RECIPIENT, { toPlayerId: SENDER, amount: 100, type: "SEND" });
     expect(paid.success).toBe(true);
     expect(await balance(SENDER)).toBe(senderBefore + 100n);
   });
 });
 
-describe("Mandali paying a coin request goes through the same policy", () => {
+describe("Gang paying a coin request goes through the same policy", () => {
   function durableService(policy: TransferPolicy | null) {
-    const repository = new MandaliRepository();
+    const repository = new GangRepository();
     vi.spyOn(repository, "isDurable").mockReturnValue(true);
     const fund = vi.spyOn(repository, "fundCoinRequestDurable").mockResolvedValue({
       alreadyFunded: false,
-      request: { id: "req_1", mandaliId: "m1" },
+      request: { id: "req_1", gangId: "m1" },
     } as never);
-    const service = new MandaliService(repository);
+    const service = new GangService(repository);
     service.setTransferPolicy(policy);
     return { service, fund };
   }
@@ -311,7 +311,7 @@ describe("Mandali paying a coin request goes through the same policy", () => {
   it("reports a request that already landed as paid, even when the payer is at their cap", async () => {
     // The database only checks an OPEN request, so a replay comes back alreadyFunded.
     const { service, fund } = durableService(policyFor([sent(500)]).policy);
-    fund.mockResolvedValueOnce({ alreadyFunded: true, request: { id: "req_1", mandaliId: "m1", fundedByIdentityId: "payer" } } as never);
+    fund.mockResolvedValueOnce({ alreadyFunded: true, request: { id: "req_1", gangId: "m1", fundedByIdentityId: "payer" } } as never);
 
     const result = await service.fundCoinRequest("req_1", "payer");
 

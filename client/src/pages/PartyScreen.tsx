@@ -42,7 +42,7 @@ export default function PartyScreen({ mode = "tv" }: PartyScreenProps = {}): JSX
   const navigate = useNavigate();
   const isAudience = mode === "audience";
   const [closedReason, setClosedReason] = useState<string | null>(null);
-  /** Back to wherever they came from (the Mandali), or the lounge if this page was opened directly. */
+  /** Back to wherever they came from (the Gang), or the lounge if this page was opened directly. */
   const leaveAudience = useCallback(() => {
     if (window.history.length > 1) navigate(-1);
     else navigate("/");

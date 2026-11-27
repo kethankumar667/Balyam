@@ -17,7 +17,7 @@ const AT_A_TABLE = /^\/(room|watch|tv)\//;
  *
  * Mounted once, by `ReferralLiveHost` at the app root, so it works on every page including a live match (`Room` does
  * not use `AppLayout` while a game is on). The server sends each notice to the member's personal room, which the
- * Mandali authentication already joins, and quietly sends nothing to someone who is offline: the Referrals page and
+ * Gang authentication already joins, and quietly sends nothing to someone who is offline: the Referrals page and
  * the wallet show the same facts when they next open. A notice is a toast, never a dialog, so it cannot interrupt a
  * game, and at a table it carries no link to the Referrals page; the wallet is reloaded when coins land, and the
  * Referrals page is told to re-read.

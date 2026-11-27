@@ -1,0 +1,391 @@
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { GangRepository } from "../GangRepository.js";
+import { GangService } from "../GangService.js";
+import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
+import { EconomyService } from "../../economy/EconomyService.js";
+import type { PostgrestClient } from "../../persistence/postgrest.js";
+import { GANG_COIN_AMOUNT, GANG_COIN_REQUEST_COOLDOWN_MS } from "@shared/gang/coinRules.js";
+
+/**
+ * Durable-mode coin rules, against a fake PostgREST client. The real SQL
+ * (cooldown atomicity, funding races) is proven separately against a real
+ * Postgres by `npm run verify:gang`; these tests pin what the Node layer
+ * adds on top: the fixed amount, mapping the database's COOLDOWN error into a
+ * retry time, the countdown lookup, and that SEND works when members live in
+ * Postgres rather than the in-memory map.
+ */
+
+const REQUESTER = "guest_requester";
+const PAYER = "guest_payer";
+const GANG = "m_durable";
+
+const memberRow = (identityId: string, name: string) => ({
+  mandali_id: GANG, identity_id: identityId, display_name: name, avatar: "a1",
+  role: "MEMBER", state: "ACTIVE", joined_at: "2026-01-01T00:00:00Z",
+});
+
+function fakePostgrest(overrides: {
+  rpc?: (fn: string, args: Record<string, unknown>) => unknown;
+  select?: (table: string, query: string) => unknown[];
+} = {}) {
+  const rpc = vi.fn(async (fn: string, args: Record<string, unknown>) => {
+    if (overrides.rpc) return overrides.rpc(fn, args);
+    throw new Error(`unexpected rpc ${fn}`);
+  });
+  const select = vi.fn(async (table: string, query: string) => {
+    if (overrides.select) return overrides.select(table, query);
+    return [];
+  });
+  return { client: { rpc, select } as unknown as PostgrestClient, rpc, select };
+}
+
+/** PostgREST wraps the plpgsql RAISE text in a JSON body; PostgrestError puts the whole body in `.message`. */
+const postgrestError = (message: string) => new Error(JSON.stringify({ code: "P0001", message }));
+
+const coinRequestRow = (status = "OPEN") => ({
+  id: "cr_1", mandali_id: GANG, message_id: "cr_1_card", requester_identity_id: REQUESTER,
+  payer_identity_id: PAYER, amount: 100, status,
+  expires_at: "2099-01-01T00:00:00Z", created_at: "2026-01-01T00:00:00Z", decided_at: null,
+});
+
+const cardMessageRow = {
+  message_id: "cr_1_card", mandali_id: GANG, channel_id: "c1", sequence: 1,
+  sender_identity_id: REQUESTER, sender_role: "MEMBER", kind: "COIN_REQUEST", content: "Requested 100 coins",
+  reply_to_id: null, pinned: false, deleted_at: null, created_at: "2026-01-01T00:00:00Z",
+};
+
+/** A socket.io server stand-in that records what was emitted to which room. */
+function fakeIo() {
+  const emitted: Array<{ room: string; event: string; payload: any }> = [];
+  const io = {
+    to: (room: string) => ({ emit: (event: string, payload: unknown) => emitted.push({ room, event, payload }) }),
+  };
+  return { io: io as never, emitted };
+}
+
+describe("Gang live updates", () => {
+  it("broadcasts a new coin request to the whole Gang — the person asked has to be told", async () => {
+    const { io, emitted } = fakeIo();
+    const { client } = fakePostgrest({
+      rpc: () => coinRequestRow(),
+      select: (table) => (table === "mandali_messages" ? [cardMessageRow] : table === "mandali_memberships" ? [memberRow(REQUESTER, "Req")] : []),
+    });
+    const service = new GangService(new GangRepository(client), undefined, io);
+
+    await service.createCoinRequest({ gangId: GANG, channelId: "c1", requesterId: REQUESTER, payerId: PAYER, amount: 100 });
+
+    const event = emitted.find((e) => e.event === "gang:coin_request:updated");
+    expect(event?.room).toBe(`gang:${GANG}`);
+    expect(event?.payload.request.payerIdentityId).toBe(PAYER);
+    // The card message rides along, so it shows up as a placeholder in everyone's chat…
+    expect(event?.payload.message.kind).toBe("COIN_REQUEST");
+    // …with the request record the card needs to render its Pay button.
+    expect(event?.payload.request.messageId).toBe(event?.payload.message.messageId);
+  });
+
+  it("still delivers the request if the card message cannot be loaded", async () => {
+    const { io, emitted } = fakeIo();
+    const { client } = fakePostgrest({
+      rpc: () => coinRequestRow(),
+      select: () => { throw new Error("db hiccup"); },
+    });
+    const service = new GangService(new GangRepository(client), undefined, io);
+
+    const result = await service.createCoinRequest({ gangId: GANG, channelId: "c1", requesterId: REQUESTER, payerId: PAYER, amount: 100 });
+
+    expect(result.success).toBe(true);
+    const event = emitted.find((e) => e.event === "gang:coin_request:updated");
+    expect(event?.payload.request.id).toBe("cr_1");
+    expect(event?.payload.message).toBeUndefined();
+  });
+
+  it("broadcasts the paid request so the requester's card flips to Paid without a refresh", async () => {
+    const { io, emitted } = fakeIo();
+    const { client } = fakePostgrest({
+      rpc: () => ({ alreadyFunded: false, request: coinRequestRow("FUNDED") }),
+    });
+    const service = new GangService(new GangRepository(client), undefined, io);
+
+    await service.fundCoinRequest("cr_1", PAYER);
+
+    const event = emitted.find((e) => e.event === "gang:coin_request:updated");
+    expect(event?.room).toBe(`gang:${GANG}`);
+    expect(event?.payload.request.status).toBe("FUNDED");
+  });
+
+  it("tells the requester's and the payer's wallets directly, so the coins show up even when neither is viewing the group", async () => {
+    // The group broadcast only reaches people with that Gang open. A requester who went back to the
+    // home screen must still see the coins arrive, and so must a payer's other device.
+    const { io, emitted } = fakeIo();
+    const { client } = fakePostgrest({
+      rpc: () => ({ alreadyFunded: false, request: { ...coinRequestRow("FUNDED"), funded_by_identity_id: "guest_bystander" } }),
+    });
+    const service = new GangService(new GangRepository(client), undefined, io);
+
+    await service.fundCoinRequest("cr_1", "guest_bystander");
+
+    const walletEvents = emitted.filter((e) => e.event === "gang:wallet_changed");
+    expect(walletEvents.map((e) => e.room).sort()).toEqual([`user:${REQUESTER}`, "user:guest_bystander"].sort());
+    expect(walletEvents[0]?.payload).toMatchObject({ gangId: GANG, requestId: "cr_1" });
+  });
+
+  it("tells each wallet who asked, who paid and how much, so the app can celebrate it", async () => {
+    const { io, emitted } = fakeIo();
+    const { client } = fakePostgrest({
+      rpc: () => ({ alreadyFunded: false, request: { ...coinRequestRow("FUNDED"), funded_by_identity_id: "guest_bystander" } }),
+    });
+    const service = new GangService(new GangRepository(client), undefined, io);
+
+    await service.fundCoinRequest("cr_1", "guest_bystander");
+
+    const walletEvents = emitted.filter((e) => e.event === "gang:wallet_changed");
+    for (const event of walletEvents) {
+      expect(event.payload).toMatchObject({
+        reason: "coin_request_funded",
+        requesterIdentityId: REQUESTER,
+        fundedByIdentityId: "guest_bystander",
+      });
+      expect(typeof (event.payload as { amount: unknown }).amount).toBe("number");
+    }
+  });
+
+  it("does not wake the person the request was addressed to if somebody else paid it", async () => {
+    const { io, emitted } = fakeIo();
+    const { client } = fakePostgrest({
+      rpc: () => ({ alreadyFunded: false, request: { ...coinRequestRow("FUNDED"), funded_by_identity_id: "guest_bystander" } }),
+    });
+    const service = new GangService(new GangRepository(client), undefined, io);
+
+    await service.fundCoinRequest("cr_1", "guest_bystander");
+
+    // PAYER (who it was addressed to) did not pay, so their wallet did not change.
+    expect(emitted.some((e) => e.event === "gang:wallet_changed" && e.room === `user:${PAYER}`)).toBe(false);
+  });
+
+  it("does not repeat the wallet notice when the payer retries a request that already landed", async () => {
+    const { io, emitted } = fakeIo();
+    const { client } = fakePostgrest({
+      rpc: () => ({ alreadyFunded: true, request: { ...coinRequestRow("FUNDED"), funded_by_identity_id: "guest_bystander" } }),
+    });
+    const service = new GangService(new GangRepository(client), undefined, io);
+
+    await service.fundCoinRequest("cr_1", "guest_bystander");
+
+    expect(emitted.some((e) => e.event === "gang:wallet_changed")).toBe(false);
+  });
+
+  it("tells a second member that someone else already paid, instead of reporting success", async () => {
+    const { io, emitted } = fakeIo();
+    const { client } = fakePostgrest({
+      rpc: () => ({ alreadyFunded: true, request: { ...coinRequestRow("FUNDED"), funded_by_identity_id: PAYER } }),
+    });
+    const service = new GangService(new GangRepository(client), undefined, io);
+
+    const result = await service.fundCoinRequest("cr_1", "guest_bystander");
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/already paid/i);
+    expect(emitted).toHaveLength(0);
+  });
+
+  it("treats a retry by the member who did pay as a plain success", async () => {
+    const { io } = fakeIo();
+    const { client } = fakePostgrest({
+      rpc: () => ({ alreadyFunded: true, request: { ...coinRequestRow("FUNDED"), funded_by_identity_id: "guest_bystander" } }),
+    });
+    const service = new GangService(new GangRepository(client), undefined, io);
+
+    const result = await service.fundCoinRequest("cr_1", "guest_bystander");
+
+    expect(result.success).toBe(true);
+    expect(result.request?.fundedByIdentityId).toBe("guest_bystander");
+  });
+
+  it("surfaces the database's refusal when a non-member tries to pay", async () => {
+    const { io } = fakeIo();
+    const { client } = fakePostgrest({
+      // The deployed function still says "Mandali" (migration 20261011000000); the player must read "Gang".
+      rpc: () => { throw postgrestError("NOT_ACTIVE_MEMBER: only members of this Mandali can pay its coin requests"); },
+    });
+    const service = new GangService(new GangRepository(client), undefined, io);
+
+    const result = await service.fundCoinRequest("cr_1", "guest_outsider");
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("only members of this Gang can pay its coin requests");
+  });
+
+  it("does not broadcast when the request is refused", async () => {
+    const { io, emitted } = fakeIo();
+    const { client } = fakePostgrest({ rpc: () => { throw postgrestError("COOLDOWN: retry_after_seconds=60"); } });
+    const service = new GangService(new GangRepository(client), undefined, io);
+
+    await service.createCoinRequest({ gangId: GANG, channelId: "c1", requesterId: REQUESTER, payerId: PAYER, amount: 100 });
+
+    expect(emitted).toHaveLength(0);
+  });
+
+  it.each([
+    ["promoteMember", (s: GangService) => s.promoteMember(GANG, "owner", PAYER)],
+    ["kickMember", (s: GangService) => s.kickMember(GANG, "owner", "Owner", PAYER, "spam")],
+    ["setMessagePin", (s: GangService) => s.setMessagePin(GANG, "msg_1", "owner", true)],
+    ["deleteMessage", (s: GangService) => s.deleteMessage(GANG, "msg_1", "owner")],
+  ])("%s tells everyone in the Gang to refresh", async (_name, act) => {
+    const { io, emitted } = fakeIo();
+    const { client } = fakePostgrest({ rpc: () => ({}) });
+    const service = new GangService(new GangRepository(client), undefined, io);
+
+    const result = await act(service);
+
+    expect(result.success).toBe(true);
+    expect(emitted.some((e) => e.event === "gang:changed" && e.room === `gang:${GANG}`)).toBe(true);
+  });
+});
+
+describe("Gang coin rules (durable mode)", () => {
+  describe("createCoinRequest", () => {
+    it.each([1, 50, 99, 101, 500])("refuses a request for %i coins before touching the database", async (amount) => {
+      const { client, rpc } = fakePostgrest();
+      const service = new GangService(new GangRepository(client));
+
+      const result = await service.createCoinRequest({
+        gangId: GANG, channelId: "c1", requesterId: REQUESTER, payerId: PAYER, amount,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain(`${GANG_COIN_AMOUNT} coins`);
+      expect(rpc).not.toHaveBeenCalled();
+    });
+
+    it("passes the fixed amount and the 4-hour window down to the database", async () => {
+      const { client, rpc } = fakePostgrest({
+        rpc: () => ({
+          id: "cr_1", mandali_id: GANG, message_id: "cr_1_card", requester_identity_id: REQUESTER,
+          payer_identity_id: PAYER, amount: 100, status: "OPEN",
+          expires_at: "2099-01-01T00:00:00Z", created_at: "2026-01-01T00:00:00Z", decided_at: null,
+        }),
+      });
+      const service = new GangService(new GangRepository(client));
+
+      const result = await service.createCoinRequest({
+        gangId: GANG, channelId: "c1", requesterId: REQUESTER, payerId: PAYER, amount: 100,
+      });
+
+      expect(result.success).toBe(true);
+      const [fn, args] = rpc.mock.calls[0];
+      expect(fn).toBe("create_coin_request");
+      expect(args.p_amount).toBe(GANG_COIN_AMOUNT);
+      expect(args.p_cooldown_seconds).toBe(GANG_COIN_REQUEST_COOLDOWN_MS / 1000);
+    });
+
+    it("turns the database's COOLDOWN error into a friendly message plus the time remaining", async () => {
+      const { client } = fakePostgrest({
+        rpc: () => { throw postgrestError("COOLDOWN: retry_after_seconds=9000"); },
+      });
+      const service = new GangService(new GangRepository(client));
+
+      const result = await service.createCoinRequest({
+        gangId: GANG, channelId: "c1", requesterId: REQUESTER, payerId: PAYER, amount: 100,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.retryAfterMs).toBe(9_000_000);
+      expect(result.error).not.toMatch(/retry_after_seconds|COOLDOWN/);
+    });
+
+    it("does not report a retry time for unrelated database failures", async () => {
+      const { client } = fakePostgrest({
+        rpc: () => { throw postgrestError("NOT_ACTIVE_MEMBER: requester must be an active member"); },
+      });
+      const service = new GangService(new GangRepository(client));
+
+      const result = await service.createCoinRequest({
+        gangId: GANG, channelId: "c1", requesterId: REQUESTER, payerId: PAYER, amount: 100,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.retryAfterMs).toBeUndefined();
+      expect(result.error).toBe("requester must be an active member");
+    });
+  });
+
+  describe("getCoinRequestCooldown", () => {
+    beforeEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("is zero for someone who has never asked", async () => {
+      const { client } = fakePostgrest({ select: () => [] });
+      const service = new GangService(new GangRepository(client));
+
+      expect(await service.getCoinRequestCooldown(REQUESTER)).toEqual({ retryAfterMs: 0 });
+    });
+
+    it("counts down from the last request", async () => {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { client } = fakePostgrest({ select: () => [{ created_at: oneHourAgo }] });
+      const service = new GangService(new GangRepository(client));
+
+      const { retryAfterMs } = await service.getCoinRequestCooldown(REQUESTER);
+
+      const threeHours = 3 * 60 * 60 * 1000;
+      expect(retryAfterMs).toBeGreaterThan(threeHours - 5_000);
+      expect(retryAfterMs).toBeLessThanOrEqual(threeHours);
+    });
+
+    it("is zero once the window has passed", async () => {
+      const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString();
+      const { client } = fakePostgrest({ select: () => [{ created_at: fiveHoursAgo }] });
+      const service = new GangService(new GangRepository(client));
+
+      expect(await service.getCoinRequestCooldown(REQUESTER)).toEqual({ retryAfterMs: 0 });
+    });
+
+    it("looks up the caller's own requests, newest first, one row", async () => {
+      const { client, select } = fakePostgrest({ select: () => [] });
+      const service = new GangService(new GangRepository(client));
+
+      await service.getCoinRequestCooldown(REQUESTER);
+
+      const [table, query] = select.mock.calls[0];
+      expect(table).toBe("mandali_coin_requests");
+      expect(query).toContain(`requester_identity_id=eq.${REQUESTER}`);
+      expect(query).toContain("order=created_at.desc");
+      expect(query).toContain("limit=1");
+    });
+  });
+
+  describe("transferCoins when members live in Postgres", () => {
+    it("recognises real members instead of rejecting them from an empty in-memory map", async () => {
+      const economyRepo = new InMemoryEconomyRepository();
+      economyRepo.testFixture.seedIdentity(REQUESTER, "member");
+      economyRepo.testFixture.seedIdentity(PAYER, "member");
+      await economyRepo.ensureWallet(REQUESTER);
+      await economyRepo.ensureWallet(PAYER);
+      const economyService = new EconomyService(economyRepo);
+      const before = BigInt((await economyService.getWallet(REQUESTER)).balance);
+
+      const { client } = fakePostgrest({
+        select: (table, query) => {
+          if (table === "mandali_memberships") {
+            return [query.includes(`identity_id=eq.${REQUESTER}`) ? memberRow(REQUESTER, "Req") : memberRow(PAYER, "Pay")];
+          }
+          if (table === "mandali_channels") {
+            return [{ channel_id: "c1", mandali_id: GANG, name: "lounge-chat", type: "TEXT", is_archived: false, position: 1 }];
+          }
+          return [];
+        },
+        rpc: (fn) => {
+          if (fn === "send_mandali_message") throw new Error("announcement not under test");
+          throw new Error(`unexpected rpc ${fn}`);
+        },
+      });
+      const service = new GangService(new GangRepository(client), undefined, undefined, economyService);
+
+      const result = await service.transferCoins(GANG, REQUESTER, { toPlayerId: PAYER, amount: 100, type: "SEND" });
+
+      expect(result.success).toBe(true);
+      expect(BigInt((await economyService.getWallet(REQUESTER)).balance)).toBe(before - 100n);
+    });
+  });
+});

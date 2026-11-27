@@ -16,7 +16,7 @@ Two things made it a poor fit:
 1. **A finished room cannot take new players.** `joinRoom` requires the lobby. So the idea of re-sharing the finished
    room to bring friends who had left back in could never work, and reopening it would have changed the join rule and
    touched match entry, stakes and settlement.
-2. **Friends already know how to play again**: someone makes a room and sends the link, in a Mandali or on WhatsApp.
+2. **Friends already know how to play again**: someone makes a room and sends the link, in a Gang or on WhatsApp.
    That is the flow the product is built around.
 
 ## Decision
@@ -32,7 +32,7 @@ Two things made it a poor fit:
 3. **`room:closed` is now sent from the two real teardown points** (`closeConcludedRoom`, `announceAbandonment`), so
    an audience member watching a table that has just emptied is told, instead of watching a dead board.
 4. **A friend's live match can be watched.** Presence carries a `watchCode` for a person who is mid-match in a room
-   that takes an audience (never a sealed one), only to people in the same Mandali. The Mandali "who's around" strip
+   that takes an audience (never a sealed one), only to people in the same Gang. The Gang "who's around" strip
    offers *Watch*, which opens `/watch/:code`: the existing spectator arena in `audience` mode.
 5. **An audience can see the whole live game and cheer, and nothing else.** No seat, no moves, no chat. A spectator
    socket may send only the `QUICK_REACTIONS` cheering set, never aimed at a player, three per four seconds. Throwables

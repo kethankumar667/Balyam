@@ -4,7 +4,7 @@ import { useFaucetStore } from "../store/faucetStore";
 import { FaucetClaimModal } from "../components/faucet/FaucetClaimModal";
 import MatchPayoutBanner from "../components/economy/MatchPayoutBanner";
 import { useCarryOverStore } from "../store/carryOverStore";
-import { useMandaliJoyStore } from "../store/mandaliJoyStore";
+import { useGangJoyStore } from "../store/gangJoyStore";
 import { CoinFountain } from "../components/faucet/CoinCelebrations";
 import { useLevelUpStore } from "../store/levelUpStore";
 import SeatAvatar from "../components/profile/SeatAvatar";
@@ -31,11 +31,11 @@ export default function PreviewFaucet() {
     if (view === "joy" || view === "joysent") {
       document.documentElement.setAttribute("data-theme", new URLSearchParams(window.location.search).get("theme") === "light" ? "light" : "dark");
       const friend = view === "joy" ? "Bala" : "Kethan";
-      useMandaliJoyStore.getState().show(view === "joy" ? "received" : "sent", 1500, friend, {
+      useGangJoyStore.getState().show(view === "joy" ? "received" : "sent", 1500, friend, {
         self: { name: "You", avatar: AVATARS[0]?.id },
         other: { name: friend, avatar: AVATARS[1]?.id },
       });
-      return () => useMandaliJoyStore.getState().clear();
+      return () => useGangJoyStore.getState().clear();
     }
     if (view === "levelup") {
       const q = new URLSearchParams(window.location.search);

@@ -21,9 +21,9 @@ describe("activeTabId", () => {
     ["/games", "games"],
     ["/favorites", "games"],
     ["/recently-played", "games"],
-    ["/mandali", "mandali"],
-    ["/mandali/the-gang", "mandali"],
-    ["/social", "mandali"],
+    ["/gang", "gang"],
+    ["/gang/the-gang", "gang"],
+    ["/social", "gang"],
     ["/profile", "you"],
     ["/profile/matches", "you"],
     ["/myrecords", "you"],
@@ -48,7 +48,7 @@ describe("MobileTabBar", () => {
     renderAt("/");
     const nav = screen.getByRole("navigation", { name: "Primary" });
     expect(nav).toBeTruthy();
-    for (const name of ["Home", "Games", "Mandali", "You"]) {
+    for (const name of ["Home", "Games", "Gang", "You"]) {
       expect(screen.getByRole("link", { name })).toBeTruthy();
     }
     expect(screen.getByRole("button", { name: "Join a room with a code" })).toBeTruthy();
@@ -58,7 +58,7 @@ describe("MobileTabBar", () => {
     renderAt("/games");
     expect(screen.getByRole("link", { name: "Games" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: "Home" }).getAttribute("aria-current")).toBeNull();
-    expect(screen.getByRole("link", { name: "Mandali" }).getAttribute("aria-current")).toBeNull();
+    expect(screen.getByRole("link", { name: "Gang" }).getAttribute("aria-current")).toBeNull();
   });
 
   it("keeps a sub-page's parent tab lit", () => {
@@ -70,7 +70,7 @@ describe("MobileTabBar", () => {
     renderAt("/");
     expect(screen.getByRole("link", { name: "Home" }).getAttribute("href")).toBe("/");
     expect(screen.getByRole("link", { name: "Games" }).getAttribute("href")).toBe("/games");
-    expect(screen.getByRole("link", { name: "Mandali" }).getAttribute("href")).toBe("/mandali");
+    expect(screen.getByRole("link", { name: "Gang" }).getAttribute("href")).toBe("/gang");
     expect(screen.getByRole("link", { name: "You" }).getAttribute("href")).toBe("/profile");
   });
 

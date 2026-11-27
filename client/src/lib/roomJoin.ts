@@ -10,7 +10,7 @@ import { recoveryManager } from "../core/recovery/RecoveryManager";
 
 /**
  * Join a room by its code from anywhere in the app — the "Join" button on a
- * room shared into a Mandali chat.
+ * room shared into a Gang chat.
  *
  * This is the same emit the Join-a-room dialog makes (credential, seat
  * bookkeeping, cosmetics), minus the dialog. The caller navigates to

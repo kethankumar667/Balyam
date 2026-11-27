@@ -1,4 +1,4 @@
-import { mandaliEn } from "./mandali.en";
+import { gangEn } from "./gang.en";
 
 /**
  * English catalogue — the source of truth.
@@ -21,7 +21,7 @@ import { mandaliEn } from "./mandali.en";
  * per-language code.
  */
 export const en = {
-  ...mandaliEn,
+  ...gangEn,
 
   /* ── Common ─────────────────────────────────────────────────────── */
   "common.on": "On",

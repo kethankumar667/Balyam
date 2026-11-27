@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
-import type { MandaliMember } from "@shared/mandali/types.js";
+import type { GangMember } from "@shared/gang/types.js";
 import { pickCoinRequestPayer } from "../pickCoinRequestPayer";
 
-const member = (playerId: string, role: string, joinedAt: number, state = "ACTIVE"): MandaliMember =>
+const member = (playerId: string, role: string, joinedAt: number, state = "ACTIVE"): GangMember =>
   ({
-    memberId: `m:${playerId}`, mandaliId: "m", playerId, displayName: playerId, avatar: "a1",
+    memberId: `m:${playerId}`, gangId: "m", playerId, displayName: playerId, avatar: "a1",
     role, state, joinedAt, presence: "online", contributionScore: 0,
-  }) as MandaliMember;
+  }) as GangMember;
 
 describe("pickCoinRequestPayer", () => {
   it("asks the owner first", () => {

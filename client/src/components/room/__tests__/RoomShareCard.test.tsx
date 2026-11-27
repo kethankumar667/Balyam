@@ -2,9 +2,9 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
-vi.mock("../../mandali/ShareToMandaliSheet", () => ({
+vi.mock("../../gang/ShareToGangSheet", () => ({
   default: ({ open, roomCode }: { open: boolean; roomCode: string }) =>
-    open ? <div role="dialog">Mandali sheet for {roomCode}</div> : null,
+    open ? <div role="dialog">Gang sheet for {roomCode}</div> : null,
 }));
 vi.mock("../../QrCodeModal", () => ({ default: () => null }));
 
@@ -41,28 +41,28 @@ describe("RoomShareCard — a room made for one friend", () => {
   });
 });
 
-describe("RoomShareCard — Mandali button", () => {
+describe("RoomShareCard — Gang button", () => {
   afterEach(cleanup);
 
   it("is offered to members", () => {
     useAuthStore.setState({ isMember: true } as never);
     renderCard();
 
-    expect(screen.getByRole("button", { name: "Share this room to a Mandali" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Share this room to a Gang" })).toBeTruthy();
   });
 
-  it("is not offered to guests — a Mandali needs an account", () => {
+  it("is not offered to guests — a Gang needs an account", () => {
     useAuthStore.setState({ isMember: false } as never);
     renderCard();
 
-    expect(screen.queryByRole("button", { name: "Share this room to a Mandali" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Share this room to a Gang" })).toBeNull();
   });
 
-  it("opens the Mandali picker for this room's code", () => {
+  it("opens the Gang picker for this room's code", () => {
     useAuthStore.setState({ isMember: true } as never);
     renderCard();
 
-    fireEvent.click(screen.getByRole("button", { name: "Share this room to a Mandali" }));
+    fireEvent.click(screen.getByRole("button", { name: "Share this room to a Gang" }));
 
     expect(screen.getByRole("dialog").textContent).toContain("ABC234");
   });

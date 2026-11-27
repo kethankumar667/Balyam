@@ -72,12 +72,12 @@ import { createGame2048StatsRouter } from "./games2048/Game2048StatsController.j
 import { CosmeticsService } from "./cosmetics/CosmeticsService.js";
 import { createCosmeticsRouter } from "./cosmetics/CosmeticsController.js";
 import { readPostgrestConfig, PostgrestClient } from "./persistence/postgrest.js";
-import { MandaliRepository } from "./mandali/MandaliRepository.js";
-import { startMandaliRetentionJob } from "./mandali/MandaliRetentionJob.js";
-import { MandaliService } from "./mandali/MandaliService.js";
-import { createMandaliRouter } from "./mandali/MandaliController.js";
-import { registerMandaliSocketHandlers } from "./mandali/MandaliSocketHandlers.js";
-import { createPresenceSources } from "./mandali/presenceSources.js";
+import { GangRepository } from "./gang/GangRepository.js";
+import { startGangRetentionJob } from "./gang/GangRetentionJob.js";
+import { GangService } from "./gang/GangService.js";
+import { createGangRouter } from "./gang/GangController.js";
+import { registerGangSocketHandlers } from "./gang/GangSocketHandlers.js";
+import { createPresenceSources } from "./gang/presenceSources.js";
 import { ReferralService } from "./referrals/ReferralService.js";
 import { ReferralBonusService } from "./referrals/ReferralBonusService.js";
 import { ReferralNotifier } from "./referrals/ReferralNotifier.js";
@@ -474,47 +474,47 @@ const game2048StatsService = new Game2048StatsService();
 app.use("/api/games/2048/stats", createGame2048StatsRouter(game2048StatsService));
 
 /**
- * BHALYAM Mandali (మండలి) Communities & Social Lounge API.
+ * BHALYAM Gang (గ్యాంగ్) Communities & Social Lounge API.
  * Server-authoritative persistent clans, roles, squad parties, and Gnapakalu memories.
  */
-const mandaliPostgrestConfig = economyStoreStatus().kind === "supabase" ? readPostgrestConfig() : null;
-const mandaliRepository = new MandaliRepository(
-  mandaliPostgrestConfig ? new PostgrestClient(mandaliPostgrestConfig) : null
+const gangPostgrestConfig = economyStoreStatus().kind === "supabase" ? readPostgrestConfig() : null;
+const gangRepository = new GangRepository(
+  gangPostgrestConfig ? new PostgrestClient(gangPostgrestConfig) : null
 );
-let stopMandaliRetention: (() => void) | null = null;
-if (mandaliRepository.isDurable()) {
-  logger.info({ message: "Mandali is running on durable Postgres storage.", module: "MANDALI" });
-  stopMandaliRetention = startMandaliRetentionJob(mandaliRepository);
+let stopGangRetention: (() => void) | null = null;
+if (gangRepository.isDurable()) {
+  logger.info({ message: "Gang is running on durable Postgres storage.", module: "GANG" });
+  stopGangRetention = startGangRetentionJob(gangRepository);
 } else {
   logger.warn({
     message:
-      "Mandali is running on in-memory storage — every community, member, message and coin request " +
+      "Gang is running on in-memory storage — every community, member, message and coin request " +
       "is lost on restart/redeploy. Configure Supabase to enable durable storage.",
-    module: "MANDALI",
+    module: "GANG",
   });
 }
-const mandaliService = new MandaliService(mandaliRepository, roomManager, io, economyService);
-app.use("/api/mandali", createMandaliRouter(mandaliService));
+const gangService = new GangService(gangRepository, roomManager, io, economyService);
+app.use("/api/gang", createGangRouter(gangService));
 
 /**
- * Who is around, for the dots in a Mandali's People list. Presence is never stored: a
+ * Who is around, for the dots in a Gang's People list. Presence is never stored: a
  * member is online while any signed-in connection of theirs sits in their personal
  * `user:<id>` room, and in a game while they hold a live seat in a running one.
  * Changes are pushed as they are noticed; this sweep notices the ones that happen
- * without a Mandali event (a game starting, the last tab closing).
+ * without a Gang event (a game starting, the last tab closing).
  */
-const MANDALI_PRESENCE_SWEEP_MS = 5_000;
-mandaliService.setPresenceSources(createPresenceSources(io, roomManager));
-const mandaliPresenceTimer = setInterval(() => {
+const GANG_PRESENCE_SWEEP_MS = 5_000;
+gangService.setPresenceSources(createPresenceSources(io, roomManager));
+const gangPresenceTimer = setInterval(() => {
   const seated = roomManager.getActiveGamesByPlayer().keys();
-  void mandaliService.refreshPresence([...mandaliService.presenceWatchList(), ...seated]);
-}, MANDALI_PRESENCE_SWEEP_MS);
-mandaliPresenceTimer.unref();
+  void gangService.refreshPresence([...gangService.presenceWatchList(), ...seated]);
+}, GANG_PRESENCE_SWEEP_MS);
+gangPresenceTimer.unref();
 
 /**
  * Trust tiers and the daily transfer cap. The tiers are computed from data the
  * server already holds (account age, matches against signed-in opponents,
- * Mandali membership) — nothing about the device or network.
+ * Gang membership) — nothing about the device or network.
  */
 trustService.setProviders({
   accountAgeDays: (id) => {
@@ -522,13 +522,13 @@ trustService.setProviders({
     return joinedAt ? Math.max(0, (Date.now() - joinedAt) / 86_400_000) : 0;
   },
   opponentStats: (id) => matchHistoryService.getOpponentStats(id),
-  // A Mandali of one is not a group of friends, so it does not count toward trust.
-  activeMandalis: async (id) => (await mandaliService.getPlayerMandalis(id)).filter((m) => m.memberCount >= 2).length,
+  // A Gang of one is not a group of friends, so it does not count toward trust.
+  activeGangs: async (id) => (await gangService.getPlayerGangs(id)).filter((m) => m.memberCount >= 2).length,
 });
 const transferPolicy = economyService
   ? new TransferPolicy({ ledger: economyService, risk: riskService, trust: trustService })
   : null;
-mandaliService.setTransferPolicy(transferPolicy);
+gangService.setTransferPolicy(transferPolicy);
 app.use(
   "/api/rewards",
   createRewardsRouter({ gateway: rewardGateway, trust: trustService, risk: riskService, transferPolicy }),
@@ -633,7 +633,7 @@ io.on("connection", (socket) => {
   });
   logger.info({ message: "Socket client connected", socketId: socket.id, module: "SOCKET" });
   registerSocketHandlers(io, socket, roomManager);
-  registerMandaliSocketHandlers(io, socket, mandaliService);
+  registerGangSocketHandlers(io, socket, gangService);
 
   socket.on("disconnect", () => {
     logger.info({ message: "Socket client disconnected", socketId: socket.id, module: "SOCKET" });
@@ -833,7 +833,7 @@ function shutdown(signal: string): void {
   shuttingDown = true;
   logger.warn({ message: `Received ${signal}, starting graceful shutdown...`, module: "SERVER" });
   globalRateLimiter.destroy();
-  stopMandaliRetention?.();
+  stopGangRetention?.();
   io.close();
 
   // Stop accepting, and hang up connections that are merely idle. Without

@@ -186,11 +186,12 @@ const SECTION_SPECS: Record<string, SectionSpec> = {
       { field: "updated_at", label: "Updated", kind: "date" },
     ],
   },
+  // The section id is the database's own name for it (`admin_player_records` matches `'mandali'`); the label is "Gang".
   mandali: {
     layout: "table",
     columns: [
       { field: "joined_at", label: "Joined", kind: "date" },
-      { field: "mandali_id", label: "Mandali", kind: "shortId" },
+      { field: "mandali_id", label: "Gang", kind: "shortId" },
       { field: "role", label: "Role", kind: "slug" },
       { field: "state", label: "State", kind: "slug" },
     ],

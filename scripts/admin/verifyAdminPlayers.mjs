@@ -244,7 +244,7 @@ async function main() {
     await db.query("grant select,insert,update on public.profiles to authenticated; grant select on public.profiles to anon");
     console.log(JSON.stringify({ fixtures: ["AUTH_STUB (JWT sub via session GUC)", "0001_accounts.sql", "20260818000000_progression_persistence.sql",
       "erased_at timestamptz from 20261028000000_guest_first_game_welcome.sql", "Supabase-style profiles role grants"],
-    limits: ["No Supabase Auth/JWT verification, PostgREST, Node service integration, or optional economy/mandali installed-schema certification"] }));
+    limits: ["No Supabase Auth/JWT verification, PostgREST, Node service integration, or optional economy/gang installed-schema certification"] }));
     const members = Array.from({ length: 121 }, () => crypto.randomUUID());
     for (const [index, id] of members.entries()) {
       await db.query("insert into auth.users(id,email,raw_user_meta_data) values ($1,$2,$3)",

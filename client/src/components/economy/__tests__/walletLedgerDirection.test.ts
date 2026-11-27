@@ -2,11 +2,11 @@ import { describe, it, expect } from "vitest";
 import { mapEntryToDeltaType } from "../WalletDrawer";
 
 describe("wallet ledger direction", () => {
-  it("shows a Mandali send as a debit — the sender's coins went out", () => {
+  it("shows a Gang send as a debit — the sender's coins went out", () => {
     expect(mapEntryToDeltaType("P2P_TRANSFER_SEND", "-100")).toEqual({ type: "DEBIT", label: "Coins Sent" });
   });
 
-  it("shows a Mandali receive as a credit", () => {
+  it("shows a Gang receive as a credit", () => {
     expect(mapEntryToDeltaType("P2P_TRANSFER_RECEIVE", "100")).toEqual({ type: "CREDIT", label: "Coins Received" });
   });
 

@@ -8,7 +8,7 @@ import { checkRecordsAtRisk } from "../lib/signOutGuard";
 /**
  * Sign out, and leave.
  *
- * Signing out on a page that belongs to the account — a Mandali, a profile, a
+ * Signing out on a page that belongs to the account — a Gang, a profile, a
  * room — must not leave that page on screen. The convention everywhere else is
  * to land on the public front door and to make sure Back cannot return to what
  * was just left, so this navigates to home with `replace`.

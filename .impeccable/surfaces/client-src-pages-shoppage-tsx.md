@@ -7,7 +7,7 @@ related_targets: ["client/src/components/cosmetics"]
 
 ## Scope and mode
 
-Surface: `/shop` (the Cosmetics Boutique), a page inside the established BHALYAM world (the main app, not the Mandali album). Mode: Operate. A shopper browses cosmetics (frames, dice, tokens, card backs), sees each one on their OWN avatar / dice / token / card back, reads the price against their coin balance, then unlocks, equips, resets or refunds.
+Surface: `/shop` (the Cosmetics Boutique), a page inside the established BHALYAM world (the main app, not the Gang album). Mode: Operate. A shopper browses cosmetics (frames, dice, tokens, card backs), sees each one on their OWN avatar / dice / token / card back, reads the price against their coin balance, then unlocks, equips, resets or refunds.
 
 ## Audience, job, task, constraints
 

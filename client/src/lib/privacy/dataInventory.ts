@@ -569,9 +569,9 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     isPersonalData: false,
   },
   {
-    key: "bhalyam.mandali.layout",
-    label: "Mandali layout",
-    description: "Whether you folded away the side panels of a Mandali on a large screen, so it stays the way you left it.",
+    key: "bhalyam.gang.layout",
+    label: "Gang layout",
+    description: "Whether you folded away the side panels of a Gang on a large screen, so it stays the way you left it.",
     purpose: "preference",
     isPersonalData: false,
   },

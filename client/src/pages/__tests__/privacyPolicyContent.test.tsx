@@ -50,10 +50,10 @@ describe("PrivacyPolicyPage content", () => {
       expect(collect.getByText(/gender is optional/i)).toBeInTheDocument();
     });
 
-    it("tells people their chat and Mandali messages are kept, and for how long", () => {
+    it("tells people their chat and Gang messages are kept, and for how long", () => {
       renderPage();
 
-      expect(section("info-we-collect").getByText(/Mandali/i)).toBeInTheDocument();
+      expect(section("info-we-collect").getByText(/Gang/i)).toBeInTheDocument();
       expect(section("data-retention").getByText(/chat messages are removed after one year/i)).toBeInTheDocument();
     });
   });

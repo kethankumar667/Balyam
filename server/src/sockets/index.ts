@@ -14,7 +14,7 @@ import { adminPlayerService } from "../admin/AdminPlayerService.js";
 
 interface ModeratedSocketData {
   verifiedPlayerId?: string;
-  mandaliPlayer?: { playerId: string };
+  gangPlayer?: { playerId: string };
 }
 
 /**
@@ -47,7 +47,7 @@ export function registerSocketHandlers(
   const moderation = adminPlayerService();
   const identities = (): Array<string | null | undefined> => {
     const data = socket.data as ModeratedSocketData;
-    return [data.verifiedPlayerId, data.mandaliPlayer?.playerId, rooms.getSocketIdentity(socket.id)];
+    return [data.verifiedPlayerId, data.gangPlayer?.playerId, rooms.getSocketIdentity(socket.id)];
   };
   const unsubscribe = moderation.onSuspend(id => {
     if (identities().includes(id)) socket.disconnect(true);

@@ -5,7 +5,7 @@ import { resolveEffectiveLoadout } from "@shared/cosmetics";
 import type { Player, RoomPublicState } from "@shared/types";
 import SeatAvatar from "../SeatAvatar";
 import SelfAvatar from "../SelfAvatar";
-import { AlbumAvatar } from "../../mandali/album/AlbumAvatar";
+import { AlbumAvatar } from "../../gang/album/AlbumAvatar";
 import { useRoomStore } from "../../../store/roomStore";
 import { useAuthStore } from "../../../store/authStore";
 import { useCosmeticsStore } from "../../../store/cosmeticsStore";
@@ -86,7 +86,7 @@ describe("avatar decoration belongs to its owner", () => {
     expect(api).not.toHaveBeenCalled();
   });
 
-  it("keeps the frame and accessible presence when a Mandali image fails", () => {
+  it("keeps the frame and accessible presence when a Gang image fails", () => {
     useRoomStore.setState({ roomState: room([seat("album-seat", "frame_diya_glow")]) });
     const { container, getByAltText } = render(<AlbumAvatar playerId="album-seat" avatar="missing.png" name="Player" presence="idle" />);
     fireEvent.error(getByAltText("Player"));

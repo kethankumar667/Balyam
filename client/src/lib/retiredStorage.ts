@@ -21,6 +21,8 @@ export const RETIRED_STORAGE_KEYS: readonly string[] = [
   "bhalyam.academy.carrom.v2",
   // Brain Vita's "tilt the board" switch. The feature was removed, so a device that held its choice should forget it.
   "bhalyam.brainvita.tilt",
+  // The Gang screen's collapsed-panel layout, saved under the feature's old name (Mandali) before it was renamed.
+  "bhalyam.mandali.layout",
 ];
 
 /** Remove every retired key from both kinds of storage. Safe to call on every start; never throws. */

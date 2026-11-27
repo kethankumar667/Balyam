@@ -1,5 +1,5 @@
 {
-  "name": "BHALYAM Mandali family album",
+  "name": "BHALYAM Gang family album",
   "version": 1,
   "register": "operate",
   "themeSwitch": "data-theme on <html>",
@@ -25,7 +25,7 @@
     "corner": { "light": "120 110 98", "dark": "156 145 127" }
   },
   "cloths": {
-    "selection": "FNV-1a(mandaliId) mod 5; missing id => maroon",
+    "selection": "FNV-1a(gangId) mod 5; missing id => maroon",
     "maroon": ["123 30 43", "84 18 29"],
     "indigo": ["37 58 107", "24 38 74"],
     "green": ["31 77 58", "19 52 38"],

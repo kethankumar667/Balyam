@@ -1,7 +1,7 @@
 import { Plus } from "lucide-react";
 import type { GameKind } from "@shared/types";
 import { GAME_DISPLAY_NAMES } from "@shared/catalog";
-import { plainGameName } from "../mandali/album/games";
+import { plainGameName } from "../gang/album/games";
 import { InvitePromo } from "../../features/referrals/InvitePromo";
 
 export interface FinishedTableCardProps {
@@ -29,7 +29,7 @@ export default function FinishedTableCard({ game, onNewRoom, onLeave }: Finished
     >
       <h2 className="m-0 text-base font-black text-stone-900 dark:text-white">Match finished</h2>
       <p className="m-0 mt-1.5 text-sm font-medium leading-relaxed text-stone-600 dark:text-slate-300">
-        This table is closed to new players. To play again, start a new room and share its link, in a Mandali, on
+        This table is closed to new players. To play again, start a new room and share its link, in a Gang, on
         WhatsApp, anywhere.
       </p>
       <button

@@ -9,7 +9,7 @@ import { REASON, type ReasonCode } from "./types.js";
  * ── Why the exit is what gets controlled ──────────────────────────────
  * A farm of throwaway accounts is only worth running if what it earns can be
  * consolidated into one wallet. Coins move between players in exactly one way —
- * a Mandali transfer, or paying a Mandali coin request — so a limit here removes
+ * a Gang transfer, or paying a Gang coin request — so a limit here removes
  * most of the payoff without touching anyone's gameplay. It also fits what the
  * feature is for: coins move between friends who already know each other, in
  * amounts a friend would send, not in bulk.

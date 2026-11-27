@@ -34,8 +34,8 @@ describe("useSignOut", () => {
   it("signs out and lands on the home page, from wherever the person was", async () => {
     const signOut = vi.fn().mockResolvedValue(undefined);
     useAuthStore.setState({ signOut });
-    const { result } = renderHook(() => useSignOut(), { wrapper: wrapperAt("/mandali/nellore") });
-    expect(currentPath).toBe("/mandali/nellore");
+    const { result } = renderHook(() => useSignOut(), { wrapper: wrapperAt("/gang/nellore") });
+    expect(currentPath).toBe("/gang/nellore");
 
     await act(async () => {
       await result.current();
@@ -47,7 +47,7 @@ describe("useSignOut", () => {
 
   it("still leaves the page when ending the session fails", async () => {
     useAuthStore.setState({ signOut: vi.fn().mockRejectedValue(new Error("network down")) });
-    const { result } = renderHook(() => useSignOut(), { wrapper: wrapperAt("/mandali/nellore") });
+    const { result } = renderHook(() => useSignOut(), { wrapper: wrapperAt("/gang/nellore") });
 
     await act(async () => {
       await result.current().catch(() => undefined);
@@ -59,7 +59,7 @@ describe("useSignOut", () => {
   it("is on the home page while a slow sign-out is still in flight", async () => {
     let finish: () => void = () => undefined;
     useAuthStore.setState({ signOut: () => new Promise<void>((resolve) => (finish = resolve)) });
-    const { result } = renderHook(() => useSignOut(), { wrapper: wrapperAt("/mandali/nellore") });
+    const { result } = renderHook(() => useSignOut(), { wrapper: wrapperAt("/gang/nellore") });
 
     let pending: Promise<void> = Promise.resolve();
     act(() => {

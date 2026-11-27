@@ -95,12 +95,12 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         isActive: (p) => p.startsWith("/social"),
       },
       {
-        id: "home-mandali",
-        label: "Mandali (మండలి)",
+        id: "home-gang",
+        label: "Gang (గ్యాంగ్)",
         icon: Crown,
-        path: "/mandali",
+        path: "/gang",
         badge: { text: "New", variant: "amber" },
-        isActive: (p) => p.startsWith("/mandali"),
+        isActive: (p) => p.startsWith("/gang"),
       },
       {
         id: "home-leaderboard",

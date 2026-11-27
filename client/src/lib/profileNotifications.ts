@@ -2,16 +2,16 @@ import type { BhalyamGameSlug } from "../components/bhalyam/data";
 
 export interface NotificationItem {
   id: string;
-  /** `mandali` is a digest of missed chat; `mandali_invite` is one shared room. */
-  type: "invite" | "reward" | "gang" | "trophy" | "mandali" | "mandali_invite";
+  /** `gang` is a digest of missed chat; `gang_invite` is one shared room. */
+  type: "invite" | "reward" | "reunion" | "trophy" | "gang" | "gang_invite";
   title: string;
   desc: string;
   time: string;
   unread: boolean;
   gameSlug?: BhalyamGameSlug;
   roomCode?: string;
-  mandaliId?: string;
-  mandaliHandle?: string;
-  /** The chat message that carried a `mandali_invite`. */
+  gangId?: string;
+  gangHandle?: string;
+  /** The chat message that carried a `gang_invite`. */
   inviteMessageId?: string;
 }

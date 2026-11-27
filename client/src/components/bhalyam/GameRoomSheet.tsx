@@ -36,7 +36,7 @@ import { getPublicPresentationLoadout } from "../../lib/cosmeticsResolver";
 import SignInWall from "../auth/SignInWall";
 import { RecentlyPlayedManager } from "../../services/RecentlyPlayedManager";
 import { rememberInviteFriend } from "../../lib/inviteFriend";
-import { useMandaliStore } from "../../store/mandaliStore";
+import { useGangStore } from "../../store/gangStore";
 import { toast } from "../../hooks/useToast";
 import {
   BHALYAM_GAMES,
@@ -93,12 +93,12 @@ import {
 const JOIN_TIMEOUT_MS = 20_000;
 
 /**
- * Post a just-created room into a Mandali. The room already exists and the host is already on their
+ * Post a just-created room into a Gang. The room already exists and the host is already on their
  * way into it, so a refusal here must not undo anything: say it, and the host can still use the
- * room's own "Share to Mandali" button.
+ * room's own "Share to Gang" button.
  */
-async function postInviteToMandali(mandaliId: string, roomCode: string): Promise<void> {
-  const result = await useMandaliStore.getState().shareRoomToMandali(mandaliId, roomCode);
+async function postInviteToGang(gangId: string, roomCode: string): Promise<void> {
+  const result = await useGangStore.getState().shareRoomToGang(gangId, roomCode);
   if (!result.success) toast.error(result.error || "Your room is ready, but it could not be posted to the group.");
 }
 
@@ -107,10 +107,10 @@ export interface GameRoomSheetProps {
   game: BhalyamGameSlug | null;
   onClose: () => void;
   /**
-   * When set, the new room is also posted into this Mandali as an invite card the moment it exists,
+   * When set, the new room is also posted into this Gang as an invite card the moment it exists,
    * so "start a game with the group" is one step: choose, create, and the friends see where to join.
    */
-  shareToMandaliId?: string | null;
+  shareToGangId?: string | null;
   /** When set, the room is for this one friend (from "Play with <friend>"): its share message names them. */
   inviteFriendName?: string | null;
 }
@@ -415,7 +415,7 @@ const VAMANA_BOT_DIFFICULTIES: { id: "easy" | "medium" | "pro"; label: string; b
   { id: "pro",    label: "Master",   blurb: "Looks several relays ahead." },
 ];
 
-export default function GameRoomSheet({ game, onClose, shareToMandaliId, inviteFriendName }: GameRoomSheetProps) {
+export default function GameRoomSheet({ game, onClose, shareToGangId, inviteFriendName }: GameRoomSheetProps) {
   const navigate = useNavigate();
   const { playerName, setPlayerName, setPlayerId, rememberSeat, seatFor, avatarId } =
     useRoomStore();
@@ -859,7 +859,7 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId, inviteF
             socket.emit("room:startGame");
           }
           if (game) RecentlyPlayedManager.recordRecentlyPlayed(game);
-          if (shareToMandaliId) void postInviteToMandali(shareToMandaliId, res.code);
+          if (shareToGangId) void postInviteToGang(shareToGangId, res.code);
           if (inviteFriendName) rememberInviteFriend(res.code, inviteFriendName);
           navigate(`/room/${res.code}`);
         },

@@ -54,7 +54,7 @@ function makeRig(withGateway = true): Rig {
 const trustedProviders = {
   accountAgeDays: () => 5,
   opponentStats: () => ({ realPeopleMatches: 6, distinctOpponents: 4 }),
-  activeMandalis: async () => 0,
+  activeGangs: async () => 0,
 };
 
 describe("daily streak coins go through the reward gateway", () => {

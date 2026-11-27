@@ -22,7 +22,7 @@
 - Implement `POST /api/admin/users/:id/suspension` with the shared action/reason/expectedRevision contract.
 - Require a server-verified human super admin; refuse self and protected superadmin targets, invalid reasons and stale revisions.
 - Persist status and audit in one transaction. Hydrate all suspended identities before listen and fail closed on configured-store load failure.
-- Block verified suspended HTTP identities, guest renewal, authenticated socket actions, seat reclaim and Mandali operations. Disconnect associated active sockets after suspension commits; resume only after a confirmed write.
+- Block verified suspended HTTP identities, guest renewal, authenticated socket actions, seat reclaim and Gang operations. Disconnect associated active sockets after suspension commits; resume only after a confirmed write.
 - Test durable reload, audit consistency, conflict/failure handling, authenticated bypasses, existing-seat reclaim and zero database calls in packet checks.
 - Fix future match recording to retain verified human identity associations without changing gameplay outcomes. Clearly label unavailable legacy associations.
 

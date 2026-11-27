@@ -75,7 +75,7 @@ const streak = (over: Partial<GrantRequest> = {}): GrantRequest =>
 const tierProviders = (tier: 1 | 2) => ({
   accountAgeDays: () => (tier === 2 ? 5 : 0),
   opponentStats: () => (tier === 2 ? { realPeopleMatches: 6, distinctOpponents: 4 } : { realPeopleMatches: 0, distinctOpponents: 0 }),
-  activeMandalis: async () => 0,
+  activeGangs: async () => 0,
 });
 
 describe("risk audit retention", () => {

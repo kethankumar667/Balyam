@@ -1715,6 +1715,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
 
     const updatedFrom = this.applyWalletDebit(fromWallet, amountBn, {
       entryType: "P2P_TRANSFER_SEND",
+      // Mirrors the SQL `transfer_wallet_coins`, which writes source_kind 'mandali' into the ledger; stored rows keep it.
       sourceKind: "mandali",
       sourceId: input.toIdentityId,
       idempotencyKey: sendKey,

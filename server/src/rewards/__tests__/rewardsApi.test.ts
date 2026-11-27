@@ -122,7 +122,7 @@ describe("rewards API (a player's own rewards and standing)", () => {
   });
 
   it("answers 503, not an unhandled rejection, when trust cannot be assessed", async () => {
-    vi.spyOn(trust, "assess").mockRejectedValueOnce(new Error("mandali store down"));
+    vi.spyOn(trust, "assess").mockRejectedValueOnce(new Error("gang store down"));
 
     const res = await get(`/api/rewards/${ME}/trust`);
 

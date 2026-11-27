@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Check, Gamepad2, Gem, UsersRound } from "lucide-react";
 import type { ReferralFriend, ReferralOverview } from "@shared/referrals";
-import { AlbumAvatar } from "../../../components/mandali/album/AlbumAvatar";
+import { AlbumAvatar } from "../../../components/gang/album/AlbumAvatar";
 import { PlayTogetherButton } from "../PlayTogetherButton";
 import { ReferralChip } from "../ReferralChip";
 import { describeBonus, formatShortDate } from "../referralCopy";

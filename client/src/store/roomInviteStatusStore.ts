@@ -1,9 +1,9 @@
 import { create } from "zustand";
-import type { RoomInviteStatus } from "@shared/mandali/notifications.js";
+import type { RoomInviteStatus } from "@shared/gang/notifications.js";
 import { apiJson } from "../lib/playerIdentity";
 
 /**
- * Live standing of rooms shared into Mandali chats.
+ * Live standing of rooms shared into Gang chats.
  *
  * A shared-room card is only honest while its "3 of 4, open" is current, and
  * a chat can show many of them at once. So every card subscribes to a code and
@@ -71,7 +71,7 @@ export const useRoomInviteStatusStore = create<RoomInviteStatusState>((set) => (
     const unique = Array.from(new Set(codes)).slice(0, MAX_CODES_PER_REQUEST);
     if (unique.length === 0) return;
     const res = await apiJson<{ success: boolean; statuses: RoomInviteStatus[] }>(
-      `/api/mandali/room-invites/status?codes=${encodeURIComponent(unique.join(","))}`
+      `/api/gang/room-invites/status?codes=${encodeURIComponent(unique.join(","))}`
     );
     if (!res?.success) return;
     set((state) => {

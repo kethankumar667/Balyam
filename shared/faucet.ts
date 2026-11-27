@@ -8,7 +8,7 @@
  * rewards showing up once a day, this rewards coming back during the day.
  */
 
-/** Coins paid by one claim. Matches the Mandali send/request amount on purpose. */
+/** Coins paid by one claim. Matches the Gang send/request amount on purpose. */
 export const FAUCET_AMOUNT_COINS = 100;
 
 /** Time that must pass after a claim before the next one is allowed. */

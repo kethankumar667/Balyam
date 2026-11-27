@@ -53,7 +53,7 @@ describe("getWatchableRoomsByPlayer", () => {
     expect(watchable.has(bot.id)).toBe(false);
   });
 
-  it("also answers to the verified account id, which is how a Mandali knows its members", () => {
+  it("also answers to the verified account id, which is how a Gang knows its members", () => {
     const rooms = new RoomManager(makeIo().io);
     const code = startedLudoRoom(rooms);
     [...peek(rooms, code).players.values()].find((p) => p.name === "Alice")!.identityId = "acct_alice";

@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { GameKind } from "@shared/types";
 import { Users, QrCode, Copy, Share2, Check, MessagesSquare, Tv } from "lucide-react";
 import QrCodeModal from "../QrCodeModal";
-import ShareToMandaliSheet from "../mandali/ShareToMandaliSheet";
+import ShareToGangSheet from "../gang/ShareToGangSheet";
 import { useAuthStore } from "../../store/authStore";
 import { useHaptics } from "../../hooks/useHaptics";
 import { GAME_DISPLAY_NAMES } from "@shared/catalog";
@@ -20,8 +20,8 @@ export default function RoomShareCard({
 }) {
   const [copied, setCopied] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
-  const [mandaliOpen, setMandaliOpen] = useState(false);
-  // Mandali groups need an account, so guests are not offered the button.
+  const [gangOpen, setGangOpen] = useState(false);
+  // Gangs need an account, so guests are not offered the button.
   const isMember = useAuthStore((s) => s.isMember);
   const haptics = useHaptics();
 
@@ -172,14 +172,14 @@ export default function RoomShareCard({
                 type="button"
                 onClick={() => {
                   haptics.subtle();
-                  setMandaliOpen(true);
+                  setGangOpen(true);
                 }}
-                title="Share this room in a Mandali's chat"
-                aria-label="Share this room to a Mandali"
+                title="Share this room in a Gang's chat"
+                aria-label="Share this room to a Gang"
                 className="inline-flex items-center justify-center gap-1.5 min-h-[42px] px-3.5 py-2 rounded-2xl font-bold text-xs sm:text-sm bg-white dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-slate-700 text-stone-700 dark:text-slate-100 border border-stone-200/90 dark:border-slate-700 transition active:scale-95 cursor-pointer whitespace-nowrap shadow-2xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
               >
                 <MessagesSquare size={15} className="stroke-[2.5]" aria-hidden />
-                <span>Mandali</span>
+                <span>Gang</span>
               </button>
             )}
 
@@ -224,9 +224,9 @@ export default function RoomShareCard({
       </div>
 
       {isMember && (
-        <ShareToMandaliSheet
-          open={mandaliOpen}
-          onClose={() => setMandaliOpen(false)}
+        <ShareToGangSheet
+          open={gangOpen}
+          onClose={() => setGangOpen(false)}
           roomCode={code}
           gameName={gameName}
         />

@@ -106,7 +106,7 @@ vi.mock("../../store/authStore", () => ({
     <T,>(selector?: (state: MockAuthState) => T): T | MockAuthState => {
       return selector ? selector(mockAuthState) : mockAuthState;
     },
-    // Modules that watch the account (mandaliStore) subscribe when imported.
+    // Modules that watch the account (gangStore) subscribe when imported.
     { subscribe: () => () => undefined }
   ),
   currentAccessToken: () => "mock-token",

@@ -6,7 +6,7 @@ import AppSidebar from "./AppSidebar";
 import MobileTabBar from "./MobileTabBar";
 import Breadcrumbs from "../navigation/Breadcrumbs";
 import { type BreadcrumbItem } from "../navigation/breadcrumbsConfig";
-import { useMandaliInbox } from "../../hooks/useMandaliInbox";
+import { useGangInbox } from "../../hooks/useGangInbox";
 import { type BhalyamGameSlug } from "../bhalyam/data";
 import { useTheme } from "../../lib/useTheme";
 import { useAuthStore } from "../../store/authStore";
@@ -67,7 +67,7 @@ interface AppLayoutProps {
   chrome?: boolean;
   /**
    * The phone's bottom tab bar (defaults to true). A screen that draws its own bottom navigation, like an
-   * open Mandali with Chat / Play / Memories / People, turns it off: two bars of tabs stacked on one
+   * open Gang with Chat / Play / Memories / People, turns it off: two bars of tabs stacked on one
    * 375px screen read as a bug, and that screen already has a way back.
    */
   tabBar?: boolean;
@@ -120,7 +120,7 @@ export default function AppLayout({
   const [joinOpen, setJoinOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
   const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
-  // Set when the create sheet was opened from a Mandali's "Start a game": the room is posted there.
+  // Set when the create sheet was opened from a Gang's "Start a game": the room is posted there.
   const [sheetShareTo, setSheetShareTo] = useState<string | null>(null);
   // Set when the create sheet was opened from "Play with <friend>" on the Referrals page: the room's
   // share message names that friend.
@@ -129,19 +129,19 @@ export default function AppLayout({
   // Arriving with `state.newRoom` (a finished table's "Create a new room") opens the create-room
   // sheet for that game, once, and clears the state so a refresh or Back does not reopen it.
   useEffect(() => {
-    const handOff = navState as { newRoom?: string; shareToMandali?: string; inviteFriend?: string } | null;
+    const handOff = navState as { newRoom?: string; shareToGang?: string; inviteFriend?: string } | null;
     const slug = handOff?.newRoom;
     if (typeof slug !== "string" || slug === "") return;
     setSheetGame(slug as BhalyamGameSlug);
-    setSheetShareTo(typeof handOff?.shareToMandali === "string" && handOff.shareToMandali !== "" ? handOff.shareToMandali : null);
+    setSheetShareTo(typeof handOff?.shareToGang === "string" && handOff.shareToGang !== "" ? handOff.shareToGang : null);
     setSheetInviteFriend(typeof handOff?.inviteFriend === "string" && handOff.inviteFriend !== "" ? handOff.inviteFriend : null);
     navigate(`${pathname}${search}`, { replace: true, state: null });
   }, [navState, navigate, pathname, search]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileInitialView, setProfileInitialView] = useState<"profile" | "notifications">("profile");
-  // Real Mandali notifications, live — see useMandaliInbox. Guests get none.
-  const { items: notifications, update: setNotifications } = useMandaliInbox();
+  // Real Gang notifications, live — see useGangInbox. Guests get none.
+  const { items: notifications, update: setNotifications } = useGangInbox();
 
   // Automatically close mobile menu on route change
   useEffect(() => {
@@ -356,7 +356,7 @@ export default function AppLayout({
             <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
             <GameRoomSheet
               game={sheetGame}
-              shareToMandaliId={sheetShareTo}
+              shareToGangId={sheetShareTo}
               inviteFriendName={sheetInviteFriend}
               onClose={() => {
                 setSheetGame(null);

@@ -192,7 +192,7 @@ live-database deployment remain open.
 |---|---|
 | Is BHALYAM an illegal "online money game" today? | **Probably not.** There is no way to put real money in and no way to take money out. |
 | Is it provably safe? | **No.** The central law lets the regulator (OGAI) decide each game's category itself. Several features of the coin economy are exactly what its test looks at (section 3). |
-| Biggest single risk | Coins can be **sent between players** (Mandali transfers) while rooms use coins as **entry + winner-takes-pool**. Together this is the pattern the 2026 Rules call out. |
+| Biggest single risk | Coins can be **sent between players** (Gang transfers) while rooms use coins as **entry + winner-takes-pool**. Together this is the pattern the 2026 Rules call out. |
 | Biggest risks unrelated to gambling | **Children's data** (DPDP Act, under-18 rule from May 2027) and **intellectual property** (UNO look-alike cards, IPL teams and real players in Hand Cricket, "Connect 4"). |
 | Is launch blocked? | Not if the HIGH items in section 8 are done first. Without them you carry avoidable criminal and civil exposure. |
 
@@ -205,7 +205,7 @@ Confirmed in the repository:
 - **Coins are free to earn and cannot be bought.** Sources: welcome grant, free-coins faucet (100 every 4 h), daily streak, match prizes. `docs/economy/economy-v1-implementation-blueprint.md` states Economy V1 has no purchase or top-up path. I found no payment gateway, UPI, or withdrawal code.
 - **No cash-out.** Vouchers (the old cash-like mechanism) were removed in October 2026.
 - **Rooms use coins as a stake.** Each seat pays a "Room Entry" in coins; the winner takes a "Reward Pool". On some tables the platform keeps a cut (the "World Bank"), and Rummy is played at a coins-per-point rate.
-- **Coins can move between players.** Mandali members can send coins or request them. Sending is capped per day (500 to 5,000 by trust tier) by `server/src/rewards/TransferPolicy.ts`.
+- **Coins can move between players.** Gang members can send coins or request them. Sending is capped per day (500 to 5,000 by trust tier) by `server/src/rewards/TransferPolicy.ts`.
 - **Guests are allowed** with no age check. Members enter a birthday during onboarding.
 - **User-generated content:** chat, display names, avatars, and peer-to-peer voice (WebRTC).
 - **Real brands inside the product:** UNO-style cards and card backs, real IPL franchises and real player names in Hand Cricket, "Connect 4".
@@ -317,7 +317,7 @@ The state-law rows are from my background knowledge plus secondary summaries, no
 
 1. In our structure (free coins, entry + pool, no cash-out), is BHALYAM an *online social game* under PROGA and the 2026 Rules, and should we seek an OGAI determination?
 2. Does a platform cut taken in virtual coins count as a "fee" under Rule 9 factor 3?
-3. Does a Mandali coin gift between friends make coins "transferable" under factor 5?
+3. Does a Gang coin gift between friends make coins "transferable" under factor 5?
 4. What age-assurance and parental-consent method is acceptable for DPDP, and does XP and streak tracking count as behavioural monitoring?
 5. Are we safe in Telangana, Andhra Pradesh, Tamil Nadu, Odisha and Assam as written?
 6. Can we use IPL team names and player names without a licence?

@@ -75,7 +75,7 @@ the cap still count toward the Nostalgia Pack. Nothing accepted before the migra
 (`referral_campaign.bonus_starts_at`).
 
 **Live notices and the wallet label.** `ReferralNotifier` (server) sends a `referral:update` socket event to the
-member's `user:<id>` room, which every signed-in tab joins through the Mandali authentication, at four moments:
+member's `user:<id>` room, which every signed-in tab joins through the Gang authentication, at four moments:
 a friend joined with your code (`friend_joined`, to the inviter, from `redeemCode`/`attribute`, once per invitee),
 the friend played their first match (`friend_played` to the inviter, `bonus_on_the_way` to the invitee, once, right
 after `referral_bonus_complete`), and the coins landed (`bonus_landed`, from the reward gateway's

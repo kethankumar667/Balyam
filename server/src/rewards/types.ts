@@ -29,6 +29,7 @@ export type RewardType =
   | "TOURNAMENT"
   | "SEASONAL"
   | "REFERRAL"
+  // A value the reward tables' CHECK constraints allow; it was written as 'MANDALI' and the database still expects that.
   | "MANDALI"
   | "GUEST_CARRYOVER"
   | "GUEST_UPGRADE_BONUS";
@@ -134,7 +135,7 @@ export interface TrustAssessment {
     accountAgeDays: number;
     completedMatches: number;
     distinctOpponents: number;
-    activeMandalis: number;
+    activeGangs: number;
   };
 }
 

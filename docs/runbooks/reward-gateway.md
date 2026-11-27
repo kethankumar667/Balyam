@@ -61,8 +61,8 @@ A void can only happen while `PENDING`, so a void can never race a payment into 
 ## Trust tiers and transfer caps
 
 Tiers are a checklist, not a score (`TrustService.ts`). Tier 2 needs 3 days, 5 real-people matches and
-3 distinct opponents; tier 3 adds 30 days, 25 matches, 10 opponents and a Mandali; tier 4 needs 90 days,
-100 matches, 50 opponents and 3 Mandalis. Guests, bots, pass-and-play seats and matches too short to
+3 distinct opponents; tier 3 adds 30 days, 25 matches, 10 opponents and a Gang; tier 4 needs 90 days,
+100 matches, 50 opponents and 3 Gangs. Guests, bots, pass-and-play seats and matches too short to
 have been played are never counted.
 
 Coins can be sent per UTC day up to **500 / 1,000 / 2,500 / 5,000** for tiers 1–4, measured from the
@@ -161,7 +161,7 @@ shows nothing rather than a zero. Client: `peekPlayerCredential` (never creates)
 2. Run these three, in order (SQL editor or `supabase db push`). All are re-runnable.
    - `20261012000000_reward_gateway.sql` — the reward, standing and audit tables (needs the progression migration).
    - `20261013000000_transfer_daily_cap.sql` — the daily cap on sending coins (needs the P2P transfer migration).
-   - `20261014000000_fund_coin_request_daily_cap.sql` — the same cap on paying a coin request (needs the Mandali coin-request migrations).
+   - `20261014000000_fund_coin_request_daily_cap.sql` — the same cap on paying a coin request (needs the Gang coin-request migrations).
    - `20261020000000_hourly_faucet.sql` — lets `reward_ledger` hold the `HOURLY_FAUCET` reward type (see "The free-coins faucet" below). Apply it before deploying a server that serves `/api/faucet`; until then a claim is refused honestly and nothing is paid.
    Then check: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npm run check:schema-ready` prints `SCHEMA_READY`.
 3. Deploy the server. **A missing migration stops the boot** (the store is pinged before the port

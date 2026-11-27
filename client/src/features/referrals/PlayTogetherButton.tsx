@@ -10,7 +10,7 @@ const CHOICE =
 
 /**
  * Starts a room for one friend who has joined but not yet played. It hands the chosen game and the
- * friend's name to the create-room sheet (the same hand-off a Mandali's "Start a game" uses); the room's
+ * friend's name to the create-room sheet (the same hand-off a Gang's "Start a game" uses); the room's
  * share card then names the friend. A match only counts for the bonus if that friend really joins it.
  */
 export function PlayTogetherButton({ friendName, label, className = "mt-3" }: { friendName: string; label?: string; className?: string }) {

@@ -186,7 +186,7 @@ Use a fresh browser profile. Open DevTools, Network, and tick "Preserve log".
 select count(*) as guests_before from public.player_identities where kind = 'guest';
 ```
 
-- [ ] Open the home page, the games page and a Mandali preview. Scroll, tap around, do **not** create or join a room.
+- [ ] Open the home page, the games page and a Gang preview. Scroll, tap around, do **not** create or join a room.
 - [ ] Network shows **no** request to `/api/auth/guest`. Application, Local Storage shows **no** `bhalyam.guest.*` keys.
 - [ ] The header shows no wallet chip (a first-time visitor has no wallet).
 - [ ] Re-run the query. `guests_before` is unchanged.
@@ -243,17 +243,17 @@ guest balance is not simply the starting 2,000. Note the guest balance: `____`.
 
 ## 4b. The celebrations, with real people
 
-Needs Account A and Account B (section 4) in the same Mandali, each in its own browser.
+Needs Account A and Account B (section 4) in the same Gang, each in its own browser.
 
-- [ ] **A coin request, paid.** Account A sends a coin request in the Mandali. Account B pays it.
+- [ ] **A coin request, paid.** Account A sends a coin request in the Gang. Account B pays it.
   - A sees the coins-and-hearts burst and the banner "B sent you N coins", wherever A is in the app (try it from the
-    home page, not only inside the Mandali).
+    home page, not only inside the Gang).
   - B sees rising hearts and "You sent N coins to A. That was kind."
   - A third member of the group sees nothing.
-  - Both wallets update. If a banner says "A friend" instead of the name, the Mandali's member list was not loaded on
+  - Both wallets update. If a banner says "A friend" instead of the name, the Gang's member list was not loaded on
     that screen; it is cosmetic, tell me.
   - The server half of this (the right event, to exactly the right people, over real sockets) is already proven by
-    `mandaliCoinPaymentLive.test.ts`. This step checks the same thing end to end with the real database and two real
+    `gangCoinPaymentLive.test.ts`. This step checks the same thing end to end with the real database and two real
     sessions.
 - [ ] **Daily streak.** Claim the daily streak. Expect the coin **fountain** (coins arcing up from the bottom with
   embers), not the top-down rain.

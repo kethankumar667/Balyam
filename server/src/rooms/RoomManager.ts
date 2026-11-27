@@ -1317,7 +1317,7 @@ export class RoomManager {
 
   /**
    * Everyone with a live seat in a game that is under way, and which game. Keyed by both the
-   * seat id and the verified account id, because a Mandali knows a member by the second.
+   * seat id and the verified account id, because a Gang knows a member by the second.
    * Bots and disconnected seats do not count: a seat held open for a dropped player is not
    * someone playing. Read-only; built fresh each call, so it is never stale.
    */

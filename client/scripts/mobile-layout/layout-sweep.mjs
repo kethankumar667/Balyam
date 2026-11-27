@@ -119,14 +119,14 @@ function resolveViewports() {
 /* ───────────────────────────────── routes ───────────────────────────────── */
 
 /**
- * Every route a signed-out guest can open. Routes behind a member account (`/mandali/:handle`, `/admin/*`)
+ * Every route a signed-out guest can open. Routes behind a member account (`/gang/:handle`, `/admin/*`)
  * are NOT here — they need credentials this harness does not hold — and the report lists them as not
  * covered rather than leaving them out silently.
  */
 const ROUTES = [
   "/", "/games", "/favorites", "/recently-played",
   "/profile", "/profile/matches", "/profile/achievements", "/profile/scorecards",
-  "/myrecords", "/tournaments", "/social", "/mandali",
+  "/myrecords", "/tournaments", "/social", "/gang",
   "/about", "/how-to-play", "/community-rules", "/support", "/contact", "/reviews/write", "/feedback",
   "/testimonials", "/privacy", "/terms", "/safety",
   "/settings/preferences", "/settings/security",
@@ -135,7 +135,7 @@ const ROUTES = [
   "/preview/ludo", "/preview/tiles", "/diagnostics", "/this-route-does-not-exist",
 ];
 const NOT_COVERED = [
-  "/mandali/:handle (member only)",
+  "/gang/:handle (member only)",
   "/admin/* (admin only)",
   "/tv/:code and /watch/:code (need a live room, member only)",
 ];

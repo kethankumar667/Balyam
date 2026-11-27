@@ -35,7 +35,7 @@
     "coverage": "npm run coverage:server && npm run coverage:client",
     "verify:schema": "node scripts/persistence/verifySchema.mjs",
     "verify:durability": "node scripts/persistence/verifyDurability.mjs",
-    "verify:mandali": "node scripts/mandali/verifyMandaliRpcs.mjs",
+    "verify:gang": "node scripts/gang/verifyGangRpcs.mjs",
     "verify:emailguard": "node scripts/persistence/verifyEmailGuard.mjs",
     "verify:carryover": "node scripts/economy/verifyGuestCarryOver.mjs",
     "verify:guestfirstgame": "node scripts/economy/verifyGuestFirstGame.mjs",

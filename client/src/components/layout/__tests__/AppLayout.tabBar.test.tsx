@@ -7,7 +7,7 @@ vi.mock("../AppHeader", () => ({ default: () => null }));
 vi.mock("../AppSidebar", () => ({ default: () => null }));
 vi.mock("../../navigation/Breadcrumbs", () => ({ default: () => null }));
 vi.mock("../../../lib/useMediaQuery", () => ({ useMediaQuery: () => false }));
-vi.mock("../../../hooks/useMandaliInbox", () => ({ useMandaliInbox: () => ({ items: [], update: vi.fn() }) }));
+vi.mock("../../../hooks/useGangInbox", () => ({ useGangInbox: () => ({ items: [], update: vi.fn() }) }));
 vi.mock("../../bhalyam/JoinRoomModal", () => ({ default: () => null }));
 vi.mock("../../bhalyam/GameRoomSheet", () => ({ default: () => null }));
 vi.mock("../../../pages/home/sheets/MenuSheet", () => ({ MenuSheet: () => null }));
@@ -27,7 +27,7 @@ const renderLayout = (props: { chrome?: boolean; tabBar?: boolean }) =>
 
 /**
  * The phone's bottom tab bar belongs to the shell. A screen that draws its own bottom tabs (an open
- * Mandali) switches it off so two bars are never stacked.
+ * Gang) switches it off so two bars are never stacked.
  */
 describe("AppLayout: the bottom tab bar", () => {
   afterEach(cleanup);

@@ -1,4 +1,4 @@
-import type { MandaliMember } from "@shared/mandali/types.js";
+import type { GangMember } from "@shared/gang/types.js";
 
 /**
  * Who an instant "Request Coins" tap is addressed to.
@@ -11,15 +11,15 @@ import type { MandaliMember } from "@shared/mandali/types.js";
  * same person instead of whoever happens to be first in a list. Never the
  * requester themselves, and never someone who is no longer an active member.
  *
- * Roles are compared as strings on purpose: the shared `MandaliRole` type is
+ * Roles are compared as strings on purpose: the shared `GangRole` type is
  * the older seven-role model, while the database has only OWNER / ADMIN /
  * MEMBER, and a literal comparison against "ADMIN" does not type-check.
  */
 export function pickCoinRequestPayer(
-  members: readonly MandaliMember[],
+  members: readonly GangMember[],
   requesterId: string | null
-): MandaliMember | undefined {
-  const rank = (member: MandaliMember): number => {
+): GangMember | undefined {
+  const rank = (member: GangMember): number => {
     const role: string = member.role;
     if (role === "OWNER") return 0;
     if (role === "ADMIN") return 1;

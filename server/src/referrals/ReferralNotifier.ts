@@ -26,7 +26,7 @@ const ANNOUNCED_LIMIT = 5_000;
  * on its way, the coins landed.
  *
  * Each notice goes to the member's personal `user:<id>` socket room, which every signed-in tab joins (the
- * Mandali authentication already does it), so it reaches them on any page, in every tab, and quietly reaches
+ * Gang authentication already does it), so it reaches them on any page, in every tab, and quietly reaches
  * nobody when they are offline: the Referrals page and the wallet always show the same facts when they next open.
  *
  * A notice carries the other person's display name (what `referral_overview` already shows each side, privacy

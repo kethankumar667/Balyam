@@ -20,7 +20,7 @@ vi.mock("../../store/authStore", () => ({
 }));
 vi.mock("../../hooks/useReferralOverview", () => ({ useReferralOverview: (enabled: boolean) => mocks.hook(enabled) }));
 // The friend's picture reads the full auth store (for cosmetics); this page test swaps that store for a bare selector.
-vi.mock("../../components/mandali/album/AlbumAvatar", () => ({ AlbumAvatar: () => <span data-testid="friend-avatar" /> }));
+vi.mock("../../components/gang/album/AlbumAvatar", () => ({ AlbumAvatar: () => <span data-testid="friend-avatar" /> }));
 vi.mock("../../lib/referrals", async importOriginal => ({
   ...await importOriginal<typeof import("../../lib/referrals")>(),
   checkReferralCode: (code: string) => mocks.check(code),

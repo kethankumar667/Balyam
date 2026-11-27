@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
-import { Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { Routes, Route, useLocation, useParams, Navigate } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminRoute from "./components/auth/AdminRoute";
@@ -19,7 +19,7 @@ import { XpGainToast } from "./components/progression/XpGainToast";
 import NewRecordHost from "./components/scorecard/NewRecordHost";
 import ReferralLiveHost from "./features/referrals/ReferralLiveHost";
 import { CarryOverArrivalDialog } from "./components/carryover/CarryOverArrivalDialog";
-import { CoinJoyOverlay } from "./components/mandali/CoinJoyOverlay";
+import { CoinJoyOverlay } from "./components/gang/CoinJoyOverlay";
 import BhalyamLogo from "./components/bhalyam/BhalyamLogo";
 import { PROFILE_ROUTE_REDIRECTS } from "./features/profile/profileNavigation";
 
@@ -66,8 +66,8 @@ const LazyBrainVitaPage = lazy(() => import("./pages/BrainVitaPage"));
 const LazyPartyScreen = lazy(() => import("./pages/PartyScreen"));
 const LazyDiagnostics = lazy(() => import("./pages/Diagnostics"));
 const LazyPreviewLudo = lazy(() => import("./pages/PreviewLudo"));
-// Development only: synthetic Mandali screens for design review. Not registered in production builds.
-const LazyPreviewMandali = import.meta.env.DEV ? lazy(() => import("./pages/PreviewMandali")) : null;
+// Development only: synthetic Gang screens for design review. Not registered in production builds.
+const LazyPreviewGang = import.meta.env.DEV ? lazy(() => import("./pages/PreviewGang")) : null;
 // Development only: the free-coins claim dialog against a stub server. Not registered in production builds.
 const LazyPreviewFaucet = import.meta.env.DEV ? lazy(() => import("./pages/PreviewFaucet")) : null;
 const LazyPreviewLevelJourney = import.meta.env.DEV ? lazy(() => import("./pages/PreviewLevelJourney")) : null;
@@ -96,8 +96,15 @@ const LazySocialHubPage = lazy(() => import("./pages/SocialHubPage"));
 const LazyPreviewLoader = lazy(() => import("./pages/PreviewLoader"));
 const LazyGameTileShowcase = lazy(() => import("./pages/GameTileShowcase"));
 const LazyTileDesignPreview = lazy(() => import("./pages/TileDesignPreview"));
-const LazyMandaliDiscoveryPage = lazy(() => import("./pages/mandali/MandaliDiscoveryPage"));
-const LazyMandaliHubPage = lazy(() => import("./pages/mandali/MandaliHubPage"));
+const LazyGangDiscoveryPage = lazy(() => import("./pages/gang/GangDiscoveryPage"));
+const LazyGangHubPage = lazy(() => import("./pages/gang/GangHubPage"));
+
+/** `/mandali` and `/mandali/:handle` forwarded to `/gang`, keeping the query (an invite token) and the hash. */
+function LegacyGangRedirect() {
+  const { handle } = useParams();
+  const { search, hash } = useLocation();
+  return <Navigate replace to={`/gang${handle ? `/${encodeURIComponent(handle)}` : ""}${search}${hash}`} />;
+}
 
 export interface RouteComponents {
   BhalyamHome?: React.ComponentType;
@@ -161,8 +168,8 @@ export interface RouteComponents {
   SocialHubPage?: React.ComponentType;
   PreviewLoader?: React.ComponentType;
   GameTileShowcase?: React.ComponentType;
-  MandaliDiscoveryPage?: React.ComponentType;
-  MandaliHubPage?: React.ComponentType;
+  GangDiscoveryPage?: React.ComponentType;
+  GangHubPage?: React.ComponentType;
 }
 
 export interface AppProps {
@@ -206,7 +213,7 @@ function RouteLoadingFallback() {
     );
   }
 
-  if (pathname.startsWith("/social") || pathname.startsWith("/mandali")) {
+  if (pathname.startsWith("/social") || pathname.startsWith("/gang")) {
     return (
       <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto space-y-6">
@@ -368,8 +375,8 @@ export default function App({ components = {} }: AppProps) {
   const SocialHubPage = components.SocialHubPage ?? LazySocialHubPage;
   const PreviewLoader = components.PreviewLoader ?? LazyPreviewLoader;
   const GameTileShowcase = components.GameTileShowcase ?? LazyGameTileShowcase;
-  const MandaliDiscoveryPage = components.MandaliDiscoveryPage ?? LazyMandaliDiscoveryPage;
-  const MandaliHubPage = components.MandaliHubPage ?? LazyMandaliHubPage;
+  const GangDiscoveryPage = components.GangDiscoveryPage ?? LazyGangDiscoveryPage;
+  const GangHubPage = components.GangHubPage ?? LazyGangHubPage;
 
   return (
     <ErrorBoundary>
@@ -430,14 +437,18 @@ export default function App({ components = {} }: AppProps) {
             <Route path="/shop" element={<ShopPage />} />
             <Route path="/tournaments" element={<TournamentsPage />} />
             <Route path="/social" element={<SocialHubPage />} />
-            <Route path="/mandali" element={<MandaliDiscoveryPage />} />
-            {/* A Mandali's chat, members and controls are for signed-in members.
+            {/* This feature was called Mandali, at /mandali. Links people already shared (a Gang's address, an
+                invite with its token) keep working: they arrive here and carry on to the same page. */}
+            <Route path="/mandali" element={<LegacyGangRedirect />} />
+            <Route path="/mandali/:handle" element={<LegacyGangRedirect />} />
+            <Route path="/gang" element={<GangDiscoveryPage />} />
+            {/* A Gang's chat, members and controls are for signed-in members.
                 A signed-out visitor is sent to sign in and brought back after. */}
             <Route
-              path="/mandali/:handle"
+              path="/gang/:handle"
               element={
                 <ProtectedRoute>
-                  <MandaliHubPage />
+                  <GangHubPage />
                 </ProtectedRoute>
               }
             />
@@ -486,10 +497,10 @@ export default function App({ components = {} }: AppProps) {
             {/* Connection log for debugging reconnect failures on real devices. */}
             <Route path="/diagnostics" element={<Diagnostics />} />
             {/* Internal board previewer (see bhalyam-illustration-system-review.md: "Internal tool"). Dev builds
-                only, like /preview/mandali, /faucet and /level — it is not a player page and was shipping with
+                only, like /preview/gang, /faucet and /level — it is not a player page and was shipping with
                 covered and off-screen controls that nobody is meant to use. */}
             {import.meta.env.DEV && <Route path="/preview/ludo" element={<PreviewLudo />} />}
-            {LazyPreviewMandali && <Route path="/preview/mandali" element={<LazyPreviewMandali />} />}
+            {LazyPreviewGang && <Route path="/preview/gang" element={<LazyPreviewGang />} />}
             {LazyPreviewFaucet && <Route path="/preview/faucet" element={<LazyPreviewFaucet />} />}
             {LazyPreviewLevelJourney && <Route path="/preview/level" element={<LazyPreviewLevelJourney />} />}
             <Route path="/preview/loader" element={<PreviewLoader />} />

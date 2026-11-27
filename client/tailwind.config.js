@@ -239,9 +239,9 @@ export default {
         bad:  { 100: "#FCE0DE", 300: "#FCA5A0", 500: "#DC2626", 700: "#B02318", 800: "#8E1D14" },
         note: { 100: "#DBEBF7", 300: "#7DC5EE", 500: "#0284C7", 700: "#04628F", 800: "#044E72" },
 
-        // ── Mandali "album" palette ─────────────────────────────────────
+        // ── Gang "album" palette ─────────────────────────────────────
         // Every value is a CSS variable holding space-separated RGB channels
-        // (defined for both themes in components/mandali/album/album.css), so
+        // (defined for both themes in components/gang/album/album.css), so
         // one class flips with the theme AND still takes an opacity suffix:
         // `bg-album-foil/20`. Panels and ink flip together by construction.
         album: {

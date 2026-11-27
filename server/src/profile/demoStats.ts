@@ -6,7 +6,7 @@ import {
 import type { GameKind } from "@shared/types.js";
 
 /**
- * TEMPORARY demo numbers so a Mandali profile has something to show while the real record is built up.
+ * TEMPORARY demo numbers so a Gang profile has something to show while the real record is built up.
  *
  * REMOVE BEFORE PRODUCTION LAUNCH: delete this file, its two call sites in `ProfileController.ts`, the
  * `demo` field on `PlayerStats` / `MiniclipXPProgression`, and the "Demo data" chip in `MemberRecordPanels`.

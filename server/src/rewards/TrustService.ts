@@ -11,7 +11,7 @@ import type { TrustAssessment, TrustTier } from "./types.js";
  *   real-people matches games with another signed-in person that were long enough
  *                       to have been played
  *   distinct opponents  a person plays many people; a farm plays one or two
- *   active Mandalis     belonging to communities of people who know each other
+ *   active Gangs     belonging to communities of people who know each other
  *
  * Distinct opponents is the strongest signal and costs no personal data: it is a
  * count over matches the server already holds. Throwaway guests are not counted
@@ -25,7 +25,7 @@ import type { TrustAssessment, TrustTier } from "./types.js";
  */
 
 interface Criterion {
-  key: "age" | "matches" | "opponents" | "mandalis";
+  key: "age" | "matches" | "opponents" | "gangs";
   min: number;
 }
 
@@ -40,13 +40,13 @@ export const TIER_REQUIREMENTS: Record<2 | 3 | 4, Criterion[]> = {
     { key: "age", min: 30 },
     { key: "matches", min: 25 },
     { key: "opponents", min: 10 },
-    { key: "mandalis", min: 1 },
+    { key: "gangs", min: 1 },
   ],
   4: [
     { key: "age", min: 90 },
     { key: "matches", min: 100 },
     { key: "opponents", min: 50 },
-    { key: "mandalis", min: 3 },
+    { key: "gangs", min: 3 },
   ],
 };
 
@@ -63,7 +63,7 @@ const LABELS: Record<Criterion["key"], (min: number) => string> = {
   age: (n) => `Account at least ${n} days old`,
   matches: (n) => `${n} matches with real people`,
   opponents: (n) => `Played ${n} different people`,
-  mandalis: (n) => (n === 1 ? "Member of an active Mandali" : `Member of ${n} active Mandalis`),
+  gangs: (n) => (n === 1 ? "Member of an active Gang" : `Member of ${n} active Gangs`),
 };
 
 function valueOf(metrics: TrustMetrics, key: Criterion["key"]): number {
@@ -74,8 +74,8 @@ function valueOf(metrics: TrustMetrics, key: Criterion["key"]): number {
       return metrics.completedMatches;
     case "opponents":
       return metrics.distinctOpponents;
-    case "mandalis":
-      return metrics.activeMandalis;
+    case "gangs":
+      return metrics.activeGangs;
   }
 }
 
@@ -107,13 +107,13 @@ export function assessTrust(metrics: TrustMetrics): TrustAssessment {
 export interface TrustProviders {
   accountAgeDays(playerId: string): number;
   opponentStats(playerId: string): { realPeopleMatches: number; distinctOpponents: number };
-  activeMandalis(playerId: string): Promise<number>;
+  activeGangs(playerId: string): Promise<number>;
 }
 
 const NO_DATA: TrustProviders = {
   accountAgeDays: () => 0,
   opponentStats: () => ({ realPeopleMatches: 0, distinctOpponents: 0 }),
-  activeMandalis: async () => 0,
+  activeGangs: async () => 0,
 };
 
 /**
@@ -130,18 +130,18 @@ export class TrustService {
 
   async assess(playerId: string): Promise<TrustAssessment> {
     const { realPeopleMatches, distinctOpponents } = this.providers.opponentStats(playerId);
-    let mandalis = 0;
+    let gangs = 0;
     try {
-      mandalis = await this.providers.activeMandalis(playerId);
+      gangs = await this.providers.activeGangs(playerId);
     } catch {
       // Community data being unreachable lowers the ceiling to tier 2; it never raises it.
-      mandalis = 0;
+      gangs = 0;
     }
     return assessTrust({
       accountAgeDays: this.providers.accountAgeDays(playerId),
       completedMatches: realPeopleMatches,
       distinctOpponents,
-      activeMandalis: mandalis,
+      activeGangs: gangs,
     });
   }
 

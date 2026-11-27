@@ -4,7 +4,7 @@ import { joinRoomByCode, joinFailureMessage, type RoomJoinFailure } from "../lib
 import { useRoomInviteStatusStore } from "../store/roomInviteStatusStore";
 
 /**
- * The one way a "Join" button on a room shared into a Mandali takes someone in.
+ * The one way a "Join" button on a room shared into a Gang takes someone in.
  *
  * Already seated there → just go. Otherwise join, and on success go. If the join lost a race (the
  * room filled, or the match started, between the tap and the server's answer) say so in words and

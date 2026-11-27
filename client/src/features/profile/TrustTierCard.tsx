@@ -9,7 +9,7 @@ import { ProfileErrorState, ProfilePanelSkeleton, ProfileSection } from "./Profi
  * A number with no reason attached is exactly what makes a system feel arbitrary,
  * so this shows every criterion behind the tier — what earned the current one and
  * what the next still needs — and what the tier changes (how many coins can be
- * sent per day). It is built only from matches, account age and Mandali
+ * sent per day). It is built only from matches, account age and Gang
  * membership: nothing about the device or the network is involved, and the card
  * says so.
  */
@@ -106,7 +106,7 @@ function TrustBody({ data }: { data: TrustResponse }) {
       </p>
 
       <p className="text-xs text-ink-lo">
-        Tiers come from your matches, account age and Mandalis only — never your device or network.
+        Tiers come from your matches, account age and Gangs only — never your device or network.
       </p>
     </div>
   );

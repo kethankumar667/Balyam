@@ -7,7 +7,7 @@ vi.mock("../AppHeader", () => ({ default: ({ onToggleMobileMenu }: { onToggleMob
 vi.mock("../AppSidebar", () => ({ default: ({ onCloseMobile }: { onCloseMobile?: () => void }) => onCloseMobile ? <div><button onClick={onCloseMobile}>Close navigation</button><a href="/games">Browse games</a></div> : null }));
 vi.mock("../../navigation/Breadcrumbs", () => ({ default: () => null }));
 vi.mock("../../../lib/useMediaQuery", () => ({ useMediaQuery: () => false }));
-vi.mock("../../../hooks/useMandaliInbox", () => ({ useMandaliInbox: () => ({ items: [], update: vi.fn() }) }));
+vi.mock("../../../hooks/useGangInbox", () => ({ useGangInbox: () => ({ items: [], update: vi.fn() }) }));
 // The shell's other global sheets share one Suspense boundary with the create sheet; stub them so the
 // real, heavy modules never load.
 vi.mock("../../bhalyam/JoinRoomModal", () => ({ default: () => null }));
@@ -17,9 +17,9 @@ vi.mock("../../economy/WalletDrawer", () => ({ WalletDrawer: () => null }));
 vi.mock("../../streak/DailyStreakModal", () => ({ DailyStreakModal: () => null }));
 vi.mock("../../../animations/app/FallingPetals", () => ({ default: () => null }));
 vi.mock("../../bhalyam/GameRoomSheet", () => ({
-  default: ({ game, shareToMandaliId }: { game: string | null; shareToMandaliId?: string | null }) =>
+  default: ({ game, shareToGangId }: { game: string | null; shareToGangId?: string | null }) =>
     game ? (
-      <div data-testid="create-sheet" data-share={shareToMandaliId ?? ""}>
+      <div data-testid="create-sheet" data-share={shareToGangId ?? ""}>
         {game}
       </div>
     ) : null,
@@ -74,10 +74,10 @@ describe("AppLayout: arriving from a finished table's 'Create a new room'", () =
     });
   });
 
-  it("carries the Mandali to post the new room into, when it came from a group's Start game", async () => {
-    renderAt({ newRoom: "ludo", shareToMandali: "mandali_1" });
+  it("carries the Gang to post the new room into, when it came from a group's Start game", async () => {
+    renderAt({ newRoom: "ludo", shareToGang: "gang_1" });
 
-    expect(await screen.findByTestId("create-sheet")).toHaveAttribute("data-share", "mandali_1");
+    expect(await screen.findByTestId("create-sheet")).toHaveAttribute("data-share", "gang_1");
   });
 
   it("posts nowhere when the hand-off names no group", async () => {

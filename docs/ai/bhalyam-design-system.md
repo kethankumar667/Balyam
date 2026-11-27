@@ -74,7 +74,7 @@ targets are at least 44px. Clear particles are optional and respect reduced moti
 
 Use `SeatAvatar` with the owner's room-seat `playerId` in games, or persistent
 profile `playerId` outside rooms. `SelfAvatar` uses the current local equipped
-loadout; Mandali's `AlbumAvatar` accepts the same owner ID while preserving its
+loadout; Gang's `AlbumAvatar` accepts the same owner ID while preserving its
 logo fallback and presence badge. Never infer ownership from a picture or name.
 An explicit `aura` overrides lookup; `aura_none` and unequipped players stay
 plain, regardless of progression level. Picker thumbnails remain undecorated.

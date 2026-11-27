@@ -258,7 +258,7 @@ export async function ensureMemberIdentityProvisioned(userId: string): Promise<v
  *
  * Extracted out of `attachPlayerIdentity` so the same verification (guest
  * HMAC first, then Supabase access token) can be reused outside Express —
- * `MandaliSocketHandlers.ts`'s `mandali:authenticate` event calls this
+ * `GangSocketHandlers.ts`'s `gang:authenticate` event calls this
  * directly, because a Socket.IO connection has no `req` to attach a
  * `player` onto and needed either its own copy of this logic or this.
  */

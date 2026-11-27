@@ -1,8 +1,8 @@
 ---
-name: BHALYAM Mandali "family album"
-scope: Mandali area only (client/src/components/mandali/**, client/src/pages/mandali/**). The rest of BHALYAM keeps docs/ai/bhalyam-design-system.md.
+name: BHALYAM Gang "family album"
+scope: Gang area only (client/src/components/gang/**, client/src/pages/gang/**). The rest of BHALYAM keeps docs/ai/bhalyam-design-system.md.
 register: operate
-source_of_truth: client/src/components/mandali/album/album.css, client/tailwind.config.js (album.*)
+source_of_truth: client/src/components/gang/album/album.css, client/tailwind.config.js (album.*)
 colors:
   # RGB channels, switched by data-theme on <html>. Light | Dark
   page: { light: "243 242 240", dark: "23 20 18" }
@@ -38,13 +38,13 @@ rounded: { control: 12, bubble: 16, card: 16, cover: 16, sheet: 24, pill: 9999 }
 spacing: { touch-min: 44, touch-primary-lg: 48, composer-field: 48, sheet-pad: 20, feed-gutter-phone: 12, feed-gutter-desktop: 24 }
 ---
 
-# Design System: Mandali "family album"
+# Design System: Gang "family album"
 
 ## Overview
 
-A Mandali is the group's album that is also a live conversation. The system exists to make people who already love each other feel at home, see what is new at a glance, and act in one tap. It refuses the office-chat sidebar and the arcade-gold HUD (the rest of BHALYAM's game chrome).
+A Gang is the group's album that is also a live conversation. The system exists to make people who already love each other feel at home, see what is new at a glance, and act in one tap. It refuses the office-chat sidebar and the arcade-gold HUD (the rest of BHALYAM's game chrome).
 
-Brand context: BHALYAM. Poppins carries all UI; Righteous display is used elsewhere in the app and does not appear inside the Mandali area. Caveat is the handwriting voice (see the divergences below for where it actually appears).
+Brand context: BHALYAM. Poppins carries all UI; Righteous display is used elsewhere in the app and does not appear inside the Gang area. Caveat is the handwriting voice (see the divergences below for where it actually appears).
 
 Register: operate. People spend their time reading and writing, so chat content is flat and fast. Ornament is rationed.
 
@@ -61,7 +61,7 @@ Strategy: restrained neutral pages plus one metallic accent (gold foil), with pe
 - **Mine**: the sender's own bubble tint (cool blue-grey in light, warm umber in dark), with a `foil/25` hairline.
 - **Danger / Success / Indigo**: Danger for destructive buttons and delete; Success for open-room state and presence; Indigo exists as a token.
 - **Focus**: 2px outline, offset 2px, via `.album-focus:focus-visible`.
-- **Cover cloths (5)**: maroon (brand fallback), indigo, green, umber, plum. Chosen by FNV-1a hash of the Mandali id mod 5 (`coverCloth.ts`); no id gives maroon. Cover text is always `cover-foil` on the cloth, in both themes.
+- **Cover cloths (5)**: maroon (brand fallback), indigo, green, umber, plum. Chosen by FNV-1a hash of the Gang id mod 5 (`coverCloth.ts`); no id gives maroon. Cover text is always `cover-foil` on the cloth, in both themes.
 
 Named rule: **Foil is text or fill, never both on one element.** Named rule: **Cloth is a pure function of the id.** No stored choice, no picker.
 
@@ -130,6 +130,6 @@ Mobile 320 to 767, desktop 1024 and up, each a designed layout, not a stretch. P
 
 ## Divergences from the direction contract
 
-1. Contract: "Caveat only for handwritten day captions" (and memory dates). Build: Caveat also sets empty-state headlines (feed, play room, memories at 30 to 48px), the shelf-title accent word and the "memories" section script (`.album-hand` in MessageFeed, MandaliHubMobile, MandaliHubDesktop, MandaliDiscoveryPage, GnapakaluTimeline). The hand voice is wider than the contract's ornament 4.
+1. Contract: "Caveat only for handwritten day captions" (and memory dates). Build: Caveat also sets empty-state headlines (feed, play room, memories at 30 to 48px), the shelf-title accent word and the "memories" section script (`.album-hand` in MessageFeed, GangHubMobile, GangHubDesktop, GangDiscoveryPage, GnapakaluTimeline). The hand voice is wider than the contract's ornament 4.
 2. Contract: ribbon marks "something is new". Build: a ribbon-coloured dot is also used as a cooldown marker in the Composer.
 3. Contract: FIRST VIEWPORT composer "Write a line to <group>...". Build: only desktop shows it as the placeholder; phone uses a short placeholder and keeps the full sentence as `aria-label`.

@@ -12,7 +12,7 @@ import { DoorOpen, Gamepad2, Home, User, Users } from "lucide-react";
  * Not drawn over a live board: `AppLayout` only mounts it while the global chrome is on.
  */
 
-export type TabId = "home" | "games" | "mandali" | "you";
+export type TabId = "home" | "games" | "gang" | "you";
 
 interface TabLink {
   id: TabId;
@@ -27,7 +27,7 @@ const LEFT_TABS: readonly TabLink[] = [
 ];
 
 const RIGHT_TABS: readonly TabLink[] = [
-  { id: "mandali", label: "Mandali", to: "/mandali", icon: Users },
+  { id: "gang", label: "Gang", to: "/gang", icon: Users },
   { id: "you", label: "You", to: "/profile", icon: User },
 ];
 
@@ -35,7 +35,7 @@ const RIGHT_TABS: readonly TabLink[] = [
 export function activeTabId(pathname: string): TabId | null {
   if (pathname === "/" || pathname === "/home") return "home";
   if (/^\/(games|favorites|recently-played)(\/|$)/.test(pathname)) return "games";
-  if (/^\/(mandali|social)(\/|$)/.test(pathname)) return "mandali";
+  if (/^\/(gang|social)(\/|$)/.test(pathname)) return "gang";
   if (/^\/(profile|myrecords|referrals)(\/|$)/.test(pathname)) return "you";
   return null;
 }

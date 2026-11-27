@@ -1,4 +1,4 @@
-import { gameLabel } from "../../../components/mandali/album/games";
+import { gameLabel } from "../../../components/gang/album/games";
 
 /**
  * How the server's record keys and field names read to an operator.

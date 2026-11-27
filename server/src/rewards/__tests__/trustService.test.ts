@@ -9,7 +9,7 @@ import {
 import { matchHistoryService } from "../../profile/MatchHistoryService.js";
 import type { MatchHistoryItem } from "@shared/profile/MatchHistory.js";
 
-const none: TrustMetrics = { accountAgeDays: 0, completedMatches: 0, distinctOpponents: 0, activeMandalis: 0 };
+const none: TrustMetrics = { accountAgeDays: 0, completedMatches: 0, distinctOpponents: 0, activeGangs: 0 };
 
 /** Exactly what a tier asks for, so a boundary test can move one number by one. */
 function exactly(tier: 2 | 3 | 4): TrustMetrics {
@@ -18,7 +18,7 @@ function exactly(tier: 2 | 3 | 4): TrustMetrics {
     if (c.key === "age") m.accountAgeDays = c.min;
     if (c.key === "matches") m.completedMatches = c.min;
     if (c.key === "opponents") m.distinctOpponents = c.min;
-    if (c.key === "mandalis") m.activeMandalis = c.min;
+    if (c.key === "gangs") m.activeGangs = c.min;
   }
   return m;
 }
@@ -39,12 +39,12 @@ describe("trust tiers", () => {
   it("stays a tier lower when any single requirement is one short", () => {
     expect(assessTrust({ ...exactly(2), distinctOpponents: 2 }).tier).toBe(1);
     expect(assessTrust({ ...exactly(2), accountAgeDays: 2 }).tier).toBe(1);
-    expect(assessTrust({ ...exactly(3), activeMandalis: 0 }).tier).toBe(2);
+    expect(assessTrust({ ...exactly(3), activeGangs: 0 }).tier).toBe(2);
     expect(assessTrust({ ...exactly(4), distinctOpponents: 49 }).tier).toBe(3);
   });
 
   it("does not let volume make up for variety: many matches against one opponent is not trust", () => {
-    const farm = assessTrust({ accountAgeDays: 200, completedMatches: 5_000, distinctOpponents: 1, activeMandalis: 0 });
+    const farm = assessTrust({ accountAgeDays: 200, completedMatches: 5_000, distinctOpponents: 1, activeGangs: 0 });
 
     expect(farm.tier).toBe(1);
   });
@@ -77,7 +77,7 @@ describe("TrustService", () => {
     trust.setProviders({
       accountAgeDays: () => 31,
       opponentStats: () => ({ realPeopleMatches: 30, distinctOpponents: 12 }),
-      activeMandalis: async () => 1,
+      activeGangs: async () => 1,
     });
 
     expect((await trust.assess("p")).tier).toBe(3);
@@ -93,8 +93,8 @@ describe("TrustService", () => {
     trust.setProviders({
       accountAgeDays: () => 200,
       opponentStats: () => ({ realPeopleMatches: 500, distinctOpponents: 80 }),
-      activeMandalis: async () => {
-        throw new Error("mandali store down");
+      activeGangs: async () => {
+        throw new Error("gang store down");
       },
     });
 

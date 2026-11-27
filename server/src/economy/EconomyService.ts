@@ -1072,7 +1072,7 @@ export class EconomyService {
   }
 
   /**
-   * Atomic peer-to-peer wallet transfer (e.g. Mandali's "Send Coins").
+   * Atomic peer-to-peer wallet transfer (e.g. Gang's "Send Coins").
    * Debits `fromIdentityId` and credits `toIdentityId` in one transaction —
    * never two independent calls, which is exactly the bug this replaces (see
    * `transfer_wallet_coins`'s migration header for the full incident).

@@ -10,13 +10,13 @@ web
 
 People who already know each other and want to stay close: close friend groups (about 5 to 20 people: college friends, old neighbours, a cricket gang), extended families (cousins, parents and grandparents together), and work or hobby circles that already trust each other. They are mostly on mobile phones, including budget Android, and switch between Telugu, Hindi and English. A group often spans several generations, so what suits the least technical member has to work for everyone.
 
-For a Mandali (a private group inside BHALYAM) the job is to talk, play a game together, share a room code, keep memories, and feel close to people who are far away.
+For a Gang (a private group inside BHALYAM) the job is to talk, play a game together, share a room code, keep memories, and feel close to people who are far away.
 
 ## Product Purpose
 
 BHALYAM is a web-based lounge for playing classic multiplayer games with friends and family. Its purpose is to reduce the distance between people who already know each other by connecting them virtually, and to strengthen the emotional bond between them. It is not a social network, and it is not built for online gaming for its own sake, betting, fraud or toxicity.
 
-A Mandali is the private, lasting home for one such group. Success is a group that keeps coming back to each other, not a group that spends more minutes in the app.
+A Gang is the private, lasting home for one such group. Success is a group that keeps coming back to each other, not a group that spends more minutes in the app.
 
 ## Positioning
 
@@ -24,10 +24,10 @@ A private, lasting home for people who already know each other, where playing to
 
 ## Operating Context
 
-- Mobile first. A Mandali is used one-handed on a phone far more than on a desktop, and both must be first-class layouts.
-- Guests can play games freely. A Mandali (its chat, members and controls) is for signed-in members only.
+- Mobile first. A Gang is used one-handed on a phone far more than on a desktop, and both must be first-class layouts.
+- Guests can play games freely. A Gang (its chat, members and controls) is for signed-in members only.
 - People arrive from a shared link or invite, often from a chat app, and need to be inside in a few taps.
-- Roles: the owner (host), admins and ordinary members. The owner can hand over the group and leave, or delete the Mandali permanently.
+- Roles: the owner (host), admins and ordinary members. The owner can hand over the group and leave, or delete the Gang permanently.
 - Groups are small and personal, so a quiet moment is normal and should not feel like failure.
 
 ## Capabilities and Constraints
@@ -43,15 +43,15 @@ Constraints future work must preserve:
 - No dark patterns, no artificial urgency, no intrusive overlays, no real-money mechanics.
 - India's DPDP Act applies to any personal data. Message retention is one year.
 
-A translation system already exists (English, Hindi, Telugu, Tamil, Kannada, Marathi, Bengali, with an English fallback and `t()` keys in `client/src/i18n/locales/`), but none of the Mandali screens use it yet, so their copy is English-only. Undecided: how minors are handled.
+A translation system already exists (English, Hindi, Telugu, Tamil, Kannada, Marathi, Bengali, with an English fallback and `t()` keys in `client/src/i18n/locales/`), but none of the Gang screens use it yet, so their copy is English-only. Undecided: how minors are handled.
 
 ## Brand Commitments
 
-The names BHALYAM, Mandali and Gnapakalu (Telugu for "memories") are binding. The user asked for a design that is neat, clean, professional and emotional. That is recorded here as a binding requirement, and it is not expanded into a visual direction.
+The names BHALYAM, Gang and Gnapakalu (Telugu for "memories") are binding. The user asked for a design that is neat, clean, professional and emotional. That is recorded here as a binding requirement, and it is not expanded into a visual direction.
 
 ## Evidence on Hand
 
-The real product exists and runs: the current Mandali screens are in `client/src/pages/mandali/` and `client/src/components/mandali/`. There are no real customer testimonials, usage numbers or photographs of real groups. Future work must not invent any.
+The real product exists and runs: the current Gang screens are in `client/src/pages/gang/` and `client/src/components/gang/`. There are no real customer testimonials, usage numbers or photographs of real groups. Future work must not invent any.
 
 ## Product Principles
 

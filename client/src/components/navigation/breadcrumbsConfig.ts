@@ -99,17 +99,17 @@ export function resolveBreadcrumbs(pathname: string, search: string = ""): Bread
     return crumbs;
   }
 
-  // Mandali Communities
-  if (cleanPath === "/mandali") {
-    crumbs.push({ label: "Community", path: "/mandali" });
-    crumbs.push({ label: "Mandali (మండలి)" });
+  // Gang Communities
+  if (cleanPath === "/gang") {
+    crumbs.push({ label: "Community", path: "/gang" });
+    crumbs.push({ label: "Gang (గ్యాంగ్)" });
     return crumbs;
   }
 
-  if (cleanPath.startsWith("/mandali/")) {
-    const handle = cleanPath.split("/mandali/")[1] || "";
-    crumbs.push({ label: "Community", path: "/mandali" });
-    crumbs.push({ label: "Mandali (మండలి)", path: "/mandali" });
+  if (cleanPath.startsWith("/gang/")) {
+    const handle = cleanPath.split("/gang/")[1] || "";
+    crumbs.push({ label: "Community", path: "/gang" });
+    crumbs.push({ label: "Gang (గ్యాంగ్)", path: "/gang" });
     crumbs.push({ label: `@${handle}` });
     return crumbs;
   }

@@ -17,15 +17,27 @@ describe("purgeRetiredStorage", () => {
     window.sessionStorage.clear();
   });
 
-  it("names the keys the removed voucher, rematch, Carrom and Brain Vita tilt features used", () => {
+  it("names the keys the removed voucher, rematch, Carrom, Brain Vita tilt and pre-rename Gang layout used", () => {
     expect([...RETIRED_STORAGE_KEYS].sort()).toEqual([
       "bhalyam.academy.carrom.v2",
       "bhalyam.auto_start",
       "bhalyam.brainvita.tilt",
+      "bhalyam.mandali.layout",
       "bhalyam.pending_voucher_amount",
       "bhalyam.pending_voucher_code",
       "bhalyam.pending_vouchers",
     ]);
+  });
+
+  it("clears the Gang panel layout that was saved under the feature's old name", () => {
+    window.localStorage.setItem("bhalyam.mandali.layout", JSON.stringify({ left: false, right: true }));
+    window.localStorage.setItem("bhalyam.gang.layout", JSON.stringify({ left: true, right: true }));
+
+    purgeRetiredStorage();
+
+    expect(window.localStorage.getItem("bhalyam.mandali.layout")).toBeNull();
+    // The new key is the live one, and must survive.
+    expect(window.localStorage.getItem("bhalyam.gang.layout")).not.toBeNull();
   });
 
   it("clears the saved progress of the removed Carrom lesson", () => {
