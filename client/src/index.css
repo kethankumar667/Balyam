@@ -787,6 +787,9 @@ body, #root, .bhalyam-paper {
   --footer-mint: 17 107 57;
   --footer-edge: 150 121 90;
   --footer-scene-ink: 74 37 8;
+  /* The one filled action in the footer (Explore games): deep teal on ivory. */
+  --footer-action: 15 94 92;
+  --footer-action-ink: 255 253 247;
 }
 
 :root[data-theme="dark"] .bhalyam-footer {
@@ -803,6 +806,8 @@ body, #root, .bhalyam-paper {
   --footer-mint: 50 214 160;
   --footer-edge: 125 211 252;
   --footer-scene-ink: 6 16 31;
+  --footer-action: 39 215 242;
+  --footer-action-ink: 6 16 31;
 }
 
 :root[data-theme="dark"] .bhalyam-paper {

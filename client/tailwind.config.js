@@ -61,6 +61,8 @@ export default {
           mint: "rgb(var(--footer-mint) / <alpha-value>)",
           edge: "rgb(var(--footer-edge) / <alpha-value>)",
           "scene-ink": "rgb(var(--footer-scene-ink) / <alpha-value>)",
+          action: "rgb(var(--footer-action) / <alpha-value>)",
+          "action-ink": "rgb(var(--footer-action-ink) / <alpha-value>)",
         },
         brand: {
           50:  "var(--color-brand-50)",

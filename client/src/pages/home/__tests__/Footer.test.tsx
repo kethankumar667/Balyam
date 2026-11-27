@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
@@ -46,40 +46,35 @@ describe("Nostalgia Network Hub footer", () => {
     expect(screen.getByRole("contentinfo")).toHaveClass("bhalyam-footer");
   });
 
-  it("groups real player destinations into Play, Community and Trust", () => {
+  it("groups real player destinations into Play, Community and Help & trust", () => {
     show();
-    const navigation = screen.getByRole("navigation", { name: "Footer navigation" });
-    for (const name of ["Play", "Community", "Trust"]) {
-      expect(within(navigation).getByRole("heading", { name })).toBeInTheDocument();
-    }
-    const destinations = [
-      ["Games catalog", "/games"], ["How to play", "/how-to-play"],
-      ["My Records", "/myrecords"],
-      ["Our story", "/about#our-story"],
-      ["Player testimonials", "/testimonials"], ["Write a review", "/reviews/write"],
-      ["Contact us", "/contact"], ["Leave feedback", "/feedback"],
-      ["Safety Center", "/safety"],
-      ["Community rules", "/community-rules"], ["Support & FAQs", "/support"],
-      ["Privacy notice", "/privacy"], ["Terms", "/terms"],
-      ["Your data choices", "/settings/security"], ["Cookie preferences", "/settings/security"],
-    ];
-    for (const [name, href] of destinations) {
-      expect(within(navigation).getByRole("link", { name })).toHaveAttribute("href", href);
+    const groups = {
+      Play: [["Games catalogue", "/games"], ["How to play", "/how-to-play"], ["My records", "/myrecords"]],
+      Community: [
+        ["Our story", "/about#our-story"], ["Player stories", "/testimonials"],
+        ["Contact us", "/contact"], ["Leave feedback", "/feedback"],
+      ],
+      "Help & trust": [
+        ["Safety centre", "/safety"], ["Community rules", "/community-rules"],
+        ["Support & FAQs", "/support"], ["Privacy notice", "/privacy"],
+      ],
+    };
+    for (const [title, links] of Object.entries(groups)) {
+      const navigation = screen.getByRole("navigation", { name: `Footer ${title}` });
+      expect(within(navigation).getByRole("heading", { name: title })).toBeInTheDocument();
+      expect(within(navigation).getAllByRole("listitem")).toHaveLength(links.length);
+      for (const [name, href] of links) {
+        expect(within(navigation).getByRole("link", { name })).toHaveAttribute("href", href);
+      }
     }
   });
 
-  it("gives each mobile navigation group a labelled disclosure and retains its links", () => {
+  it("keeps the navigation as plain lists, with no disclosure buttons or per-link cards", () => {
     show();
-    const trigger = screen.getByRole("button", { name: "Play" });
-    const panel = document.getElementById(trigger.getAttribute("aria-controls")!);
-    expect(trigger).toHaveAttribute("aria-expanded", "false");
-    expect(panel).toHaveClass("hidden");
-    fireEvent.click(trigger);
-    expect(trigger).toHaveAttribute("aria-expanded", "true");
-    expect(panel).not.toHaveClass("hidden");
-    expect(within(panel!).getByRole("link", { name: "My Records" })).toHaveAttribute("href", "/myrecords");
-    fireEvent.click(trigger);
-    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    for (const link of within(screen.getByRole("navigation", { name: "Footer Play" })).getAllByRole("link")) {
+      expect(link.className).not.toMatch(/\bborder\b|rounded-(xl|2xl|3xl|full)/);
+    }
   });
 
   it("keeps developer links out of the ordinary directory", () => {
@@ -94,18 +89,43 @@ describe("Nostalgia Network Hub footer", () => {
     mocks.admin = true;
     show();
     const tools = screen.getByText("Admin tools").closest("details")!;
+    // Staff tools live in their own strip, outside the player-facing footer landmark.
+    expect(screen.getByRole("contentinfo")).not.toContainElement(tools);
+    expect(screen.getByRole("contentinfo").nextElementSibling).toContainElement(tools);
     expect(within(tools).getByRole("link", { name: "Design System", hidden: true })).toHaveAttribute("href", "/design-system");
     expect(within(tools).getByRole("link", { name: "Diagnostics console", hidden: true })).toHaveAttribute("href", "/diagnostics");
   });
 
-  it("explicitly marks Dispatch unavailable without accepting or pretending to save an email", () => {
+  it("closes with one Explore games call to action and shows no unavailable newsletter form", () => {
     show();
-    expect(screen.getByLabelText("Email address")).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Join Dispatch" })).toBeDisabled();
-    expect(screen.getByText("Signups aren't open yet.")).toBeInTheDocument();
-    expect(screen.getByText(/not collecting email addresses/i)).toBeInTheDocument();
-    expect(screen.queryByText(/You're in!|Welcome to the Veranda Dispatch|Latest transmission:/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Explore games" })).toHaveAttribute("href", "/games");
+    expect(screen.getByRole("heading", { name: "Your next memory starts with a game." })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Explore games/ })).toHaveAttribute("href", "/games");
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Dispatch|Signups aren't open|not collecting email/i)).not.toBeInTheDocument();
+  });
+
+  it("says Same games. Bigger memories. once", () => {
+    show();
+    expect(screen.getAllByText(/Bigger memories\./)).toHaveLength(1);
+    expect(screen.queryByText(/Why BHALYAM feels different/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps the decorative artwork out of the accessibility tree", () => {
+    const { container } = show();
+    for (const art of container.querySelectorAll("[data-footer-art]")) {
+      expect(art.closest('[aria-hidden="true"]')).not.toBeNull();
+    }
+    expect(container.querySelectorAll("[data-footer-art]").length).toBeGreaterThan(0);
+  });
+
+  it("does not show the admin strip to an ordinary visitor", () => {
+    show();
+    expect(document.querySelector("[data-admin-strip]")).toBeNull();
+  });
+
+  it("shows the current year in the copyright line", () => {
+    show();
+    expect(screen.getByText(new RegExp(`${new Date().getFullYear()} BHALYAM`))).toBeInTheDocument();
   });
 
   it("uses the selected language rather than a hardcoded English chip", () => {
@@ -123,9 +143,20 @@ describe("Nostalgia Network Hub footer", () => {
     expect(screen.queryByRole("region", { name: "System pulse" })).not.toBeInTheDocument();
     expect(fetch).not.toHaveBeenCalled();
     expect(screen.queryByText(/All systems operational|~24ms|India gateway|Zero client cheat vectors|low-latency/i)).not.toBeInTheDocument();
-    for (const label of ["Fair play engine", "Instant access", "Player-first", "Room voice"]) {
-      expect(screen.getByRole("heading", { name: label })).toBeInTheDocument();
+    const principles = within(screen.getByRole("region", { name: "BHALYAM principles" }));
+    for (const [label, claim] of [
+      ["Fair play", "Server-checked moves"], ["Instant access", "Play in your browser"],
+      ["Player-first", "No real-money gambling"], ["Room voice", "Optional in-room audio"],
+    ]) {
+      expect(principles.getByRole("heading", { name: label })).toBeInTheDocument();
+      expect(principles.getByText(claim)).toBeInTheDocument();
     }
+    expect(principles.queryAllByRole("link")).toHaveLength(0);
+    // One shared container for all four, not four cards.
+    const items = principles.getAllByRole("listitem");
+    expect(new Set(items.map(item => item.parentElement)).size).toBe(1);
+    expect(items[0].parentElement).toHaveClass("border", "rounded-2xl");
+    for (const item of items) expect(item.className).not.toMatch(/\brounded/);
   });
 
   it("opens actual data/storage choices from the utility bar rather than appearance settings", () => {

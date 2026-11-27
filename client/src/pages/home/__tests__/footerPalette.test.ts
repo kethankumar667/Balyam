@@ -66,9 +66,23 @@ describe("footer palette declarations (rendered gradients are checked in Chromiu
     ]);
   });
 
+  it.each(["light", "dark"] as const)("keeps the Explore games button text AA on its fill in %s mode", theme => {
+    const declarations = CSS.match(theme === "light"
+      ? /(?:^|\n)\.bhalyam-footer\s*\{([^}]+)\}/
+      : /:root\[data-theme="dark"\] \.bhalyam-footer\s*\{([^}]+)\}/)?.[1] ?? "";
+    const read = (token: string): Rgb => {
+      const m = declarations.match(new RegExp(`--footer-${token}:\\s*(\\d+)\\s+(\\d+)\\s+(\\d+)\\s*;`));
+      if (!m) throw new Error(`Missing ${theme} footer token ${token}`);
+      return [Number(m[1]), Number(m[2]), Number(m[3])];
+    };
+    expect(CONFIG).toContain("rgb(var(--footer-action) / <alpha-value>)");
+    expect(CONFIG).toContain("rgb(var(--footer-action-ink) / <alpha-value>)");
+    expect(contrast(read("action-ink"), read("action"))).toBeGreaterThanOrEqual(4.5);
+  });
+
   it("keeps playground silhouettes distinct from the light surface", () => {
     const color = palette("light");
-    expect(ART).toContain('className="text-footer-scene-ink"');
+    expect(ART).toContain('className="text-footer-scene-ink');
     expect(contrast(color("scene-ink"), color("deep"))).toBeGreaterThanOrEqual(3);
   });
 });
