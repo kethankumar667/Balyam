@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import CSS from "../../../index.css?raw";
 import CONFIG from "../../../../tailwind.config.js?raw";
 import DASHBOARD from "../PlayerJourneyDashboard.tsx?raw";
-import REFERRALS from "../ReferralQuest.tsx?raw";
+import CARD from "../JourneyCard.tsx?raw";
+import SOCIAL from "../SocialQuestCard.tsx?raw";
 import ART from "../JourneyArtwork.tsx?raw";
 
 const SURFACES = ["canvas", "chip", "panel", "input", "play-start", "play-end", "level-start", "level-end", "social-start", "social-end"] as const;
 const INKS = ["ink", "soft", "detail", "gold", "mint", "cyan", "violet"] as const;
-const TOKENS = [...SURFACES, ...INKS, "edge", "track", "skeleton", "signal", "play-action", "play-hover"] as const;
+const ACTIONS = ["play-action", "play-hover", "level-action", "level-hover", "social-action", "social-hover"] as const;
+const TOKENS = [...SURFACES, ...INKS, "edge", "track", "skeleton", "signal", ...ACTIONS] as const;
 type Rgb = readonly [number, number, number];
 
 function palette(theme: "light" | "dark") {
@@ -52,6 +54,14 @@ describe("Journey palette declarations (painted contrast is verified in Chromium
     }
   });
 
+  it.each(["light", "dark"] as const)("keeps white call-to-action text at AA on every filled button in the %s palette", theme => {
+    const color = palette(theme);
+    const white: Rgb = [255, 255, 255];
+    for (const action of ACTIONS) {
+      expect(contrast(white, color(action)), `${theme}: white on ${action}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it("uses light surfaces by default and retains the navy dark landscape", () => {
     for (const surface of SURFACES) expect(luminance(palette("light")(surface))).toBeGreaterThan(0.75);
     expect(palette("dark")("canvas")).toEqual([7, 20, 38]);
@@ -62,7 +72,7 @@ describe("Journey palette declarations (painted contrast is verified in Chromium
 
   it("themes the dashboard, invitation controls and decorative artwork without a JS theme branch", () => {
     expect(DASHBOARD).toContain("bhalyam-journey");
-    for (const source of [DASHBOARD, REFERRALS]) {
+    for (const source of [DASHBOARD, CARD, SOCIAL]) {
       expect(source).not.toMatch(/(?:text|bg|border|from|to|ring(?:-offset)?)-\[#/);
       expect(source).not.toMatch(/(?:text|bg|border|ring)-(?:slate|amber|cyan|violet|emerald)-\d/);
       expect(source).not.toContain("useTheme");

@@ -42,6 +42,10 @@ export default {
           signal: "rgb(var(--journey-signal) / <alpha-value>)",
           "play-action": "rgb(var(--journey-play-action) / <alpha-value>)",
           "play-hover": "rgb(var(--journey-play-hover) / <alpha-value>)",
+          "level-action": "rgb(var(--journey-level-action) / <alpha-value>)",
+          "level-hover": "rgb(var(--journey-level-hover) / <alpha-value>)",
+          "social-action": "rgb(var(--journey-social-action) / <alpha-value>)",
+          "social-hover": "rgb(var(--journey-social-hover) / <alpha-value>)",
         },
         footer: {
           night: "rgb(var(--footer-night) / <alpha-value>)",

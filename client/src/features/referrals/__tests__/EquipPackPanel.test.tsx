@@ -1,17 +1,15 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
 import { capabilitiesFor } from "@shared/permissions";
-import { packEquipTargets, type ReferralProgress } from "@shared/referrals";
-import { ReferralQuest } from "../ReferralQuest";
+import { packEquipTargets, type ReferralOverview } from "@shared/referrals";
+import { EquipPackPanel } from "../crew/EquipPackPanel";
 
 const mocks = vi.hoisted(() => ({
-  progress: { inviteCode: "00000000-0000-4000-8000-000000000001", qualifiedFriends: 0, pendingFriends: 0, target: 3, rewardGranted: false } as ReferralProgress | null,
-  loading: false, error: null as string | null, notice: null, retry: vi.fn(),
-  fetchCosmetics: vi.fn(), equipItem: vi.fn(), cosmeticError: null as string | null,
+  fetchCosmetics: vi.fn(),
+  equipItem: vi.fn(),
+  cosmeticError: null as string | null,
 }));
-vi.mock("../../../hooks/useReferralProgress", () => ({ useReferralProgress: () => mocks }));
 vi.mock("../../../store/cosmeticsStore", () => ({
   useCosmeticsStore: { getState: () => ({
     fetchCosmetics: mocks.fetchCosmetics, equipItem: mocks.equipItem, errorMessage: mocks.cosmeticError,
@@ -24,15 +22,15 @@ vi.mock("../../../store/authStore", async () => {
 });
 import { useAuthStore } from "../../../store/authStore";
 
-function show(isMember = true) {
-  render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><ReferralQuest isMember={isMember} /></MemoryRouter>);
+const LOCKED: ReferralOverview["pack"] = { granted: false, qualifiedFriends: 0, target: 3 };
+const EARNED: ReferralOverview["pack"] = { granted: true, qualifiedFriends: 3, target: 3 };
+
+function show(pack = LOCKED) {
+  return render(<EquipPackPanel pack={pack} />);
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.progress = { inviteCode: "00000000-0000-4000-8000-000000000001", qualifiedFriends: 0, pendingFriends: 0, target: 3, rewardGranted: false };
-  mocks.loading = false;
-  mocks.error = null;
   mocks.cosmeticError = null;
   mocks.fetchCosmetics.mockResolvedValue(undefined);
   mocks.equipItem.mockResolvedValue(true);
@@ -40,28 +38,16 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe("Nostalgia Pack Admin Pass", () => {
+describe("Wearing the Nostalgia Pack on the Crew Quest page", () => {
   it("lets a Super Admin equip all three items with zero qualifying referrals, without claiming they were earned", async () => {
     show();
-    expect(screen.getByText("0 / 3 friends qualified")).toBeInTheDocument();
+    expect(screen.getByText(/Admin Pass gives access to all three items.*not earned ownership/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Equip earned pack" })).not.toBeInTheDocument();
     expect(mocks.equipItem).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Equip pack · Admin Pass" }));
     await screen.findByText(/Pack equipped/);
     expect(mocks.fetchCosmetics).toHaveBeenCalledOnce();
     expect(mocks.equipItem.mock.calls).toEqual(packEquipTargets().map(item => [item.category, item.scope, item.id]));
-    expect(mocks.progress?.rewardGranted).toBe(false);
-    expect(mocks.retry).not.toHaveBeenCalled();
-  });
-
-  it.each(["loading", "unavailable"] as const)("does not depend on referral service progress being %s", async state => {
-    mocks.progress = null;
-    mocks.loading = state === "loading";
-    mocks.error = state === "unavailable" ? "Invitations are temporarily unavailable." : null;
-    show();
-    fireEvent.click(screen.getByRole("button", { name: "Equip pack · Admin Pass" }));
-    await screen.findByText(/Pack equipped/);
-    expect(mocks.equipItem).toHaveBeenCalledTimes(packEquipTargets().length);
   });
 
   it("preserves the existing Admin Pass for ordinary admins too", () => {
@@ -70,21 +56,21 @@ describe("Nostalgia Pack Admin Pass", () => {
     expect(screen.getByRole("button", { name: "Equip pack · Admin Pass" })).toBeEnabled();
   });
 
-  it("does not give an unearned member or guest the pack", () => {
+  it("offers nothing to an unearned member or a guest", () => {
     useAuthStore.setState({ capabilities: capabilitiesFor("member") });
-    show();
-    expect(screen.queryByRole("button", { name: /Equip.*pack/ })).not.toBeInTheDocument();
+    const member = show();
+    expect(member.container).toBeEmptyDOMElement();
     cleanup();
     useAuthStore.setState({ userId: null, capabilities: capabilitiesFor("guest") });
-    show(false);
-    expect(screen.queryByRole("button", { name: /Equip.*pack/ })).not.toBeInTheDocument();
+    const guest = show();
+    expect(guest.container).toBeEmptyDOMElement();
     expect(mocks.equipItem).not.toHaveBeenCalled();
   });
 
-  it("keeps the earned-pack action for qualifying members", async () => {
+  it("keeps the earned-pack action for a member whose pack is unlocked, with no Admin Pass wording", async () => {
     useAuthStore.setState({ capabilities: capabilitiesFor("member") });
-    mocks.progress = { ...mocks.progress!, qualifiedFriends: 3, rewardGranted: true };
-    show();
+    show(EARNED);
+    expect(screen.queryByText(/Admin Pass/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Equip earned pack" }));
     await screen.findByText(/Pack equipped/);
     expect(mocks.equipItem).toHaveBeenCalledTimes(packEquipTargets().length);
@@ -105,8 +91,7 @@ describe("Nostalgia Pack Admin Pass", () => {
     let finish: (value: boolean) => void = () => { throw new Error("Equip did not start"); };
     mocks.equipItem.mockImplementationOnce(() => new Promise<boolean>(resolve => { finish = resolve; }));
     show();
-    const button = screen.getByRole("button", { name: "Equip pack · Admin Pass" });
-    fireEvent.click(button);
+    fireEvent.click(screen.getByRole("button", { name: "Equip pack · Admin Pass" }));
     await waitFor(() => expect(mocks.equipItem).toHaveBeenCalledOnce());
     expect(screen.getByRole("button", { name: "Equipping..." })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Equipping..." }));

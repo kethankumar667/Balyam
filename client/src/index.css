@@ -734,6 +734,11 @@ body, #root, .bhalyam-paper {
   --journey-signal: 5 107 126;
   --journey-play-action: 8 116 92;
   --journey-play-hover: 9 98 79;
+  /* Filled action colours for the other two cards: white text on each is at least 4.5:1 (journeyPalette.test). */
+  --journey-level-action: 27 108 168;
+  --journey-level-hover: 21 90 142;
+  --journey-social-action: 107 75 168;
+  --journey-social-hover: 90 62 145;
 }
 
 :root[data-theme="dark"] .bhalyam-journey {
@@ -760,6 +765,10 @@ body, #root, .bhalyam-paper {
   --journey-signal: 94 228 238;
   --journey-play-action: 8 116 92;
   --journey-play-hover: 9 98 79;
+  --journey-level-action: 27 108 168;
+  --journey-level-hover: 21 90 142;
+  --journey-social-action: 107 75 168;
+  --journey-social-hover: 90 62 145;
 }
 
 /* Scoped RGB channels keep translucent footer utilities theme-aware without

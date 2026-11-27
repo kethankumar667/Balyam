@@ -49,7 +49,8 @@ describe("Your Journey Continues", () => {
   it("labels level XP and achievement progress separately, with the complete goal requirement", () => {
     show();
     expect(screen.getByRole("progressbar", { name: "Level XP" })).toHaveAttribute("aria-valuenow", "0");
-    expect(screen.getByText("0 / 100 XP to Level 12")).toBeInTheDocument();
+    expect(screen.getByText("0 / 100 XP · Level 12 next")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Level XP" })).toHaveAttribute("aria-valuetext", "0 of 100 XP to Level 12");
     expect(screen.getByRole("progressbar", { name: "Achievement progress" })).toHaveAttribute("aria-valuenow", "95");
     expect(screen.getByText(/60%.*win rate.*20 matches/i)).toBeInTheDocument();
     expect(screen.queryByText(/one match remaining|500 XP/i)).toBeNull();
@@ -58,11 +59,43 @@ describe("Your Journey Continues", () => {
   it("shows server referral counts and real reward types, not joined-link counts", () => {
     show();
     expect(screen.getByText("1 / 3 friends qualified")).toBeInTheDocument();
-    expect(screen.getByText(/new verified account.*match with another human/i)).toBeInTheDocument();
     expect(screen.getByText("Golden Reunion")).toBeInTheDocument();
     expect(screen.getByText("Gang Leader")).toBeInTheDocument();
     expect(screen.getByText("School Slate")).toBeInTheDocument();
+    for (const label of ["Aura", "Title", "Theme"]) expect(screen.getByText(label)).toBeInTheDocument();
     expect(screen.queryByText(/Chat Badge|instantly unlock/i)).toBeNull();
+  });
+
+  it("keeps the qualification rules, the pending count and the Admin Pass copy out of the overview", () => {
+    show();
+    expect(screen.queryByText(/new verified account.*match with another human/i)).toBeNull();
+    expect(screen.queryByText(/accepted; waiting for qualifying play/i)).toBeNull();
+    expect(screen.queryByText(/Admin Pass gives access/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Equip.*pack/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /See who joined/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Refresh progress/i })).toBeNull();
+  });
+
+  it("gives the three journey cards one structure and one primary action each", () => {
+    const { container } = render(<MemoryRouter><PlayerJourneyDashboard snapshot={fixture()} isMember onSelect={vi.fn()} /></MemoryRouter>);
+    const cards = [...container.querySelectorAll<HTMLElement>("[data-journey-card]")];
+    expect(cards.map(card => card.dataset.journeyCard)).toEqual(["play", "level", "social"]);
+    for (const card of cards) {
+      for (const zone of ["header", "visual", "details", "action"]) {
+        expect(card.querySelector(`[data-journey-zone="${zone}"]`), `${card.dataset.journeyCard} ${zone}`).not.toBeNull();
+      }
+      // One filled call to action per card, all with the same shape.
+      const actions = card.querySelectorAll('[data-journey-zone="action"] > a, [data-journey-zone="action"] > button');
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toHaveClass("min-h-[48px]", "w-full", "rounded-xl");
+    }
+  });
+
+  it("shows no dashed drop-zone placeholder when there is no game to resume", () => {
+    const { container } = render(<MemoryRouter><PlayerJourneyDashboard snapshot={{ ...fixture(), matches: [] }} isMember onSelect={vi.fn()} /></MemoryRouter>);
+    expect(screen.getByRole("heading", { name: "Make your next memory" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Explore games/i })).toHaveAttribute("href", "/games");
+    expect(container.querySelector('[data-journey-card="play"] .border-dashed')).toBeNull();
   });
 
   it("offers invite channels only after the invite action", () => {
@@ -72,6 +105,12 @@ describe("Your Journey Continues", () => {
     const channel = screen.getByRole("link", { name: /WhatsApp/i });
     expect(decodeURIComponent(channel.getAttribute("href")!)).toContain("/invite/00000000-0000-4000-8000-000000000001");
     expect(channel).toHaveAttribute("rel", "noopener noreferrer");
+    // The detail the card no longer carries is here, in the drawer.
+    expect(screen.getByText(/new verified account.*match with another human/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 accepted; waiting for qualifying play/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "See who joined" })).toHaveAttribute("href", "/referrals");
+    fireEvent.click(screen.getByRole("button", { name: /Refresh progress/i }));
+    expect(referral.retry).toHaveBeenCalled();
   });
 
   it("keeps guest, loading, and unavailable XP honest", () => {

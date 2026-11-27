@@ -10,6 +10,7 @@ import { CrewPulse } from "../features/referrals/crew/CrewPulse";
 import { InvitationJourney } from "../features/referrals/crew/InvitationJourney";
 import { CrewList } from "../features/referrals/crew/CrewList";
 import { NostalgiaVault } from "../features/referrals/crew/NostalgiaVault";
+import { EquipPackPanel } from "../features/referrals/crew/EquipPackPanel";
 import { HowItWorksStrip, PrivacyPanel } from "../features/referrals/crew/CrewGuide";
 import { AUTH_VARS, GHOST_BUTTON } from "../features/referrals/crew/crewStyles";
 import { useTheme } from "../lib/useTheme";
@@ -72,7 +73,11 @@ export default function ReferralsPage() {
               </div>
               <div className="min-w-0 xl:col-span-12"><InvitationJourney totals={overview.totals} campaign={overview.campaign} /></div>
               <div className="min-w-0 xl:col-span-7"><CrewList friends={overview.friends} campaign={overview.campaign} serverNow={overview.serverNow} /></div>
-              <div className="min-w-0 xl:col-span-5"><NostalgiaVault pack={overview.pack} /></div>
+              <div className="min-w-0 space-y-4 xl:col-span-5">
+                <NostalgiaVault pack={overview.pack} />
+                {/* Where the pack is worn. The home overview only points here; the Admin Pass explanation lives with the button. */}
+                <EquipPackPanel pack={overview.pack} />
+              </div>
               <div className="min-w-0 xl:col-span-7"><HowItWorksStrip campaign={overview.campaign} /></div>
               <div className="min-w-0 xl:col-span-5"><PrivacyPanel /></div>
             </div>

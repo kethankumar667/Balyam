@@ -1,4 +1,4 @@
-import { Crown, Orbit, Users } from "lucide-react";
+import { Crown, Orbit } from "lucide-react";
 
 export function JourneyLandscape() {
   return <svg viewBox="0 0 1100 640" preserveAspectRatio="xMidYMid slice" className="pointer-events-none absolute inset-0 -z-10 h-full w-full opacity-60" aria-hidden="true" focusable="false">
@@ -19,10 +19,11 @@ export function JourneyLandscape() {
   </svg>;
 }
 
-export function PackCollectible({ index }: { index: number }) {
-  return <span aria-hidden="true" className="relative flex h-[66px] w-full items-center justify-center overflow-hidden rounded-xl border border-journey-gold/35 bg-[radial-gradient(ellipse_at_bottom,rgb(var(--journey-gold)/0.15),transparent_85%)] text-journey-gold">
-    {index === 0 ? <><span className="absolute h-11 w-11 rounded-full border-[3px] border-journey-gold shadow-[0_0_15px_rgb(var(--journey-gold)/0.25)]" /><Orbit size={22} strokeWidth={1.3} /></>
-      : index === 1 ? <span className="flex h-12 w-10 flex-col items-center justify-center rounded-b-2xl border border-journey-gold bg-journey-gold/10"><Crown size={22} /><Users size={13} /></span>
-        : <span className="flex h-11 w-14 -rotate-6 items-center justify-center rounded border-[4px] border-[#ab8552] bg-[#29413a] font-script text-lg text-[#e1eadd]">a b c</span>}
+/** One Nostalgia Pack reward as a small icon: aura, podium title, table theme. Dim until the pack is unlocked. */
+export function PackIcon({ index, unlocked }: { index: number; unlocked: boolean }) {
+  return <span aria-hidden="true" className={`relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-journey-panel/70 ${unlocked ? "border-journey-gold/60 text-journey-gold" : "border-journey-edge/40 text-journey-soft opacity-70"}`}>
+    {index === 0 ? <><span className="absolute h-8 w-8 rounded-full border-2 border-current opacity-80" /><Orbit size={16} strokeWidth={1.4} /></>
+      : index === 1 ? <Crown size={20} strokeWidth={1.5} />
+        : <span className="flex h-6 w-8 -rotate-6 items-center justify-center rounded-sm border-2 border-[#ab8552] bg-[#29413a] font-script text-[11px] text-[#e1eadd]">abc</span>}
   </span>;
 }
