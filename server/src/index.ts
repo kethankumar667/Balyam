@@ -46,8 +46,6 @@ import { scorecardRouter } from "./profile/ScorecardController.js";
 import { supportRouter } from "./support/SupportController.js";
 import { rankingRouter } from "./ranking/RankingController.js";
 import { tournamentRouter, seasonRouter } from "./tournaments/TournamentController.js";
-import socialRouter from "./social/SocialController.js";
-import partyRouter from "./party/PartyController.js";
 import { StreakService } from "./streak/StreakService.js";
 import { RewardGateway } from "./rewards/RewardGateway.js";
 import { TransferPolicy } from "./rewards/TransferPolicy.js";
@@ -196,8 +194,6 @@ app.use("/api/support", supportRouter);
 app.use("/api/ranking", rankingRouter);
 app.use("/api/tournaments", tournamentRouter);
 app.use("/api/seasons", seasonRouter);
-app.use("/api/social", socialRouter);
-app.use("/api/parties", partyRouter);
 
 // Telemetry & Health endpoint
 app.get("/health", (_req, res) => {

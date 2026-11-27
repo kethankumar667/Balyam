@@ -92,7 +92,6 @@ const LazyMyRecordsPage = lazy(() => import("./pages/MyRecordsPage"));
 const LazyShopPage = lazy(() => import("./pages/ShopPage"));
 const LazyTournamentsPage = lazy(() => import("./pages/TournamentsPage"));
 const LazyDesignSystemCatalogPage = lazy(() => import("./pages/DesignSystemCatalogPage"));
-const LazySocialHubPage = lazy(() => import("./pages/SocialHubPage"));
 const LazyPreviewLoader = lazy(() => import("./pages/PreviewLoader"));
 const LazyGameTileShowcase = lazy(() => import("./pages/GameTileShowcase"));
 const LazyTileDesignPreview = lazy(() => import("./pages/TileDesignPreview"));
@@ -165,7 +164,6 @@ export interface RouteComponents {
   ShopPage?: React.ComponentType;
   TournamentsPage?: React.ComponentType;
   DesignSystemCatalogPage?: React.ComponentType;
-  SocialHubPage?: React.ComponentType;
   PreviewLoader?: React.ComponentType;
   GameTileShowcase?: React.ComponentType;
   GangDiscoveryPage?: React.ComponentType;
@@ -182,7 +180,7 @@ import {
   GamesGridSkeleton,
   TournamentSkeleton,
   RoomSkeleton,
-  SocialHubSkeleton,
+  GangSkeleton,
   DashboardSkeleton,
 } from "./design-system/dls/Skeleton";
 import GamesFamilyLayout from "./components/layout/GamesFamilyLayout";
@@ -213,11 +211,11 @@ function RouteLoadingFallback() {
     );
   }
 
-  if (pathname.startsWith("/social") || pathname.startsWith("/gang")) {
+  if (pathname.startsWith("/gang")) {
     return (
       <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto space-y-6">
-          <SocialHubSkeleton />
+          <GangSkeleton />
         </div>
       </div>
     );
@@ -372,7 +370,6 @@ export default function App({ components = {} }: AppProps) {
   const ShopPage = components.ShopPage ?? LazyShopPage;
   const TournamentsPage = components.TournamentsPage ?? LazyTournamentsPage;
   const DesignSystemCatalogPage = components.DesignSystemCatalogPage ?? LazyDesignSystemCatalogPage;
-  const SocialHubPage = components.SocialHubPage ?? LazySocialHubPage;
   const PreviewLoader = components.PreviewLoader ?? LazyPreviewLoader;
   const GameTileShowcase = components.GameTileShowcase ?? LazyGameTileShowcase;
   const GangDiscoveryPage = components.GangDiscoveryPage ?? LazyGangDiscoveryPage;
@@ -436,7 +433,8 @@ export default function App({ components = {} }: AppProps) {
             {/* The Cosmetics Boutique. Was a modal opened from the header chip; see pages/ShopPage.tsx. */}
             <Route path="/shop" element={<ShopPage />} />
             <Route path="/tournaments" element={<TournamentsPage />} />
-            <Route path="/social" element={<SocialHubPage />} />
+            {/* The Social Hub was removed on 2026-11-27; an old bookmark or shared link lands on Gang. */}
+            <Route path="/social" element={<Navigate replace to="/gang" />} />
             {/* This feature was called Mandali, at /mandali. Links people already shared (a Gang's address, an
                 invite with its token) keep working: they arrive here and carry on to the same page. */}
             <Route path="/mandali" element={<LegacyGangRedirect />} />

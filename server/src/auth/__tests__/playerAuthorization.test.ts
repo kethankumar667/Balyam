@@ -6,17 +6,11 @@ import { authRouter } from "../AuthController.js";
 import { profileRouter } from "../../profile/ProfileController.js";
 import { rankingRouter } from "../../ranking/RankingController.js";
 import { tournamentRouter, seasonRouter } from "../../tournaments/TournamentController.js";
-import socialRouter from "../../social/SocialController.js";
-import partyRouter from "../../party/PartyController.js";
 import { clearVerificationCache } from "../../lib/supabaseAuth.js";
 import { profileService } from "../../profile/ProfileService.js";
 import { matchHistoryService } from "../../profile/MatchHistoryService.js";
 import { challengeEngine } from "../../ranking/ChallengeEngine.js";
 import { recentPlayersService } from "../../ranking/RecentPlayersService.js";
-import { friendsService } from "../../social/FriendsService.js";
-import { friendRequestsService } from "../../social/FriendRequestsService.js";
-import { presenceService } from "../../social/PresenceService.js";
-import { partyService } from "../../party/PartyService.js";
 import { seasonService } from "../../seasons/SeasonService.js";
 import { tournamentService } from "../../tournaments/TournamentService.js";
 
@@ -93,10 +87,6 @@ beforeEach(async () => {
   matchHistoryService.reset();
   challengeEngine.reset();
   recentPlayersService.reset();
-  friendsService.clear();
-  friendRequestsService.clear();
-  presenceService.clear();
-  partyService.clear();
   seasonService.reset();
   tournamentService.reset();
 
@@ -107,8 +97,6 @@ beforeEach(async () => {
     app.use("/api/ranking", rankingRouter);
     app.use("/api/tournaments", tournamentRouter);
     app.use("/api/seasons", seasonRouter);
-    app.use("/api/social", socialRouter);
-    app.use("/api/parties", partyRouter);
   });
 });
 
@@ -137,15 +125,6 @@ function privateRoutes(subject: string): Array<{ method: string; path: string; b
     { method: "GET", path: `/api/tournaments/player/${subject}/history` },
     { method: "GET", path: `/api/seasons/player/${subject}` },
     { method: "POST", path: `/api/seasons/player/${subject}/claim/tier_1` },
-    { method: "GET", path: `/api/social/friends/${subject}` },
-    { method: "POST", path: `/api/social/friends/${subject}/remove`, body: { friendPlayerId: "x" } },
-    { method: "GET", path: `/api/social/requests/${subject}` },
-    { method: "POST", path: `/api/social/presence/${subject}`, body: { status: "ONLINE" } },
-    { method: "GET", path: `/api/parties/player/${subject}` },
-    { method: "POST", path: `/api/parties/player/${subject}/ready`, body: { isReady: true } },
-    { method: "POST", path: `/api/parties/player/${subject}/target`, body: { game: "ludo" } },
-    { method: "POST", path: `/api/parties/player/${subject}/leave` },
-    { method: "POST", path: `/api/parties/player/${subject}/disband` },
   ];
 }
 
@@ -170,11 +149,8 @@ describe("P0-2 — missing token", () => {
 
   it("refuses the routes that used to take an identity from the body", async () => {
     const forged = [
-      { path: "/api/social/requests/send", body: { senderId: ALICE, senderName: "A", recipientId: BOB } },
-      { path: "/api/parties/create", body: { leaderId: ALICE, leaderName: "A" } },
       { path: "/api/tournaments/t1/register", body: { playerId: ALICE, displayName: "A" } },
       { path: "/api/tournaments/t1/checkin", body: { playerId: ALICE } },
-      { path: "/api/social/presence/query", body: { playerIds: [ALICE, BOB] } },
     ];
     for (const f of forged) {
       const res = await server.request(f.path, { method: "POST", body: JSON.stringify(f.body) });
@@ -263,22 +239,6 @@ describe("P0-2 — user A acting on user B", () => {
     const after = await server.request(`/api/profile/${BOB}`);
     expect(after.status).toBe(200);
     expect((after.body as { profile: { displayName: string } }).profile.displayName).toBe("Bob");
-  });
-
-  it("does not let a stranger read a head-to-head history between two others", async () => {
-    const res = await server.request(`/api/social/shared-history/${ALICE}/${BOB}`, {
-      token: mintToken("cccccccc-1111-2222-3333-444444444444"),
-    });
-    expect(res.status).toBe(403);
-  });
-
-  it("lets either participant read their own head-to-head history", async () => {
-    for (const who of [ALICE, BOB]) {
-      const res = await server.request(`/api/social/shared-history/${ALICE}/${BOB}`, {
-        token: mintToken(who),
-      });
-      expect(res.status, who).toBe(200);
-    }
   });
 
   it("does not create a profile for an id the caller does not own", async () => {
@@ -398,131 +358,6 @@ describe("P0-2 — tournament actions without permission", () => {
   });
 });
 
-/* ─────────────────── Forged ids in social and party ─────────────────── */
-
-describe("P0-2 — forged player ids in social and party actions", () => {
-  it("sends a friend request from the caller, whatever the body claims", async () => {
-    const res = await server.request("/api/social/requests/send", {
-      method: "POST",
-      token: mintToken(ALICE),
-      body: JSON.stringify({ senderId: BOB, senderName: "Bob", recipientId: "carol" }),
-    });
-    expect(res.status).toBe(200);
-    const { request } = res.body as { request: { senderId: string } };
-    expect(request.senderId).toBe(ALICE);
-    expect(request.senderId).not.toBe(BOB);
-  });
-
-  it("refuses to accept a friend request addressed to somebody else", async () => {
-    const sent = await server.request("/api/social/requests/send", {
-      method: "POST",
-      token: mintToken(ALICE),
-      body: JSON.stringify({ senderName: "Alice", recipientId: BOB }),
-    });
-    const requestId = (sent.body as { request: { id: string } }).request.id;
-
-    const attack = await server.request(`/api/social/requests/${requestId}/accept`, {
-      method: "POST",
-      token: mintToken("cccccccc-1111-2222-3333-444444444444"),
-      body: JSON.stringify({ recipientName: "Carol" }),
-    });
-    expect(attack.status).toBe(403);
-
-    const legit = await server.request(`/api/social/requests/${requestId}/accept`, {
-      method: "POST",
-      token: mintToken(BOB),
-      body: JSON.stringify({ recipientName: "Bob" }),
-    });
-    expect(legit.status).toBe(200);
-  });
-
-  it("refuses to decline a friend request addressed to somebody else", async () => {
-    const sent = await server.request("/api/social/requests/send", {
-      method: "POST",
-      token: mintToken(ALICE),
-      body: JSON.stringify({ senderName: "Alice", recipientId: BOB }),
-    });
-    const requestId = (sent.body as { request: { id: string } }).request.id;
-
-    const attack = await server.request(`/api/social/requests/${requestId}/decline`, {
-      method: "POST",
-      token: mintToken(ALICE),
-    });
-    expect(attack.status).toBe(403);
-  });
-
-  it("creates a party led by the caller, whatever the body claims", async () => {
-    const res = await server.request("/api/parties/create", {
-      method: "POST",
-      token: mintToken(ALICE),
-      body: JSON.stringify({ leaderId: BOB, leaderName: "Bob" }),
-    });
-    expect(res.status).toBe(200);
-    expect((res.body as { party: { leaderId: string } }).party.leaderId).toBe(ALICE);
-  });
-
-  it("refuses an invite into a party the caller is not in", async () => {
-    const created = await server.request("/api/parties/create", {
-      method: "POST",
-      token: mintToken(ALICE),
-      body: JSON.stringify({ leaderName: "Alice" }),
-    });
-    const partyId = (created.body as { party: { id: string } }).party.id;
-
-    const attack = await server.request(`/api/parties/${partyId}/invite`, {
-      method: "POST",
-      token: mintToken(BOB),
-      body: JSON.stringify({ inviterName: "Bob", inviteeId: "carol" }),
-    });
-    expect(attack.status).toBe(403);
-  });
-
-  it("refuses to accept a party invitation addressed to somebody else", async () => {
-    const created = await server.request("/api/parties/create", {
-      method: "POST",
-      token: mintToken(ALICE),
-      body: JSON.stringify({ leaderName: "Alice" }),
-    });
-    const partyId = (created.body as { party: { id: string } }).party.id;
-
-    const invited = await server.request(`/api/parties/${partyId}/invite`, {
-      method: "POST",
-      token: mintToken(ALICE),
-      body: JSON.stringify({ inviterName: "Alice", inviteeId: BOB }),
-    });
-    const inviteId = (invited.body as { invite: { id: string } }).invite.id;
-
-    const attack = await server.request(`/api/parties/invitations/${inviteId}/accept`, {
-      method: "POST",
-      token: mintToken("cccccccc-1111-2222-3333-444444444444"),
-      body: JSON.stringify({ inviteeName: "Carol" }),
-    });
-    expect(attack.status).toBe(403);
-
-    const legit = await server.request(`/api/parties/invitations/${inviteId}/accept`, {
-      method: "POST",
-      token: mintToken(BOB),
-      body: JSON.stringify({ inviteeName: "Bob" }),
-    });
-    expect(legit.status).toBe(200);
-  });
-
-  it("does not eject a stranger from their party", async () => {
-    await server.request("/api/parties/create", {
-      method: "POST",
-      token: mintToken(BOB),
-      body: JSON.stringify({ leaderName: "Bob" }),
-    });
-
-    const attack = await server.request(`/api/parties/player/${BOB}/leave`, {
-      method: "POST",
-      token: mintToken(ALICE),
-    });
-    expect(attack.status).toBe(403);
-    expect(partyService.getPlayerParty(BOB)).toBeDefined();
-  });
-});
-
 /* ─────────────────── Guest gameplay is preserved ─────────────────── */
 
 describe("P0-2 — the guest identity model", () => {
@@ -564,19 +399,10 @@ describe("P0-2 — the guest identity model", () => {
       `/api/ranking/challenges/${guest.playerId}`,
       `/api/ranking/friends/${guest.playerId}`,
       `/api/seasons/player/${guest.playerId}`,
-      `/api/social/friends/${guest.playerId}`,
-      `/api/parties/player/${guest.playerId}`,
     ]) {
       const res = await server.request(path, { token: guest.token });
       expect(res.status, path).toBe(200);
     }
-
-    const party = await server.request("/api/parties/create", {
-      method: "POST",
-      token: guest.token,
-      body: JSON.stringify({ leaderName: "Guest Player" }),
-    });
-    expect(party.status).toBe(200);
   });
 
   it("does not let one guest act as another", async () => {

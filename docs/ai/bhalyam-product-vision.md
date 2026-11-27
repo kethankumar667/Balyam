@@ -44,10 +44,9 @@ BHALYAM is a pure lounge for play, camaraderie, and nostalgic fun. We strictly b
    - Daily & Weekly competitive challenges.
    - Dynamic `WelcomePlayerStrip` recognizing returning win streaks.
    - Progressive rank tier ascension with glowing profile auras.
-3. **Social Squad Cohesion**:
-   - Realtime presence indicator dots showing what friends are playing.
-   - 1-tap squad invite popups (`PartyInvitationModal`).
-   - Shared history modals showing lifetime matches, head-to-head win rates, and tournament trophies won together.
+3. **Gang Cohesion**:
+   - Realtime presence dots in a Gang showing who is around and what they are playing.
+   - Share a room into a Gang in one tap, and Watch a friend's live match.
 4. **Competitive Seasonal Arc**:
    - 90-day ranked seasons with Battle Pass milestone rewards.
    - Knockout weekend tournaments with bracket visualizers and champion podiums.

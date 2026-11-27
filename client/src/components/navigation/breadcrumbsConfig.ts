@@ -93,12 +93,6 @@ export function resolveBreadcrumbs(pathname: string, search: string = ""): Bread
     return crumbs;
   }
 
-  if (cleanPath === "/social") {
-    crumbs.push({ label: "Community", path: "/social" });
-    crumbs.push({ label: "Social Hub" });
-    return crumbs;
-  }
-
   // Gang Communities
   if (cleanPath === "/gang") {
     crumbs.push({ label: "Community", path: "/gang" });

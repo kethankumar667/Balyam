@@ -86,15 +86,6 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         isActive: (p) => p.startsWith("/tournaments"),
       },
       {
-        id: "home-social",
-        label: "Social Hub",
-        icon: Users,
-        path: "/social",
-        badge: { text: "Coming Soon", variant: "muted" },
-        disabled: true,
-        isActive: (p) => p.startsWith("/social"),
-      },
-      {
         id: "home-gang",
         label: "Gang (గ్యాంగ్)",
         icon: Crown,

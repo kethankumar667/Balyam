@@ -76,13 +76,9 @@ export class RecentPlayersService {
     }
     set.add(friendId);
     /*
-     * This store was invisible to persistence until durability was actually
-     * measured. BHALYAM has TWO friend lists — `FriendsService` behind
-     * /api/social, and this one behind /api/ranking — and only the first was
-     * wired, so every friendship added from the leaderboard screen was lost on
-     * restart while the social one survived. The duplication itself is a
-     * genuine design problem and is recorded as debt; the missing write is
-     * fixed here.
+     * Friendships are saved so they survive a restart; `hydrateProgression` reads them back.
+     * This is the only friend list left: the Social Hub's own list, behind /api/social, was
+     * removed on 2026-11-27.
      */
     progressionSync.friendAdded({ playerId, friendPlayerId: friendId });
     return true;

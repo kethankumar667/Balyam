@@ -12,7 +12,7 @@
 
 ## Product Shape
 
-BHALYAM is a zero-install browser multiplayer game lounge. Players enter a lounge, choose a nostalgic board/card/social/retro game, and play in one of several modes: solo against bots, Pass & Play on one device, shared room code multiplayer, or broader product flows such as tournaments, rankings, profile progression, social parties, cosmetics, daily streaks, reviews, and admin/operational tooling.
+BHALYAM is a zero-install browser multiplayer game lounge. Players enter a lounge, choose a nostalgic board/card/social/retro game, and play in one of several modes: solo against bots, Pass & Play on one device, shared room code multiplayer, or broader product flows such as tournaments, rankings, profile progression, Gangs, cosmetics, daily streaks, reviews, and admin/operational tooling.
 
 The multiplayer room model remains the heart of the app: a React client sends intents, a Socket.IO server owns room/game truth, and `shared/` carries the cross-boundary TypeScript contract.
 
@@ -40,7 +40,7 @@ The multiplayer room model remains the heart of the app: a React client sends in
 - Game catalog family: `/games`, `/favorites`, `/recently-played`
 - Room play: `/room/:code` and related room flow through `client/src/pages/Room.tsx`
 - Profile family: `/profile`, `/profile/personal`, `/profile/statistics`, `/profile/matches`, `/profile/achievements`, plus aliases
-- Personal records/social: `/myrecords`, `/tournaments`, `/social`
+- Personal records and Gangs: `/myrecords`, `/tournaments`, `/gang` (the old `/social` Social Hub was removed and redirects to `/gang`)
 - Account/auth: login, signup, password reset, verification
 - Support/legal/content: privacy, terms, safety, about, FAQs, contact, feedback, reviews
 - Retro/standalone pages: Nokia cricket, Nokia snake, brick racer, brick tetris, brick breakout
@@ -51,7 +51,7 @@ Important client folders:
 
 - `client/src/pages/` contains route-level screens.
 - `client/src/games/<game>/` contains room-board implementations. Complete room games are expected to have `<Game>Board.tsx`, `<Game>BoardMobile.tsx`, and `<Game>BoardDesktop.tsx`.
-- `client/src/features/` contains product feature islands: onboarding, profile, rankings, social, tournaments, and standalone brick games.
+- `client/src/features/` contains product feature islands: onboarding, profile, rankings, referrals, tournaments, and standalone brick games.
 - `client/src/components/` contains shared UI and domain components, including room, auth, economy, cosmetics, privacy, admin, bhalyam chrome, settings, loading, reactions, and streaks.
 - `client/src/design-system/` contains DLS primitives, premium components, and icon sets. Prefer these over ad-hoc styling.
 - `client/src/store/roomStore.ts` owns room/game client state, persisted player identity, seat tokens, chat, and errors.
@@ -65,7 +65,7 @@ Important client folders:
 `server/src/index.ts` mounts many HTTP surfaces:
 
 - Public/core: `/health`, `/api/auth`, `/api/profile`, `/api/support`
-- Competitive/social: `/api/ranking`, `/api/tournaments`, `/api/seasons`, `/api/social`, `/api/parties`
+- Competitive and Gang: `/api/ranking`, `/api/tournaments`, `/api/seasons`, `/api/gang`
 - Reviews/feedback: `/api/reviews`, `/api/admin/reviews`, `/api/admin/feedback`
 - Economy/cosmetics/streaks: `/api/economy`, `/api/cosmetics`, `/api/streak`
 - Operational/admin: `/api/operational`, `/api/admin/dashboard`, `/api/admin/users`, `/api/admin/audit`

@@ -43,7 +43,6 @@ import BrickTetrisPage from "./pages/BrickTetrisPage";
 import BrickBreakoutPage from "./pages/BrickBreakoutPage";
 import MyRecordsPage from "./pages/MyRecordsPage";
 import TournamentsPage from "./pages/TournamentsPage";
-import SocialHubPage from "./pages/SocialHubPage";
 import DesignSystemCatalogPage from "./pages/DesignSystemCatalogPage";
 import WriteReviewPage from "./pages/WriteReviewPage";
 import FeedbackPage from "./pages/FeedbackPage";
@@ -79,7 +78,6 @@ const ssrComponents: RouteComponents = {
   BrickBreakoutPage,
   MyRecordsPage,
   TournamentsPage,
-  SocialHubPage,
   DesignSystemCatalogPage,
   WriteReviewPage,
   FeedbackPage,

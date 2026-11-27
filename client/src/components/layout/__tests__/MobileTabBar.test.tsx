@@ -23,7 +23,6 @@ describe("activeTabId", () => {
     ["/recently-played", "games"],
     ["/gang", "gang"],
     ["/gang/the-gang", "gang"],
-    ["/social", "gang"],
     ["/profile", "you"],
     ["/profile/matches", "you"],
     ["/myrecords", "you"],

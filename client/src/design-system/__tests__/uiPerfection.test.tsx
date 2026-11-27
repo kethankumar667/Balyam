@@ -55,12 +55,13 @@ describe("BHALYAM UI Perfection & Hardening Suite", () => {
   });
 
   describe("4. Navigation Fast-Paths (Max 2 Taps to Features)", () => {
-    it("ensures Tournaments, Social Hub, and Leaderboard are 1 tap from Home", () => {
+    it("ensures Tournaments, Gang, and My Records are 1 tap from Home, and the removed Social Hub is gone", () => {
       const homeItems = NAVIGATION_CONFIG.home.items;
       const paths = homeItems.map((i) => i.path).filter(Boolean);
 
       expect(paths).toContain("/tournaments");
-      expect(paths).toContain("/social");
+      expect(paths).toContain("/gang");
+      expect(paths).not.toContain("/social");
       expect(paths).toContain("/myrecords");
       expect(paths).toContain("/games");
     });

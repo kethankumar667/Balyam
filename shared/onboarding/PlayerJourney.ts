@@ -3,8 +3,6 @@ export type OnboardingMilestone =
   | "FIRST_MATCH_PLAYED"
   | "FIRST_WIN"
   | "FIRST_ACHIEVEMENT_UNLOCKED"
-  | "FIRST_FRIEND_ADDED"
-  | "FIRST_PARTY_JOINED"
   | "FIRST_TOURNAMENT_VIEWED";
 
 export interface StarterQuest {
@@ -44,15 +42,6 @@ export const STARTER_QUESTS: StarterQuest[] = [
     icon: "🏆",
     actionRoute: "/games",
     actionText: "Explore",
-  },
-  {
-    id: "FIRST_FRIEND_ADDED",
-    title: "Expand Your Squad",
-    description: "Send a friend request or form a multiplayer party.",
-    xpReward: 50,
-    icon: "🤝",
-    actionRoute: "/social",
-    actionText: "Social Hub",
   },
   {
     id: "FIRST_TOURNAMENT_VIEWED",

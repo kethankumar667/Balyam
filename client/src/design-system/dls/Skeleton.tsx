@@ -370,10 +370,10 @@ export function RoomSkeleton({ className = "" }: { className?: string }) {
   );
 }
 
-/** Social Hub & Squad Presence Skeleton */
-export function SocialHubSkeleton({ className = "" }: { className?: string }) {
+/** Gang hub and squad presence skeleton */
+export function GangSkeleton({ className = "" }: { className?: string }) {
   return (
-    <div aria-hidden="true" data-testid="social-hub-skeleton" className={`space-y-6 ${className}`}>
+    <div aria-hidden="true" data-testid="gang-skeleton" className={`space-y-6 ${className}`}>
       {/* Header Skeleton */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-2">

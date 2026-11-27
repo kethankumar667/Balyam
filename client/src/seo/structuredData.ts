@@ -352,19 +352,10 @@ export function getStructuredDataForRoute(pathname: string, customParams?: Recor
         ]),
       ];
 
-    case "/social":
-      return [
-        buildBreadcrumbSchema([
-          { name: "Home", path: "/" },
-          { name: "Social Hub", path: "/social" },
-        ]),
-      ];
-
     case "/testimonials":
       return [
         buildBreadcrumbSchema([
           { name: "Home", path: "/" },
-          { name: "Community", path: "/social" },
           { name: "Player Testimonials", path: "/testimonials" },
         ]),
       ];

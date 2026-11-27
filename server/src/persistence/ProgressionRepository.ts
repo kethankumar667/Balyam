@@ -137,11 +137,9 @@ export interface FriendRequestRecord {
 }
 
 /**
- * Mirrors `shared/party/Party.ts` exactly, including `IN_MATCH` rather than
- * the `IN_GAME` this file first invented. A persistence layer with its own
- * near-synonym for a domain state is a translation table waiting to be got
- * wrong, and the compiler catches the drift only if the two are the same type
- * or literally identical unions.
+ * The status values of the `parties` table. The Social Hub that wrote parties was removed on
+ * 2026-11-27 (and with it `shared/party/Party.ts`), so nothing writes or reads these rows any
+ * more; the shape stays because the table and its CHECK constraint are still deployed.
  */
 export type PartyStatus = "CREATED" | "INVITING" | "READY" | "IN_MATCH" | "DISBANDED";
 
@@ -167,7 +165,7 @@ export interface PartyRecord {
   updatedAt: number;
 }
 
-/** Mirrors `PartyInvitationStatus` in shared/party/Party.ts. */
+/** The status values of the `party_invitations` table (no longer written; see PartyStatus). */
 export type InvitationStatus = "PENDING" | "ACCEPTED" | "DECLINED";
 
 export interface PartyInvitationRecord {

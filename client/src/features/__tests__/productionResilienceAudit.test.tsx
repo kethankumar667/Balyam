@@ -10,7 +10,6 @@ import MyRecordsPage from "../../pages/MyRecordsPage";
 import MatchHistoryPage from "../../pages/MatchHistoryPage";
 import GameRoomSheet from "../../components/bhalyam/GameRoomSheet";
 import JoinRoomModal from "../../components/bhalyam/JoinRoomModal";
-import SocialHubPage from "../../pages/SocialHubPage";
 import { toastStore } from "../../lib/toastStore";
 import { BHALYAM_GAMES } from "../../components/bhalyam/data";
 import { MemoryRouter } from "react-router-dom";
@@ -495,18 +494,6 @@ describe("Production UX Resilience Audit Suite", () => {
 
       fireEvent.click(clearBtn);
       expect(screen.queryByText("No games found")).not.toBeInTheDocument();
-    });
-
-    it("renders active lounge friends in SocialHubPage", () => {
-      render(
-        <MemoryRouter>
-          <SocialHubPage />
-        </MemoryRouter>
-      );
-
-      expect(screen.getByText("Social Hub")).toBeInTheDocument();
-      expect(screen.getByText(/Active Friends, Presence Status & Direct Match Challenges/i)).toBeInTheDocument();
-      expect(screen.getByText("Aditi_Pro")).toBeInTheDocument();
     });
   });
 

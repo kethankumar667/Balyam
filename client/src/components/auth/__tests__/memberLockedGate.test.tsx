@@ -39,12 +39,5 @@ describe("MemberLockedGate", () => {
 
     expect(screen.getByText(/Personal Information is Locked for Guests/i)).toBeTruthy();
   });
-
-  it("renders locked state for Social Hub", () => {
-    renderWithProviders(<MemberLockedGate feature="social" />);
-
-    expect(screen.getByText(/Social Hub is Locked for Guests/i)).toBeTruthy();
-    expect(screen.getByText(/Friends lists, party invites/i)).toBeTruthy();
-  });
 });
 

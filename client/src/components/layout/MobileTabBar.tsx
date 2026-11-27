@@ -35,7 +35,7 @@ const RIGHT_TABS: readonly TabLink[] = [
 export function activeTabId(pathname: string): TabId | null {
   if (pathname === "/" || pathname === "/home") return "home";
   if (/^\/(games|favorites|recently-played)(\/|$)/.test(pathname)) return "games";
-  if (/^\/(gang|social)(\/|$)/.test(pathname)) return "gang";
+  if (/^\/gang(\/|$)/.test(pathname)) return "gang";
   if (/^\/(profile|myrecords|referrals)(\/|$)/.test(pathname)) return "you";
   return null;
 }

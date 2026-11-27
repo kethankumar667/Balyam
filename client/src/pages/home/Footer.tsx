@@ -26,7 +26,7 @@ const NAVIGATION: readonly FooterNavGroupProps[] = [
     ["My Records", "/myrecords"], ["Tournaments", "/tournaments"],
   ] },
   { title: "Community", icon: Users, links: [
-    ["Social Hub", "/social"], ["Our story", "/about#our-story"],
+    ["Our story", "/about#our-story"],
     ["Player testimonials", "/testimonials"], ["Write a review", "/reviews/write"],
     ["Contact us", "/contact"], ["Leave feedback", "/feedback"],
   ] },

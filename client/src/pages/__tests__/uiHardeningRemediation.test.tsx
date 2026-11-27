@@ -8,7 +8,7 @@ import OfflineBanner from "../../components/games/OfflineBanner";
 import {
   RoomSkeleton,
   TournamentSkeleton,
-  SocialHubSkeleton,
+  GangSkeleton,
 } from "../../design-system/dls/Skeleton";
 import App from "../../App";
 import * as opApi from "../../lib/operationalApi";
@@ -157,11 +157,11 @@ describe("UI Hardening Remediation Suite", () => {
   });
 
   describe("Test D: Skeleton accessibility", () => {
-    it("ensures RoomSkeleton, TournamentSkeleton, and SocialHubSkeleton are aria-hidden with no focusable controls and have stable testIds", () => {
+    it("ensures RoomSkeleton, TournamentSkeleton, and GangSkeleton are aria-hidden with no focusable controls and have stable testIds", () => {
       const skeletons = [
         { name: "RoomSkeleton", element: <RoomSkeleton />, testId: "room-skeleton" },
         { name: "TournamentSkeleton", element: <TournamentSkeleton />, testId: "tournament-skeleton" },
-        { name: "SocialHubSkeleton", element: <SocialHubSkeleton />, testId: "social-hub-skeleton" },
+        { name: "GangSkeleton", element: <GangSkeleton />, testId: "gang-skeleton" },
       ];
 
       for (const { name, element, testId } of skeletons) {
@@ -202,7 +202,7 @@ describe("UI Hardening Remediation Suite", () => {
       // Verifies exact RoomSkeleton identity and absence of other skeletons
       expect(container.querySelector('[data-testid="room-skeleton"]')).not.toBeNull();
       expect(container.querySelector('[data-testid="tournament-skeleton"]')).toBeNull();
-      expect(container.querySelector('[data-testid="social-hub-skeleton"]')).toBeNull();
+      expect(container.querySelector('[data-testid="gang-skeleton"]')).toBeNull();
       expect(container.querySelector('[data-testid="dashboard-skeleton"]')).toBeNull();
     });
 
@@ -217,20 +217,20 @@ describe("UI Hardening Remediation Suite", () => {
       // Verifies exact TournamentSkeleton identity and absence of other skeletons
       expect(container.querySelector('[data-testid="tournament-skeleton"]')).not.toBeNull();
       expect(container.querySelector('[data-testid="room-skeleton"]')).toBeNull();
-      expect(container.querySelector('[data-testid="social-hub-skeleton"]')).toBeNull();
+      expect(container.querySelector('[data-testid="gang-skeleton"]')).toBeNull();
       expect(container.querySelector('[data-testid="dashboard-skeleton"]')).toBeNull();
     });
 
-    it("selects SocialHubSkeleton when navigating to /social", () => {
-      const PendingSocial = createPendingLazy();
+    it("selects GangSkeleton when navigating to /gang", () => {
+      const PendingGang = createPendingLazy();
       const { container } = render(
-        <MemoryRouter initialEntries={["/social"]}>
-          <App components={{ SocialHubPage: PendingSocial }} />
+        <MemoryRouter initialEntries={["/gang"]}>
+          <App components={{ GangDiscoveryPage: PendingGang }} />
         </MemoryRouter>
       );
 
-      // Verifies exact SocialHubSkeleton identity and absence of other skeletons
-      expect(container.querySelector('[data-testid="social-hub-skeleton"]')).not.toBeNull();
+      // Verifies exact GangSkeleton identity and absence of other skeletons
+      expect(container.querySelector('[data-testid="gang-skeleton"]')).not.toBeNull();
       expect(container.querySelector('[data-testid="room-skeleton"]')).toBeNull();
       expect(container.querySelector('[data-testid="tournament-skeleton"]')).toBeNull();
       expect(container.querySelector('[data-testid="dashboard-skeleton"]')).toBeNull();
@@ -255,7 +255,7 @@ describe("UI Hardening Remediation Suite", () => {
       expect(container.querySelector('[data-testid="dashboard-skeleton"]')).not.toBeNull();
       expect(container.querySelector('[data-testid="room-skeleton"]')).toBeNull();
       expect(container.querySelector('[data-testid="tournament-skeleton"]')).toBeNull();
-      expect(container.querySelector('[data-testid="social-hub-skeleton"]')).toBeNull();
+      expect(container.querySelector('[data-testid="gang-skeleton"]')).toBeNull();
     });
   });
 });

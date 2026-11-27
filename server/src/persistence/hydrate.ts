@@ -4,10 +4,7 @@ import { profileService } from "../profile/ProfileService.js";
 import { matchHistoryService } from "../profile/MatchHistoryService.js";
 import { challengeEngine } from "../ranking/ChallengeEngine.js";
 import { seasonService } from "../seasons/SeasonService.js";
-import { friendsService } from "../social/FriendsService.js";
 import { recentPlayersService } from "../ranking/RecentPlayersService.js";
-import { friendRequestsService } from "../social/FriendRequestsService.js";
-import { partyService } from "../party/PartyService.js";
 import { SeasonEngine } from "../seasons/SeasonEngine.js";
 import type { GameKind } from "@shared/types.js";
 import type { MatchHistoryItem, MatchResult } from "@shared/profile/MatchHistory.js";
@@ -47,9 +44,6 @@ export interface HydrationReport {
   seasonStats: number;
   seasonClaims: number;
   friends: number;
-  friendRequests: number;
-  parties: number;
-  invitations: number;
   durationMs: number;
 }
 
@@ -70,9 +64,6 @@ export async function hydrateProgression(): Promise<HydrationReport> {
     seasonStats: 0,
     seasonClaims: 0,
     friends: 0,
-    friendRequests: 0,
-    parties: 0,
-    invitations: 0,
     durationMs: 0,
   };
 
@@ -96,15 +87,7 @@ export async function hydrateProgression(): Promise<HydrationReport> {
   const achievements: Array<{ playerId: string; achievementId: string; unlockedAt: number }> = [];
   const challengeClaims: Array<{ playerId: string; challengeId: string }> = [];
   const matchEntries: Array<{ playerId: string; match: MatchHistoryItem }> = [];
-  const friendEdges: Array<{
-    playerId: string;
-    friendPlayerId: string;
-    displayName: string;
-    avatar?: string;
-    createdAt: number;
-  }> = [];
-  const requests: Array<Parameters<typeof friendRequestsService.hydrate>[0][number]> = [];
-  const seenRequestIds = new Set<string>();
+  const friendEdges: Array<{ playerId: string; friendPlayerId: string }> = [];
 
   const season = SeasonEngine.getCurrentSeason();
   const seasonStats = await repo.listSeasonStats(season.id, HYDRATE_PROFILE_LIMIT);
@@ -112,12 +95,11 @@ export async function hydrateProgression(): Promise<HydrationReport> {
   const seasonClaims: Array<{ seasonId: string; playerId: string; tierId: string }> = [];
 
   for (const profile of profiles) {
-    const [unlocks, claims, page, friends, reqs, sClaims, xpLedger] = await Promise.all([
+    const [unlocks, claims, page, friends, sClaims, xpLedger] = await Promise.all([
       repo.listAchievements(profile.playerId),
       repo.listChallengeClaims(profile.playerId),
       repo.listMatchesForPlayer(profile.playerId, { limit: HYDRATE_MATCHES_PER_PLAYER }),
       repo.listFriends(profile.playerId),
-      repo.listFriendRequests(profile.playerId),
       repo.listSeasonClaims(season.id, profile.playerId),
       repo.listXp(profile.playerId, HYDRATE_XP_LEDGER_LIMIT),
     ]);
@@ -173,104 +155,31 @@ export async function hydrateProgression(): Promise<HydrationReport> {
     }
 
     friendEdges.push(
-      ...friends.map((f) => ({
-        playerId: f.playerId,
-        friendPlayerId: f.friendPlayerId,
-        displayName: f.displayName ?? "Player",
-        avatar: f.avatar ?? undefined,
-        createdAt: f.createdAt,
-      })),
+      ...friends.map((f) => ({ playerId: f.playerId, friendPlayerId: f.friendPlayerId })),
     );
-
-    for (const r of reqs) {
-      // Both sides of a request come back from both players' reads.
-      if (seenRequestIds.has(r.id)) continue;
-      seenRequestIds.add(r.id);
-      requests.push({
-        id: r.id,
-        senderId: r.senderId,
-        senderName: r.senderName ?? "Player",
-        senderAvatar: r.senderAvatar ?? undefined,
-        recipientId: r.recipientId,
-        status: r.status,
-        createdAt: r.createdAt,
-        updatedAt: r.updatedAt,
-      });
-    }
-  }
-
-  const parties = await repo.listParties();
-  const invitations: Array<Parameters<typeof partyService.hydrate>[1][number]> = [];
-  for (const party of parties) {
-    for (const member of party.members) {
-      const found = await repo.listInvitations(member.playerId);
-      for (const inv of found) {
-        if (!invitations.some((i) => i.id === inv.id)) {
-          invitations.push({
-            id: inv.id,
-            partyId: inv.partyId,
-            inviterId: inv.inviterId,
-            inviterName: inv.inviterName ?? "Player",
-            inviteeId: inv.inviteeId,
-            status: inv.status,
-            createdAt: inv.createdAt,
-          });
-        }
-      }
-    }
   }
 
   profileService.hydrate(profiles, achievements, matchEntries);
   matchHistoryService.hydrate(matchEntries);
   challengeEngine.hydrate(challengeClaims);
   seasonService.hydrate(seasonStats, seasonClaims);
-  friendsService.hydrate(friendEdges);
-  // Both friend stores are refilled from the same rows. They are two views of
-  // one relationship, and letting only one of them survive a restart is how
-  // the leaderboard screen and the social screen came to disagree.
-  recentPlayersService.hydrate(
-    friendEdges.map((f) => ({ playerId: f.playerId, friendPlayerId: f.friendPlayerId })),
-  );
-  friendRequestsService.hydrate(requests);
-  partyService.hydrate(
-    parties.map((p) => ({
-      id: p.id,
-      leaderId: p.leaderId,
-      members: p.members.map((m) => ({
-        playerId: m.playerId,
-        displayName: m.displayName ?? "Player",
-        avatar: m.avatar ?? undefined,
-        isLeader: m.isLeader,
-        isReady: m.isReady,
-        joinedAt: m.joinedAt,
-      })),
-      maxMembers: p.maxMembers,
-      status: p.status,
-      targetGame: (p.targetGame ?? undefined) as GameKind | undefined,
-      targetRoomCode: p.targetRoomCode ?? undefined,
-      targetTournamentId: p.targetTournamentId ?? undefined,
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-    })),
-    invitations,
-  );
+  // The leaderboard's friend list is refilled from the saved friendship rows. The Social
+  // Hub's own friend, request and party stores were removed on 2026-11-27; their rows are
+  // still in the database but nothing reads them back into memory.
+  recentPlayersService.hydrate(friendEdges);
 
   report.achievements = achievements.length;
   report.challengeClaims = challengeClaims.length;
   report.matches = matchEntries.length;
   report.seasonClaims = seasonClaims.length;
   report.friends = friendEdges.length;
-  report.friendRequests = requests.length;
-  report.parties = parties.length;
-  report.invitations = invitations.length;
   report.durationMs = Date.now() - started;
 
   logger.info({
     message:
       `Progression restored in ${report.durationMs}ms: ${report.profiles} profiles, ` +
       `${report.matches} matches, ${report.challengeClaims} challenge claims, ` +
-      `${report.seasonClaims} season claims, ${report.friends} friendships, ` +
-      `${report.parties} parties`,
+      `${report.seasonClaims} season claims, ${report.friends} friendships`,
     module: "PERSISTENCE",
   });
 

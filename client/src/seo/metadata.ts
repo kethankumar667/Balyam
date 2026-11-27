@@ -380,31 +380,6 @@ const RAW_PUBLIC_ROUTES_METADATA: Record<string, RouteMetadata> = {
       "Participate in community brackets, school-gang tournaments, and championship finals.",
     twitterImage: DEFAULT_OG_IMAGE,
   },
-  "/social": {
-    path: "/social",
-    title: "Social Hub & Squad Lobby | Connect with Friends — BHALYAM",
-    description:
-      "See online friends, send room invites, and reconnect with your childhood gang on Bhalyam.",
-    keywords: [
-      "gaming social hub",
-      "play with friends",
-      "room invite",
-      "childhood gang gaming",
-      "online presence",
-      "multiplayer squad",
-    ],
-    canonical: `${BASE_URL}/social`,
-    ogTitle: "Social Hub | Friends & Presence — BHALYAM",
-    ogDescription:
-      "Connect with friends, check online presence, and jump into multiplayer game rooms together.",
-    ogImage: DEFAULT_OG_IMAGE,
-    ogType: "website",
-    twitterCard: "summary_large_image",
-    twitterTitle: "Social Hub & Squad Lobby | Connect with Friends — BHALYAM",
-    twitterDescription:
-      "Form squads, invite friends with one click, and relive the veranda gaming tradition.",
-    twitterImage: DEFAULT_OG_IMAGE,
-  },
   "/about": {
     path: "/about",
     title: "About BHALYAM | The Story Behind India's 90s Digital Veranda",

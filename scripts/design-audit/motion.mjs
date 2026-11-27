@@ -23,7 +23,7 @@ const onScale=c(/\b[mp][trblxy]?-(0|px|0\.5|1|1\.5|2|2\.5|3|3\.5|4|4\.5|5|5\.5|6
 console.log("on-scale p*/m* utilities:",onScale);
 // per-page gaps
 console.log("\n-- distinct gap/space-y values per page --");
-for (const p of ["pages/BhalyamHome.tsx","pages/GamesPage.tsx","pages/AboutPage.tsx","pages/SocialHubPage.tsx","pages/TournamentsPage.tsx","pages/LeaderboardPage.tsx"]) {
+for (const p of ["pages/BhalyamHome.tsx","pages/GamesPage.tsx","pages/AboutPage.tsx","pages/TournamentsPage.tsx","pages/LeaderboardPage.tsx"]) {
   const f=files.find(x=>x.rel===p); if(!f){console.log(p,"MISSING");continue;}
   const g=[...f.s.matchAll(/\b(?:gap|space-y|space-x)-(\[?[\w.%\[\]]+\]?)/g)].map(m=>m[1]);
   const set=new Map(); g.forEach(v=>set.set(v,(set.get(v)||0)+1));

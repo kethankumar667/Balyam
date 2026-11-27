@@ -201,7 +201,7 @@ let accessToken: string | null = null;
  *
  * Local fallback (signInLocal without Supabase) is backed by the local guest
  * wallet and does not hold a verified backend session, so real-member-only
- * capabilities (viewProfile, viewTournaments, viewLeaderboards, viewSocial)
+ * capabilities (viewProfile, viewTournaments, viewLeaderboards)
  * remain disabled.
  */
 function computeCapabilities(kind: AccountKind, userId: string | null): Capabilities {

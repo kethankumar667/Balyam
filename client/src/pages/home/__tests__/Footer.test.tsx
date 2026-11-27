@@ -55,7 +55,7 @@ describe("Nostalgia Network Hub footer", () => {
     const destinations = [
       ["Games catalog", "/games"], ["How to play", "/how-to-play"],
       ["My Records", "/myrecords"], ["Tournaments", "/tournaments"],
-      ["Social Hub", "/social"], ["Our story", "/about#our-story"],
+      ["Our story", "/about#our-story"],
       ["Player testimonials", "/testimonials"], ["Write a review", "/reviews/write"],
       ["Contact us", "/contact"], ["Leave feedback", "/feedback"],
       ["Safety Center", "/safety"],

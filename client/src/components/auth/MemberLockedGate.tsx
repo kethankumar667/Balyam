@@ -21,7 +21,6 @@ export type LockedFeatureKind =
   | "profile"
   | "personal"
   | "settings"
-  | "social"
   | "referrals";
 
 interface MemberLockedGateProps {
@@ -103,19 +102,6 @@ const FEATURE_META: Record<
       { icon: User, text: "Account management, password controls, and active sessions" },
       { icon: Crown, text: "Full data portability and account management tools" },
       { icon: ShieldCheck, text: "100% free account with zero telemetry tracking" },
-    ],
-  },
-  social: {
-    tag: "Members Only • Social Hub",
-    title: "Social Hub is Locked for Guests",
-    description:
-      "Friends lists, party invites, squads, shared match history, and player social features require a registered BHALYAM account.",
-    icon: Users,
-    perks: [
-      { icon: Users, text: "Add friends and see when they're online and in-game" },
-      { icon: Swords, text: "Challenge friends to direct matches and party games" },
-      { icon: Trophy, text: "Compare shared match histories and rivalry stats" },
-      { icon: ShieldCheck, text: "Private party rooms with invite-only access" },
     ],
   },
   referrals: {

@@ -592,8 +592,6 @@ with focus restoration, visible focus rings and reduced-motion transitions.
 
 - `<RewardRevealModal>`: High-dopamine dialog with particle confetti and unlock sound triggers.
 - `<WelcomeModal>`: 3-step first-time player onboarding carousel.
-- `<PartyInvitationModal>`: Realtime squad invitation popup with Accept & Join / Decline actions.
-- `<SharedHistoryModal>`: Head-to-head combat analytics between two players.
 
 ### 2.4 Feedback & Fallback States
 - `<SkeletonLoader>`: Adaptive chrome placeholders (`hero`, `card`, `profile`, `table`, `grid`),

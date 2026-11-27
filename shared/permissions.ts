@@ -83,8 +83,6 @@ export interface Capabilities {
   viewLeaderboards: boolean;
   /** View persistent career profile and personal stats. Member-only. */
   viewProfile: boolean;
-  /** Access the Social Hub — friends, parties, shared history. Member-only. */
-  viewSocial: boolean;
   /** See your invitation code, the friends who joined with it, and the bonuses. Member-only:
    *  a code is tied to an account, and a guest has none to carry it. */
   viewReferrals: boolean;
@@ -114,7 +112,6 @@ const GUEST: Capabilities = {
   viewTournaments: false,
   viewLeaderboards: true,
   viewProfile: false,
-  viewSocial: false,
   viewReferrals: false,
   accessAdminPanel: false,
   bypassMaintenance: false,
@@ -137,7 +134,6 @@ const MEMBER: Capabilities = {
   viewTournaments: true,
   viewLeaderboards: true,
   viewProfile: true,
-  viewSocial: true,
   viewReferrals: true,
   accessAdminPanel: false,
   bypassMaintenance: false,
@@ -160,7 +156,6 @@ const SUPER_ADMIN: Capabilities = {
   viewTournaments: true,
   viewLeaderboards: true,
   viewProfile: true,
-  viewSocial: true,
   viewReferrals: true,
   accessAdminPanel: true,
   bypassMaintenance: true,

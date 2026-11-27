@@ -58,7 +58,6 @@ const ROUTES = [
   { path: "/games", name: "Games" },
   { path: "/myrecords", name: "Leaderboard" },
   { path: "/tournaments", name: "Tournaments" },
-  { path: "/social", name: "Social hub" },
   { path: "/settings", name: "Settings" },
   { path: "/login", name: "Sign in" },
   { path: "/signup", name: "Sign up" },

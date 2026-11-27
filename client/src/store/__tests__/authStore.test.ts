@@ -326,7 +326,6 @@ describe("Identity Presentation & Truthful Capability Model", () => {
     expect(state.capabilities.viewProfile).toBe(false);
     expect(state.capabilities.viewTournaments).toBe(false);
     expect(state.capabilities.viewLeaderboards).toBe(true);
-    expect(state.capabilities.viewSocial).toBe(false);
 
     // Presentation must be truthful Offline Demo Mode
     const presentation = getIdentityPresentation(state);

@@ -135,9 +135,6 @@ services:
         source: /tournaments
         destination: /tournaments/index.html
       - type: rewrite
-        source: /social
-        destination: /social/index.html
-      - type: rewrite
         source: /favorites
         destination: /favorites/index.html
       - type: rewrite

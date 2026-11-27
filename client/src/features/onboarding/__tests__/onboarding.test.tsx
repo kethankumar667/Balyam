@@ -45,10 +45,13 @@ describe("BHALYAM FTUE & Onboarding Platform Suite", () => {
   });
 
   describe("2. Starter Quests Configuration", () => {
-    it("provides 5 foundational starter quests", () => {
-      expect(STARTER_QUESTS.length).toBe(5);
+    it("provides 4 foundational starter quests, none of which points at the removed Social Hub", () => {
+      expect(STARTER_QUESTS.length).toBe(4);
       const totalXp = STARTER_QUESTS.reduce((acc, q) => acc + q.xpReward, 0);
-      expect(totalXp).toBe(200);
+      expect(totalXp).toBe(150);
+      for (const quest of STARTER_QUESTS) {
+        expect(quest.actionRoute).not.toBe("/social");
+      }
     });
 
     it("ensures every quest has valid titles, descriptions, and action texts", () => {

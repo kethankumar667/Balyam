@@ -110,25 +110,23 @@ describe("Route Resolver & Context-Aware Navigation", () => {
       const memberNav = resolveNavigation({ pathname: "/", isMember: true });
       const guestTournaments = guestNav.items.find((i) => i.id === "home-tournaments");
       const guestLeaderboard = guestNav.items.find((i) => i.id === "home-leaderboard");
-      const guestSocial = guestNav.items.find((i) => i.id === "home-social");
       const guestProfile = guestNav.items.find((i) => i.id === "home-profile");
       const guestSettings = guestNav.items.find((i) => i.id === "home-settings");
 
       const memberTournaments = memberNav.items.find((i) => i.id === "home-tournaments");
       const memberLeaderboard = memberNav.items.find((i) => i.id === "home-leaderboard");
-      const memberSocial = memberNav.items.find((i) => i.id === "home-social");
       const memberProfile = memberNav.items.find((i) => i.id === "home-profile");
 
-      // Tournaments and Social are disabled Coming Soon for all users
+      // Tournaments is a disabled Coming Soon item for all users
       expect(guestTournaments?.badge?.text).toBe("Coming Soon");
       expect(guestTournaments?.disabled).toBe(true);
-      expect(guestSocial?.badge?.text).toBe("Coming Soon");
-      expect(guestSocial?.disabled).toBe(true);
 
       expect(memberTournaments?.badge?.text).toBe("Coming Soon");
       expect(memberTournaments?.disabled).toBe(true);
-      expect(memberSocial?.badge?.text).toBe("Coming Soon");
-      expect(memberSocial?.disabled).toBe(true);
+
+      // The Social Hub was removed; it must not come back as a nav item for anyone
+      expect(guestNav.items.find((i) => i.id === "home-social")).toBeUndefined();
+      expect(memberNav.items.find((i) => i.id === "home-social")).toBeUndefined();
 
       // Leaderboard is unlocked for all players across all environments
       expect(guestLeaderboard?.disabled).toBe(false);
