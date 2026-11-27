@@ -35,7 +35,6 @@ type HelpCategory =
   | "lounges"
   | "technical"
   | "account"
-  | "tournaments"
   | "safety"
   | "feedback"
   | "other";
@@ -83,14 +82,6 @@ const CATEGORY_CARDS: CategoryCardMeta[] = [
     icon: User,
     iconBg: "bg-fuchsia-100 dark:bg-fuchsia-950/60 border border-fuchsia-200 dark:border-fuchsia-800/50",
     iconColor: "text-fuchsia-600 dark:text-fuchsia-400",
-  },
-  {
-    id: "tournaments",
-    title: "Tournaments",
-    subtitle: "Tournament participation, results, rewards.",
-    icon: Trophy,
-    iconBg: "bg-amber-100 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/50",
-    iconColor: "text-amber-600 dark:text-amber-400",
   },
   {
     id: "safety",
@@ -169,13 +160,6 @@ const ISSUE_TYPES_BY_CATEGORY: Record<HelpCategory, string[]> = {
     "Password reset email not received",
     "Login session expired unexpectedly",
     "Other account issue",
-  ],
-  tournaments: [
-    "Tournament match result not registered",
-    "Knockout bracket assignment issue",
-    "Reward or badge missing",
-    "Match start delay",
-    "Other tournament issue",
   ],
   safety: [
     "Report cheating or exploit abuse",

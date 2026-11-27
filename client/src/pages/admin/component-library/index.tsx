@@ -653,7 +653,7 @@ export default function AdminComponentLibraryPage() {
                 3. Empty State
               </span>
               <StatCard
-                title="Archived Tournaments"
+                title="Archived Matches"
                 value="--"
                 subtitle="No past records in current season"
                 icon={<Trophy className="w-5 h-5 text-[var(--chrome-ink-soft)]" />}

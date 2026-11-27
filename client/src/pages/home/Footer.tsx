@@ -22,7 +22,7 @@ interface FooterNavGroupProps {
 const NAVIGATION: readonly FooterNavGroupProps[] = [
   { title: "Play", icon: Gamepad2, links: [
     ["Games catalog", "/games"], ["How to play", "/how-to-play"],
-    ["My Records", "/myrecords"], ["Tournaments", "/tournaments"],
+    ["My Records", "/myrecords"],
   ] },
   { title: "Community", icon: Users, links: [
     ["Our story", "/about#our-story"],

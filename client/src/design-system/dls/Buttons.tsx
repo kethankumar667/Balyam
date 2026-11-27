@@ -12,7 +12,7 @@ export interface ButtonProps
     // type conflict, since no caller here passes drag/animation handlers.
     "onDrag" | "onDragStart" | "onDragEnd" | "onAnimationStart" | "onAnimationEnd" | "onAnimationIteration"
   > {
-  variant?: "primary" | "secondary" | "tournament" | "reward" | "danger" | "ghost" | "chrome" | "auth";
+  variant?: "primary" | "secondary" | "reward" | "danger" | "ghost" | "chrome" | "auth";
   size?: "sm" | "md" | "lg" | "iconOnly";
   loading?: boolean;
   leftIcon?: React.ReactNode;
@@ -24,7 +24,7 @@ export interface ButtonProps
  * under the 44px touch-target floor at every size — `sm` 36px, `md` 42px.
  * `secondary`/`ghost` now resolve through `surface-*`/`ink-*`, the tokens
  * `--surface-N` / `--text-*` already define for both themes (index.css);
- * `primary`/`tournament`/`reward`/`danger` keep their brand-gradient fills
+ * `primary`/`reward`/`danger` keep their brand-gradient fills
  * and fixed dark ink, which was always correct — a gradient doesn't need a
  * theme, only text sitting on the page's own background does.
  *
@@ -72,8 +72,6 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
    */
   const getVariantStyles = () => {
     switch (variant) {
-      case "tournament":
-        return "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-zinc-950 font-mono uppercase tracking-wider font-black shadow-lg shadow-amber-500/25 border border-amber-300/40";
       case "reward":
         return "bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-zinc-950 font-mono uppercase tracking-wider font-black shadow-lg shadow-emerald-500/20";
       case "danger":
@@ -155,11 +153,6 @@ export const SecondaryButton = React.forwardRef<HTMLButtonElement, Omit<ButtonPr
   (props, ref) => <Button ref={ref} variant="secondary" {...props} />,
 );
 SecondaryButton.displayName = "SecondaryButton";
-
-export const TournamentCTAButton = React.forwardRef<HTMLButtonElement, Omit<ButtonProps, "variant">>(
-  (props, ref) => <Button ref={ref} variant="tournament" {...props} />,
-);
-TournamentCTAButton.displayName = "TournamentCTAButton";
 
 export const RewardButton = React.forwardRef<HTMLButtonElement, Omit<ButtonProps, "variant">>(
   (props, ref) => <Button ref={ref} variant="reward" {...props} />,

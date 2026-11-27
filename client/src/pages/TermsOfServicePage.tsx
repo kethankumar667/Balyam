@@ -39,7 +39,7 @@ const TERMS_SECTIONS = [
   { id: "multiplayer", title: "6. Multiplayer Rooms, Hosts & Bots", summary: "Hosts manage room options; automated bots can fill empty seats on request." },
   { id: "progress", title: "7. Achievements, XP & Non-Monetary Honors", summary: "XP, trophies, and badges carry purely commemorative and social value." },
   { id: "coins", title: "8. Virtual Coins, Room Entries & Rewards", summary: "Coins are free play-money with no cash value; they cannot be bought, sold or cashed out." },
-  { id: "tournaments", title: "9. Tournaments & Rankings", summary: "Community knockout cups are skill-based and free to enter." },
+  { id: "rankings", title: "9. Rankings", summary: "Leaderboard ranks are skill-based and free." },
   { id: "prohibited", title: "10. Prohibited Conduct", summary: "Zero tolerance for automated move bots, hate speech, toxicity, and chat abuse." },
   { id: "ip", title: "11. Intellectual Property", summary: "BHALYAM platform code, logos, and artwork are protected proprietary assets." },
   { id: "third-party", title: "12. Third-Party Integrations", summary: "Optional Supabase auth and WebRTC signaling protocols." },
@@ -359,9 +359,9 @@ export default function TermsOfServicePage() {
                     </div>
                   )}
 
-                  {sec.id === "tournaments" && (
+                  {sec.id === "rankings" && (
                     <p>
-                      Tournament cups and leaderboard ranks are free and skill-based. Collusion, intentional disconnecting to preserve ratings, or using multiple accounts to manipulate tournament brackets will result in disqualification.
+                      Leaderboard ranks are free and skill-based. Collusion, intentional disconnecting to preserve ratings, or using multiple accounts to manipulate the leaderboards will result in disqualification from them.
                     </p>
                   )}
 

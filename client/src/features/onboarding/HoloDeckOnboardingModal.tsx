@@ -99,18 +99,17 @@ const ONBOARDING_STAGES: OnboardingStage[] = [
     icon: <Tv className="w-8 h-8 text-purple-400" />,
     auraColor: "from-purple-500/25 via-indigo-500/10 to-transparent",
     accentHex: "#8B5CF6",
-    actionCTA: "See Ranks & Tournaments →",
+    actionCTA: "See Ranks & Cosmetics →",
   },
   {
     step: 5,
-    badge: "STAGE 05 // RANKS & TOURNAMENTS",
+    badge: "STAGE 05 // RANKS & COSMETICS",
     title: "Climb from Bronze to Grandmaster",
-    subtitle: "Ranks, Tournaments & Cosmetics",
+    subtitle: "Ranks & Cosmetics",
     description:
-      "Your matches build a public profile and a rank. Join tournaments from the Tournaments page and personalise your avatar from the cosmetics store.",
+      "Your matches build a public profile and a rank. Personalise your avatar from the cosmetics store.",
     features: [
       "Rank tiers from Bronze up to Grandmaster",
-      "Tournaments you can join from the Tournaments page",
       "Avatar cosmetics in the store",
     ],
     icon: <Crown className="w-8 h-8 text-amber-400" />,

@@ -87,12 +87,6 @@ export function resolveBreadcrumbs(pathname: string, search: string = ""): Bread
     return crumbs;
   }
 
-  if (cleanPath === "/tournaments") {
-    crumbs.push({ label: "Competitions", path: "/tournaments" });
-    crumbs.push({ label: "Tournaments" });
-    return crumbs;
-  }
-
   // Gang Communities
   if (cleanPath === "/gang") {
     crumbs.push({ label: "Community", path: "/gang" });

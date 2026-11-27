@@ -107,29 +107,3 @@ export const PREMIUM_RARITY_COLORS = {
   },
 } as const;
 
-export const TOURNAMENT_COLORS = {
-  champion: {
-    primary: "#FBBF24",
-    border: "border-amber-400/80",
-    aura: "rgba(251, 191, 36, 0.5)",
-    badge: "👑 1st",
-  },
-  finalist: {
-    primary: "#CBD5E1",
-    border: "border-slate-300/80",
-    aura: "rgba(203, 213, 225, 0.4)",
-    badge: "🥈 2nd",
-  },
-  semifinalist: {
-    primary: "#B45309",
-    border: "border-amber-700/80",
-    aura: "rgba(180, 83, 9, 0.35)",
-    badge: "🥉 3rd",
-  },
-  participant: {
-    primary: "#78716C",
-    border: "border-stone-700",
-    aura: "rgba(120, 113, 108, 0.2)",
-    badge: "🎖️ Top 8",
-  },
-} as const;

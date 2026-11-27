@@ -96,14 +96,6 @@ const CATEGORIES: CategoryMeta[] = [
     iconColor: "text-rose-600 dark:text-rose-400",
   },
   {
-    id: "tournaments",
-    title: "Tournaments",
-    subtitle: "Tournaments, rewards and leaderboards.",
-    icon: Trophy,
-    iconBg: "bg-amber-100 dark:bg-amber-950/60",
-    iconColor: "text-amber-600 dark:text-amber-400",
-  },
-  {
     id: "account",
     title: "Account & Access",
     subtitle: "Authentication, guest seats and data sovereignity.",
@@ -239,13 +231,6 @@ const FAQS_CATALOG: FAQItem[] = [
     question: "How do I block or mute someone in voice or chat?",
     answer:
       "Tap the player's name in the room player list and select 'Mute Voice' or 'Block Chat' to instantly silence their incoming audio and text messages for your device.",
-  },
-  {
-    id: "tr-1",
-    category: "tournaments",
-    question: "When are official tournaments hosted?",
-    answer:
-      "BHALYAM holds weekly knockout cups and seasonal championship brackets for Hand Cricket, Ludo, and Rummy. Check the Tournaments tab for upcoming schedules.",
   },
   {
     id: "ac-1",

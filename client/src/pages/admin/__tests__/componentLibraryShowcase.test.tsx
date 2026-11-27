@@ -49,7 +49,7 @@ describe("Admin Component Showcase Page (/admin/component-library)", () => {
     expect(screen.getByText("1. StatCard")).toBeDefined();
     expect(screen.getByText("Active Users")).toBeDefined();
     expect(screen.getByText("4,820")).toBeDefined();
-    expect(screen.getByText("Archived Tournaments")).toBeDefined();
+    expect(screen.getByText("Archived Matches")).toBeDefined();
     expect(screen.getByText("Cluster Latency Sync")).toBeDefined();
     expect(screen.getByText("Weekly Growth")).toBeDefined();
   });

@@ -3,7 +3,6 @@ import React from "react";
 import {
   PREMIUM_RANK_COLORS,
   PREMIUM_RARITY_COLORS,
-  TOURNAMENT_COLORS,
   PREMIUM_GRADIENTS,
   GLASSMORPHISM,
   MOTION_TOKENS,
@@ -17,14 +16,12 @@ import {
 import { RankShowcaseCard } from "../../features/rankings/RankShowcaseCard";
 import { AchievementCard } from "../../features/profile/AchievementCard";
 import { AchievementRevealModal } from "../../features/profile/AchievementRevealModal";
-import { TournamentHeroBanner } from "../../features/tournaments/TournamentHeroBanner";
 
 describe("Premium Gaming Design System Suite", () => {
-  it("exports complete color tokens for ranks, rarities, and tournaments", () => {
+  it("exports complete color tokens for ranks and rarities", () => {
     expect(PREMIUM_RANK_COLORS.bronze.primary).toBeDefined();
     expect(PREMIUM_RANK_COLORS.grandmaster.aura).toBeDefined();
     expect(PREMIUM_RARITY_COLORS.mythic.pill).toBeDefined();
-    expect(TOURNAMENT_COLORS.champion.badge).toBeDefined();
     expect(PREMIUM_GRADIENTS.cosmicAura).toBeDefined();
     expect(GLASSMORPHISM.elevatedCard).toBeDefined();
     expect(MOTION_TOKENS.cardHover).toBeDefined();
@@ -66,8 +63,8 @@ describe("Premium Gaming Design System Suite", () => {
   it("renders PremiumHeroCard with title, category, and action buttons", () => {
     const el = React.createElement(PremiumHeroCard, {
       category: "BHALYAM ESPORTS",
-      title: "Championship Tournament",
-      subtitle: "Compete in live single-elimination brackets",
+      title: "Championship Night",
+      subtitle: "Compete in live matches with your gang",
     });
     expect(el).toBeDefined();
     expect(el.type).toBe(PremiumHeroCard);
@@ -77,8 +74,8 @@ describe("Premium Gaming Design System Suite", () => {
     const el = React.createElement(RewardRevealModal, {
       isOpen: true,
       onClose: () => {},
-      title: "Tournament Victory!",
-      rewardName: "Ludo Grand Prix Champion",
+      title: "Match Victory!",
+      rewardName: "Ludo Table Champion",
       earnedXP: 500,
       badge: "👑",
     });
@@ -121,9 +118,9 @@ describe("Premium Gaming Design System Suite", () => {
 
   it("renders AchievementCard and AchievementRevealModal", () => {
     const mockAch = {
-      id: "tournament_champion",
-      title: "Tournament Champion",
-      description: "Claim 1st place in a tournament championship.",
+      id: "ten_wins",
+      title: "Ten Wins",
+      description: "Win ten matches.",
       icon: "🏆",
       category: "skill" as const,
       targetValue: 1,
@@ -141,13 +138,5 @@ describe("Premium Gaming Design System Suite", () => {
       onClose: () => {},
     });
     expect(modal).toBeDefined();
-  });
-
-  it("renders TournamentHeroBanner", () => {
-    const el = React.createElement(TournamentHeroBanner, {
-      onViewSchedule: () => {},
-    });
-    expect(el).toBeDefined();
-    expect(el.type).toBe(TournamentHeroBanner);
   });
 });

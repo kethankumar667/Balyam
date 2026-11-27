@@ -26,8 +26,8 @@ import { InviteShowcase } from "../features/referrals/InviteShowcase";
  * a tile opens the GameRoomSheet which carries the full Lobby-equivalent
  * flow (name input + per-game options + Create Room + Join by Code).
  *
- * Future sections (daily rewards, badges, friends online, recently played,
- * tournaments) are deliberately NOT here yet — they were mocked previously
+ * Future sections (daily rewards, badges, friends online, recently played)
+ * are deliberately NOT here yet — they were mocked previously
  * and removed during the cleanup pass. Add them back as each backing
  * feature ships.
  *

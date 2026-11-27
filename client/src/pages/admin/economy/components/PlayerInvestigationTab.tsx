@@ -36,7 +36,7 @@ const REASON_PRESETS = [
   "Admin manual top-up via console",
   "Support compensation for disconnected match",
   "Loyalty promotional bonus",
-  "Community event tournament prize",
+  "Community event prize",
 ];
 
 const MIGRATION_SQL = `-- Migration: 20260906000000_admin_adjust_wallet.sql
@@ -719,7 +719,7 @@ export function PlayerInvestigationTab() {
                     required
                     value={topupReason}
                     onChange={(e) => setTopupReason(e.target.value)}
-                    placeholder="e.g. Support compensation or tournament reward..."
+                    placeholder="e.g. Support compensation or event reward..."
                     className="w-full h-10 px-3 rounded-xl border border-[var(--chrome-border)] bg-[var(--chrome-control)] text-xs text-[var(--chrome-ink)] focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>

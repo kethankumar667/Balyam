@@ -175,7 +175,7 @@ heading("Design-system adoption");
 const nonDls = sources.filter((s) => !s.rel.startsWith("design-system/"));
 row("Total .tsx/.ts source files", sources.length);
 row("Files importing design-system", nonDls.filter((s) => /design-system/.test(s.src)).length);
-row("Files using DLS Buttons", nonDls.filter((s) => /\b(?:Primary|Secondary|Danger|TournamentCTA|Reward)Button\b/.test(s.src)).length);
+row("Files using DLS Buttons", nonDls.filter((s) => /\b(?:Primary|Secondary|Danger|Reward)Button\b/.test(s.src)).length);
 row("Files using SURFACES.*", nonDls.filter((s) => /\bSURFACES\./.test(s.src)).length);
 row("Files using TYPOGRAPHY.*", nonDls.filter((s) => /\bTYPOGRAPHY\./.test(s.src)).length);
 row("Files using SPACING.*", nonDls.filter((s) => /\bSPACING\./.test(s.src)).length);

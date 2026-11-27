@@ -356,7 +356,6 @@ its service-role-only RPC never creates a wallet or changes any balance.
 | :--- | :--- | :--- |
 | `<PrimaryButton>` | Gradient amber-500 to yellow-500 with gold shadow | Primary actions: "Start Match", "Create Room", "Save Profile". |
 | `<SecondaryButton>` | Adaptive `surface-*` fill, `ink-hi` text and hairline border | Secondary actions: "Cancel", "Back", "View Rules". |
-| `<TournamentCTAButton>`| Glowing violet-500 gradient with crown icon | Competitive actions: "Enter Arena", "Check In", "Claim Crown". |
 | `<RewardButton>` | Radiant emerald-500 gradient | Claiming rewards: "Claim +100 XP", "Unlock Badge". |
 | `<DangerButton>` | Rose-600/90 with danger border | Destructive actions: "Disband Party", "Forfeit Match", "Leave Room". |
 
@@ -364,7 +363,7 @@ its service-role-only RPC never creates a wallet or changes any balance.
 - `<PremiumCard>`: General-purpose interactive gaming container with glowing border aura on hover.
 - `<PremiumStatCard>`: Metric tile displaying large numerical values, category icons, and subtext labels.
 - `<PremiumProgressCard>`: Level / XP / Battle Pass progress track with dynamic fill percentage.
-- `<PremiumHeroCard>`: Large banner card for active seasons, featured games, and tournament announcements.
+- `<PremiumHeroCard>`: Large banner card for active seasons, and featured games.
 
 #### Catalog cards: hybrid treatment
 
@@ -593,7 +592,7 @@ with focus restoration, visible focus rings and reduced-motion transitions.
 - `<SkeletonLoader>`: Adaptive chrome placeholders (`hero`, `card`, `profile`, `table`, `grid`),
   with one named busy status, hidden decoration, narrow-screen wrapping and no
   pulse under OS reduced motion.
-- `<EmptyStateIllustration>`: Gamified zero-data illustration (`matches`, `achievements`, `friends`, `tournaments`) with action CTA.
+- `<EmptyStateIllustration>`: Gamified zero-data illustration (`matches`, `achievements`, `friends`, `challenges`) with action CTA.
 - `<PremiumErrorState>`: Diagnostic container with glowing danger aura and retry button.
 - `<TurnTimeWarning>`: Pulsing golden-border warning activating when <= 10 seconds remain on turn timer.
 
@@ -608,6 +607,6 @@ with focus restoration, visible focus rings and reduced-motion transitions.
 | :--- | :--- | :--- | :--- |
 | **Avatar Auras & Energy Rings** | `Sparkles` ❌ | `Orbit`, `Flame`, `Zap` | `Orbit` represents planetary/cosmic rings; `Flame` represents fiery radiant power. |
 | **Boutique & Shop Entry** | `Sparkles` ❌ | `Store`, `ShoppingBag` | Anchors the merchant/vault metaphor without generic magic glitter. |
-| **Podium / Victory Celebrations** | `Sparkles` ❌ | `Crown`, `Award`, `Trophy`, `Star` | Authentic game tournament prestige rather than AI fairy dust. |
+| **Podium / Victory Celebrations** | `Sparkles` ❌ | `Crown`, `Award`, `Trophy`, `Star` | Authentic game-podium prestige rather than AI fairy dust. |
 | **Tabletop Felt Mats & Boards** | `Sparkles` ❌ | `Grid`, `Layers`, `Palette` | Tactile tabletop geometry. |
 | **Achievements & Badges** | `Sparkles` ❌ | `Medal`, `Trophy`, `ShieldCheck` | Distinct milestone progression. |

@@ -56,7 +56,7 @@ import {
  *
  * ── Why a router factory, not a module-level `Router()` singleton ────────
  * Every other player-facing router in this codebase (`profileRouter`,
- * `tournamentRouter`, ...) is a singleton, because the service underneath it
+ * `seasonRouter`, ...) is a singleton, because the service underneath it
  * is one too. `EconomyService` deliberately is NOT a singleton — Phase 5's
  * own constraint is constructor injection, no `economyRepository()`-style
  * factory. `createDashboardRouter()`/`createOperationalRouter()` are this

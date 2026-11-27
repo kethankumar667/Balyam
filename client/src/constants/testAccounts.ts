@@ -99,7 +99,7 @@ export const TEST_ACCOUNTS: readonly TestAccount[] = [
     name: "Arjun Royal",
     email: "tester10@bhalyam.com",
     password: TEST_ACCOUNTS_PASSWORD,
-    tagline: "Retro arcade tournament champion 🏆",
+    tagline: "Retro arcade champion 🏆",
     avatarFile: AVATAR_FILES[9] ?? "file_0000000084c48208b1f893419d784cf2_12.jpg",
     role: "Arcade King",
   },

@@ -74,23 +74,13 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         isActive: (p) => p.startsWith("/favorites"),
       },
 
-      // Upcoming Disabled / Coming Soon Features (Locked for all users)
-      {
-        id: "home-tournaments",
-        label: "Tournaments",
-        icon: Swords,
-        path: "/tournaments",
-        badge: { text: "Coming Soon", variant: "muted" },
-        disabled: true,
-        dividerBefore: true,
-        isActive: (p) => p.startsWith("/tournaments"),
-      },
       {
         id: "home-gang",
         label: "Gang (గ్యాంగ్)",
         icon: Crown,
         path: "/gang",
         badge: { text: "New", variant: "amber" },
+        dividerBefore: true,
         isActive: (p) => p.startsWith("/gang"),
       },
       {
@@ -474,26 +464,6 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         path: "/terms",
         isActive: (p) => p === "/terms" || p === "/help/terms",
       },
-    ],
-  },
-
-  /* ──────────────────────── 8. Tournaments (Future Ready) ──────────────────────── */
-  tournament: {
-    id: "tournament",
-    showPromoNote: false,
-    header: {
-      title: "Tournaments",
-      subtitle: "Compete in live championships",
-      icon: Swords,
-      parentPath: "/",
-      parentLabel: "Back to Home",
-    },
-    items: [
-      { id: "tourney-active", label: "Live Tournaments", icon: Flame, path: "/tournaments", badge: { text: "Live", variant: "emerald" } },
-      { id: "tourney-upcoming", label: "Upcoming Brackets", icon: Clock, path: "/tournaments" },
-      { id: "tourney-my", label: "My Matches", icon: Trophy, path: "/tournaments" },
-      { id: "tourney-rules", label: "Tournament Rules", icon: BookOpen, path: "/tournaments" },
-      { id: "tourney-leaderboard", label: "My Records", icon: Crown, path: "/myrecords" },
     ],
   },
 

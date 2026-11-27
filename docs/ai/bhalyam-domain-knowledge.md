@@ -35,8 +35,8 @@ BHALYAM hosts games categorized across four distinct gaming domains:
 
 ## 3. Core Gaming Mechanics & Progression
 
-- **XP & Leveling System**: Transparent mathematical XP growth ($Level = \lfloor XP / 100 \rfloor + 1$). Players earn XP for matches played, declarations made, tournament check-ins, and daily quests.
+- **XP & Leveling System**: Transparent mathematical XP growth ($Level = \lfloor XP / 100 \rfloor + 1$). Players earn XP for matches played, declarations made, and daily quests.
 - **Ranked Tier Progression**: 7 prestige tiers (*Bronze, Silver, Gold, Platinum, Diamond, Master, Radiant Vanguard*) with radiant glowing auras and custom badge borders.
-- **Squads & Social Presence**: Realtime online presence tracking (`ONLINE`, `IN_GAME`, `IN_PARTY`, `IN_TOURNAMENT`), 4-player party lobbies, and shared combat history records.
-- **Seasonal Knockout Tournaments**: Single-elimination bracket visualizers with automated match progression, champion podium crowns, and seasonal Battle Pass rewards.
+- **Squads & Social Presence**: Realtime online presence tracking (`ONLINE`, `IN_GAME`, `IN_PARTY`), 4-player party lobbies, and shared combat history records.
+- **Seasons** (dormant): season XP and reward tiers exist server-side, but nothing feeds them since the Tournaments feature was removed (2026-11-27).
 - **Pass & Play Intermission (`<PassPhoneGate>`)**: Turn-based privacy protection allowing multiple players to share a single phone or tablet without revealing private card hands.

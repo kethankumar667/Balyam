@@ -88,7 +88,7 @@ for (const [k, n] of [...signatures.entries()].sort((a, b) => b[1] - a[1]).slice
  * own bare mentions of the component by name in prose, which no real call
  * site is ever written as.
  */
-const dlsButtons = /\b(?:Primary|Secondary|Danger|TournamentCTA|Reward)Button\b|<Button\s/;
+const dlsButtons = /\b(?:Primary|Secondary|Danger|Reward)Button\b|<Button\s/;
 const dlsRefs = sources.filter((s) => dlsButtons.test(s.src));
 console.log("");
 row("Files referencing DLS Buttons", dlsRefs.length);

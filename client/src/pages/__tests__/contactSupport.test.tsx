@@ -21,7 +21,7 @@ describe("ContactUsPage / Support Helpdesk Suite", () => {
     expect(screen.getByText("Lounges & Multiplayer")).toBeDefined();
     expect(screen.getByText("Technical Problem")).toBeDefined();
     expect(screen.getByText("Account & Profile")).toBeDefined();
-    expect(screen.getAllByText("Tournaments").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Tournaments")).toBeNull();
     expect(screen.getByText("Safety & Community")).toBeDefined();
     expect(screen.getByText("Feedback & Ideas")).toBeDefined();
     expect(screen.getByText("Something Else")).toBeDefined();

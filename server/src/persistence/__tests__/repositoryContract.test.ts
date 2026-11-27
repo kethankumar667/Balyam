@@ -464,7 +464,7 @@ function contractSuite(name: string, make: () => Promise<ProgressionRepository>)
       expect(duplicates.length).toBeGreaterThanOrEqual(2);
     });
 
-    /* ── seasons and tournaments ── */
+    /* ── seasons ── */
 
     it("upserts season stats and orders a board by season XP", async () => {
       await repo.upsertSeasonStats({
@@ -499,23 +499,6 @@ function contractSuite(name: string, make: () => Promise<ProgressionRepository>)
       const latest = await repo.getLatestSeasonSnapshot(SEASON);
       expect(latest?.reason).toBe("season_end");
       expect(latest?.standings).toEqual([{ playerId: PLAYER, rank: 1 }]);
-    });
-
-    it("keeps one tournament record per player per tournament", async () => {
-      const tournamentId = freshId("t");
-      const rec = {
-        tournamentId: tournamentId, playerId: PLAYER, tournamentName: "Cup",
-        game: "ludo", placing: null, status: "REGISTERED" as const, recordedAt: Date.now(),
-      };
-      await repo.upsertTournamentRecord(rec);
-      await repo.upsertTournamentRecord({ ...rec, status: "WINNER", placing: 1 });
-
-      const rows = (await repo.listTournamentRecords(PLAYER)).filter(
-        (r) => r.tournamentId === tournamentId,
-      );
-      expect(rows).toHaveLength(1);
-      expect(rows[0]?.status).toBe("WINNER");
-      expect(rows[0]?.placing).toBe(1);
     });
 
   });

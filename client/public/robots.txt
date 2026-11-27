@@ -11,7 +11,6 @@ Allow: /terms
 Allow: /safety
 Allow: /community-rules
 Allow: /myrecords
-Allow: /tournaments
 Allow: /favorites
 Allow: /recently-played
 Allow: /reviews/write

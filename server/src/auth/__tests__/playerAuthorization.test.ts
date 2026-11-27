@@ -5,14 +5,13 @@ import { attachPlayerIdentity } from "../identity.js";
 import { authRouter } from "../AuthController.js";
 import { profileRouter } from "../../profile/ProfileController.js";
 import { rankingRouter } from "../../ranking/RankingController.js";
-import { tournamentRouter, seasonRouter } from "../../tournaments/TournamentController.js";
+import { seasonRouter } from "../../seasons/SeasonController.js";
 import { clearVerificationCache } from "../../lib/supabaseAuth.js";
 import { profileService } from "../../profile/ProfileService.js";
 import { matchHistoryService } from "../../profile/MatchHistoryService.js";
 import { challengeEngine } from "../../ranking/ChallengeEngine.js";
 import { recentPlayersService } from "../../ranking/RecentPlayersService.js";
 import { seasonService } from "../../seasons/SeasonService.js";
-import { tournamentService } from "../../tournaments/TournamentService.js";
 
 /**
  * P0-2 — player-scoped API authorization.
@@ -35,7 +34,6 @@ const JWT_SECRET = "test-jwt-secret-for-hs256-signing";
 const PROJECT_URL = "https://example.supabase.co";
 const ALICE = "aaaaaaaa-1111-2222-3333-444444444444";
 const BOB = "bbbbbbbb-1111-2222-3333-444444444444";
-const OPS_KEY = "ops-key-of-sufficient-length-1234";
 
 const ENV_KEYS = [
   "SUPABASE_URL",
@@ -88,14 +86,12 @@ beforeEach(async () => {
   challengeEngine.reset();
   recentPlayersService.reset();
   seasonService.reset();
-  tournamentService.reset();
 
   server = await startTestServer((app) => {
     app.use(attachPlayerIdentity);
     app.use("/api/auth", authRouter);
     app.use("/api/profile", profileRouter);
     app.use("/api/ranking", rankingRouter);
-    app.use("/api/tournaments", tournamentRouter);
     app.use("/api/seasons", seasonRouter);
   });
 });
@@ -122,7 +118,6 @@ function privateRoutes(subject: string): Array<{ method: string; path: string; b
     { method: "GET", path: `/api/ranking/friends/${subject}` },
     { method: "POST", path: `/api/ranking/friends/${subject}`, body: { friendId: "x" } },
     { method: "DELETE", path: `/api/ranking/friends/${subject}/x` },
-    { method: "GET", path: `/api/tournaments/player/${subject}/history` },
     { method: "GET", path: `/api/seasons/player/${subject}` },
     { method: "POST", path: `/api/seasons/player/${subject}/claim/tier_1` },
   ];
@@ -147,22 +142,10 @@ describe("P0-2 — missing token", () => {
     }
   });
 
-  it("refuses the routes that used to take an identity from the body", async () => {
-    const forged = [
-      { path: "/api/tournaments/t1/register", body: { playerId: ALICE, displayName: "A" } },
-      { path: "/api/tournaments/t1/checkin", body: { playerId: ALICE } },
-    ];
-    for (const f of forged) {
-      const res = await server.request(f.path, { method: "POST", body: JSON.stringify(f.body) });
-      expect(res.status, f.path).toBe(401);
-    }
-  });
-
   it("leaves the deliberately public reads public", async () => {
     // Guarding these would be a product change wearing a fix's clothes.
     for (const path of [
       "/api/ranking/leaderboard",
-      "/api/tournaments",
       "/api/seasons/current",
       "/api/seasons/leaderboard",
       `/api/ranking/rank/${ALICE}`,
@@ -286,75 +269,6 @@ describe("P0-2 — reward claim for another account", () => {
     expect(challenges.status).toBe(200);
     const body = challenges.body as { challenges: { daily: Array<{ id: string }> } };
     expect(body.challenges.daily.length).toBeGreaterThan(0);
-  });
-});
-
-/* ─────────────────── Tournaments ─────────────────── */
-
-describe("P0-2 — tournament actions without permission", () => {
-  let tournamentId: string;
-
-  beforeEach(() => {
-    tournamentId = tournamentService.createTournament({
-      title: "Test Cup",
-      description: "A tournament that exists only for this suite.",
-      game: "ludo",
-    }).id;
-  });
-
-  it("refuses an anonymous start", async () => {
-    const res = await server.request(`/api/tournaments/${tournamentId}/start`, { method: "POST" });
-    expect(res.status).toBe(403);
-  });
-
-  it("refuses a start by an ordinary signed-in player", async () => {
-    const res = await server.request(`/api/tournaments/${tournamentId}/start`, {
-      method: "POST",
-      token: mintToken(ALICE),
-    });
-    expect(res.status).toBe(403);
-  });
-
-  it("refuses a match result written by an ordinary player", async () => {
-    const res = await server.request(`/api/tournaments/${tournamentId}/match`, {
-      method: "POST",
-      token: mintToken(ALICE),
-      body: JSON.stringify({ matchId: "m1", winnerId: ALICE }),
-    });
-    expect(res.status).toBe(403);
-  });
-
-  it("admits the operational key for an admin action", async () => {
-    process.env.OPERATIONAL_SECRET = OPS_KEY;
-    const res = await server.request(`/api/tournaments/${tournamentId}/start`, {
-      method: "POST",
-      headers: { "x-operational-key": OPS_KEY },
-    });
-    // 400 "not enough players" is the SERVICE talking, which means the
-    // authorization boundary was passed. 403 would mean it was not.
-    expect(res.status).not.toBe(403);
-  });
-
-  it("admits an allowlisted admin session", async () => {
-    process.env.ADMIN_USER_IDS = ALICE;
-    const res = await server.request(`/api/tournaments/${tournamentId}/start`, {
-      method: "POST",
-      token: mintToken(ALICE),
-    });
-    expect(res.status).not.toBe(403);
-  });
-
-  it("registers the caller, not the playerId in the body", async () => {
-    const res = await server.request(`/api/tournaments/${tournamentId}/register`, {
-      method: "POST",
-      token: mintToken(ALICE),
-      body: JSON.stringify({ playerId: BOB, displayName: "Not Bob" }),
-    });
-    expect(res.status).toBe(200);
-
-    const t = tournamentService.getTournament(tournamentId)!;
-    expect(t.participants.map((p) => p.playerId)).toEqual([ALICE]);
-    expect(t.participants.map((p) => p.playerId)).not.toContain(BOB);
   });
 });
 

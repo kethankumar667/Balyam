@@ -47,7 +47,7 @@ Every component in BHALYAM belongs to one of four architectural layers:
 ┌────────────────────────────────────────────────────────┐
 │ 1. Page Shells & Views (e.g., Room.tsx, BhalyamHome.tsx)│
 ├────────────────────────────────────────────────────────┤
-│ 2. Feature Modules (e.g., features/tournaments, social)│
+│ 2. Feature Modules (e.g., features/referrals, profile)│
 ├────────────────────────────────────────────────────────┤
 │ 3. Per-Game Boards (*BoardMobile.tsx, *BoardDesktop.tsx│
 ├────────────────────────────────────────────────────────┤

@@ -83,7 +83,6 @@ const CLASSIC_THEME: ThemeManifest = {
     [AUDIO.MUSIC_LUDO]:       f("classic", "music", "ludo.mp3"),
     [AUDIO.MUSIC_SNL]:        f("classic", "music", "snake-ladder.mp3"),
     [AUDIO.MUSIC_HC]:         f("classic", "music", "hand-cricket.mp3"),
-    [AUDIO.MUSIC_TOURNAMENT]: f("classic", "music", "tournament.mp3"),
     [AUDIO.MUSIC_VICTORY]:    f("classic", "music", "victory.mp3"),
 
     /* Rummy */
@@ -162,7 +161,6 @@ const MODERN_THEME: ThemeManifest = {
     [AUDIO.MUSIC_LUDO]:       f("modern", "music", "ludo.mp3"),
     [AUDIO.MUSIC_SNL]:        f("modern", "music", "snake-ladder.mp3"),
     [AUDIO.MUSIC_HC]:         f("modern", "music", "hand-cricket.mp3"),
-    [AUDIO.MUSIC_TOURNAMENT]: f("modern", "music", "tournament.mp3"),
     [AUDIO.MUSIC_VICTORY]:    f("modern", "music", "victory.mp3"),
 
     [AUDIO.RUMMY_SHUFFLE]:       f("modern", "rummy", "shuffle.mp3"),
@@ -236,7 +234,6 @@ const FESTIVAL_THEME: ThemeManifest = {
     [AUDIO.MUSIC_LUDO]:       f("festival", "music", "ludo.mp3"),
     [AUDIO.MUSIC_SNL]:        f("festival", "music", "snake-ladder.mp3"),
     [AUDIO.MUSIC_HC]:         f("festival", "music", "hand-cricket.mp3"),
-    [AUDIO.MUSIC_TOURNAMENT]: f("festival", "music", "tournament.mp3"),
     [AUDIO.MUSIC_VICTORY]:    f("festival", "music", "victory.mp3"),
 
     [AUDIO.RUMMY_SHUFFLE]:       f("festival", "rummy", "shuffle.mp3"),

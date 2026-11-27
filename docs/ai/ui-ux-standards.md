@@ -85,11 +85,11 @@ All typography must adhere to the standardized typographic scale:
 - Provide an icon, bold headline, explanatory copy, and a direct action CTA:
   ```tsx
   <EmptyStateIllustration
-    type="tournaments"
-    title="No Tournaments In Progress"
-    description="Check the seasonal calendar or register for the next weekend knockout cup."
-    actionText="Browse Seasons"
-    onAction={() => navigate('/tournaments?tab=season')}
+    type="matches"
+    title="No Matches Yet"
+    description="Play a quick game with friends or bots and your history will show up here."
+    actionText="Explore Games"
+    onAction={() => navigate('/games')}
   />
   ```
 

@@ -155,9 +155,9 @@ const MOCK_ACHIEVEMENTS = [
   {
     id: "season_champion",
     title: "Season Champion",
-    description: "Win a weekly championship bracket tournament.",
+    description: "Reach Sovereign Tier in seasonal competition.",
     icon: "sparkles",
-    category: "tournaments",
+    category: "progression",
     targetValue: 1,
     currentProgress: 0,
     progressPercent: 0,

@@ -792,16 +792,16 @@ export default function GameStatisticsPage() {
                 Level Up Your Lounge Mastery
               </h3>
               <p className="text-xs sm:text-sm text-amber-100/80 mt-1 font-medium">
-                Join high-stakes tournaments, challenge lounge veterans, and claim golden trophies!
+                Play more matches, challenge lounge veterans, and claim golden trophies!
               </p>
             </div>
           </div>
 
           <Link
-            to="/tournaments"
+            to="/games"
             className="inline-flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] rounded-xl bg-linear-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 text-xs font-black uppercase tracking-wider border-b-4 border-amber-700 active:border-b-0 active:translate-y-1 shadow-[0_4px_0_rgba(180,83,9,0.8)] transition-all cursor-pointer whitespace-nowrap"
           >
-            <span>Explore Tournaments</span>
+            <span>Explore Games</span>
             <ArrowRight className="w-4 h-4 stroke-[2.5]" />
           </Link>
         </div>

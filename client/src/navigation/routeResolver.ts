@@ -85,10 +85,6 @@ export function determineSection(pathname: string): NavigationSectionId {
     return "help";
   }
 
-  if (normalized.startsWith("/tournament")) {
-    return "tournament";
-  }
-
   if (normalized.startsWith("/myrecords")) {
     return "leaderboard";
   }

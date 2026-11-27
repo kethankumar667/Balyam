@@ -105,26 +105,19 @@ describe("Route Resolver & Context-Aware Navigation", () => {
       expect(active?.id).toBe("home-feed");
     });
 
-    it("marks unreleased items with Coming Soon badge and disabled state, and gates profile for guests", () => {
+    it("keeps removed features out of the nav, and gates profile for guests", () => {
       const guestNav = resolveNavigation({ pathname: "/", isMember: false });
       const memberNav = resolveNavigation({ pathname: "/", isMember: true });
-      const guestTournaments = guestNav.items.find((i) => i.id === "home-tournaments");
       const guestLeaderboard = guestNav.items.find((i) => i.id === "home-leaderboard");
       const guestProfile = guestNav.items.find((i) => i.id === "home-profile");
       const guestSettings = guestNav.items.find((i) => i.id === "home-settings");
 
-      const memberTournaments = memberNav.items.find((i) => i.id === "home-tournaments");
       const memberLeaderboard = memberNav.items.find((i) => i.id === "home-leaderboard");
       const memberProfile = memberNav.items.find((i) => i.id === "home-profile");
 
-      // Tournaments is a disabled Coming Soon item for all users
-      expect(guestTournaments?.badge?.text).toBe("Coming Soon");
-      expect(guestTournaments?.disabled).toBe(true);
-
-      expect(memberTournaments?.badge?.text).toBe("Coming Soon");
-      expect(memberTournaments?.disabled).toBe(true);
-
-      // The Social Hub was removed; it must not come back as a nav item for anyone
+      // The Social Hub and Tournaments were removed; neither may come back as a nav item for anyone
+      expect(guestNav.items.find((i) => i.id === "home-tournaments")).toBeUndefined();
+      expect(memberNav.items.find((i) => i.id === "home-tournaments")).toBeUndefined();
       expect(guestNav.items.find((i) => i.id === "home-social")).toBeUndefined();
       expect(memberNav.items.find((i) => i.id === "home-social")).toBeUndefined();
 

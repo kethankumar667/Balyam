@@ -2,7 +2,6 @@ export * from "./NavigationIcons";
 export * from "./RankIcons";
 export * from "./GameIcons";
 export * from "./AchievementIcons";
-export * from "./TournamentIcons";
 export * from "./SocialIcons";
 export * from "./StatusIcons";
 export * from "./VoiceIcons";

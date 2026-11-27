@@ -73,7 +73,7 @@ const MOCK_ANNOUNCEMENTS: AnnouncementItem[] = [
   {
     id: "ann-4",
     title: "Upcoming Ludo Grand Championship",
-    message: "Register your 4-seat team for the Sunday lounge tournament with exclusive profile badges.",
+    message: "Register your 4-seat team for the Sunday lounge game night.",
     type: "event",
     targetAudience: "lobby",
     status: "draft",
@@ -265,7 +265,7 @@ export default function AdminAnnouncementsPage() {
     <AdminLayout>
       <PageHeader
         title="Broadcast Announcements"
-        description="Publish lobby alerts, scheduled maintenance banners, and tournament notifications across all active players."
+        description="Publish lobby alerts, scheduled maintenance banners, and event notifications across all active players."
         breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Announcements" }]}
         actions={
           <button

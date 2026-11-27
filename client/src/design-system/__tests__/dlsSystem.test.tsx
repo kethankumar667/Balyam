@@ -10,7 +10,6 @@ import {
   Button,
   PrimaryButton,
   SecondaryButton,
-  TournamentCTAButton,
   RewardButton,
   DangerButton,
   StandardLoungePageLayout,
@@ -54,7 +53,6 @@ describe("BHALYAM Design Language System (DLS) Foundation", () => {
     expect(React.createElement(Button, null, "Generic")).toBeDefined();
     expect(React.createElement(PrimaryButton, null, "Primary")).toBeDefined();
     expect(React.createElement(SecondaryButton, null, "Secondary")).toBeDefined();
-    expect(React.createElement(TournamentCTAButton, null, "Arena")).toBeDefined();
     expect(React.createElement(RewardButton, null, "Reward")).toBeDefined();
     expect(React.createElement(DangerButton, null, "Danger")).toBeDefined();
   });

@@ -90,7 +90,6 @@ const LazyAdminReviewsPage = lazy(() => import("./pages/admin/reviews"));
 const LazyAdminComponentLibraryPage = lazy(() => import("./pages/admin/component-library"));
 const LazyMyRecordsPage = lazy(() => import("./pages/MyRecordsPage"));
 const LazyShopPage = lazy(() => import("./pages/ShopPage"));
-const LazyTournamentsPage = lazy(() => import("./pages/TournamentsPage"));
 const LazyDesignSystemCatalogPage = lazy(() => import("./pages/DesignSystemCatalogPage"));
 const LazyPreviewLoader = lazy(() => import("./pages/PreviewLoader"));
 const LazyGameTileShowcase = lazy(() => import("./pages/GameTileShowcase"));
@@ -162,7 +161,6 @@ export interface RouteComponents {
   AdminComponentLibraryPage?: React.ComponentType;
   MyRecordsPage?: React.ComponentType;
   ShopPage?: React.ComponentType;
-  TournamentsPage?: React.ComponentType;
   DesignSystemCatalogPage?: React.ComponentType;
   PreviewLoader?: React.ComponentType;
   GameTileShowcase?: React.ComponentType;
@@ -178,7 +176,6 @@ import {
   ProfileSkeleton,
   LeaderboardSkeleton,
   GamesGridSkeleton,
-  TournamentSkeleton,
   RoomSkeleton,
   GangSkeleton,
   DashboardSkeleton,
@@ -197,16 +194,6 @@ function RouteLoadingFallback() {
     return (
       <div className="min-h-screen bg-[#FAF8F5] dark:bg-[#0B0F19] p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
         <DashboardSkeleton />
-      </div>
-    );
-  }
-
-  if (pathname.startsWith("/tournaments")) {
-    return (
-      <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto space-y-6">
-          <TournamentSkeleton />
-        </div>
       </div>
     );
   }
@@ -368,7 +355,6 @@ export default function App({ components = {} }: AppProps) {
   const AdminComponentLibraryPage = components.AdminComponentLibraryPage ?? LazyAdminComponentLibraryPage;
   const MyRecordsPage = components.MyRecordsPage ?? LazyMyRecordsPage;
   const ShopPage = components.ShopPage ?? LazyShopPage;
-  const TournamentsPage = components.TournamentsPage ?? LazyTournamentsPage;
   const DesignSystemCatalogPage = components.DesignSystemCatalogPage ?? LazyDesignSystemCatalogPage;
   const PreviewLoader = components.PreviewLoader ?? LazyPreviewLoader;
   const GameTileShowcase = components.GameTileShowcase ?? LazyGameTileShowcase;
@@ -432,7 +418,8 @@ export default function App({ components = {} }: AppProps) {
             <Route path="/myrecords" element={<MyRecordsPage />} />
             {/* The Cosmetics Boutique. Was a modal opened from the header chip; see pages/ShopPage.tsx. */}
             <Route path="/shop" element={<ShopPage />} />
-            <Route path="/tournaments" element={<TournamentsPage />} />
+            {/* Tournaments were removed on 2026-11-27; an old bookmark or shared link lands on the home page. */}
+            <Route path="/tournaments/*" element={<Navigate replace to="/" />} />
             {/* The Social Hub was removed on 2026-11-27; an old bookmark or shared link lands on Gang. */}
             <Route path="/social" element={<Navigate replace to="/gang" />} />
             {/* This feature was called Mandali, at /mandali. Links people already shared (a Gang's address, an

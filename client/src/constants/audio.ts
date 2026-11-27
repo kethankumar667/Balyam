@@ -33,7 +33,6 @@ export const AUDIO = {
   MUSIC_LUDO:        "music_ludo",
   MUSIC_SNL:         "music_snl",
   MUSIC_HC:          "music_hc",
-  MUSIC_TOURNAMENT:  "music_tournament",
   MUSIC_VICTORY:     "music_victory",
 
   /* ── Rummy ── */
@@ -174,7 +173,6 @@ export const MUSIC_KEYS: ReadonlySet<AudioKey> = new Set<AudioKey>([
   AUDIO.MUSIC_LUDO,
   AUDIO.MUSIC_SNL,
   AUDIO.MUSIC_HC,
-  AUDIO.MUSIC_TOURNAMENT,
   AUDIO.MUSIC_VICTORY,
 ]);
 

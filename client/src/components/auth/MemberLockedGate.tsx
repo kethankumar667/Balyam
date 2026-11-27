@@ -16,7 +16,6 @@ import AppLayout from "../layout/AppLayout";
 import { FancyLockIcon } from "../../design-system/icons";
 
 export type LockedFeatureKind =
-  | "tournaments"
   | "leaderboard"
   | "profile"
   | "personal"
@@ -39,19 +38,6 @@ const FEATURE_META: Record<
     perks: { icon: typeof Trophy; text: string }[];
   }
 > = {
-  tournaments: {
-    tag: "Members Only • Tournament Arena",
-    title: "Tournaments are Locked for Guests",
-    description:
-      "Competitive tournament brackets, seasonal cups, and champion rewards require a registered BHALYAM account. Create a free account in 30 seconds to compete.",
-    icon: Swords,
-    perks: [
-      { icon: Swords, text: "Compete in daily knockout & round-robin tournaments" },
-      { icon: Trophy, text: "Earn seasonal championship trophies and XP multipliers" },
-      { icon: Crown, text: "Claim exclusive arena titles and winner badges" },
-      { icon: ShieldCheck, text: "100% free forever — no ads, no paywalls" },
-    ],
-  },
   leaderboard: {
     tag: "Members Only • Global Rankings",
     title: "Leaderboards are Locked for Guests",

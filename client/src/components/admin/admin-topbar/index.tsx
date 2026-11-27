@@ -44,7 +44,7 @@ interface NotificationItem {
 const MOCK_NOTIFICATIONS: NotificationItem[] = [
   {
     id: "n-1",
-    title: "Word Building Season 2 Tournament is now live",
+    title: "Word Building Season 2 is now live",
     time: "5m ago",
     type: "info",
     read: false,

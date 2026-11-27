@@ -38,9 +38,9 @@ const USER_GROWTH_DATA = [
   { month: "Sep", dau: 420, mau: 1200 },
   { month: "Oct (Outage)", dau: 180, mau: 1450 }, // Upstream transit drop anomaly
   { month: "Nov", dau: 890, mau: 2400 },
-  { month: "Dec (Holiday Spike)", dau: 2850, mau: 4800 }, // Massive holiday tournament spike
+  { month: "Dec (Holiday Spike)", dau: 2850, mau: 4800 }, // Massive holiday spike
   { month: "Jan", dau: 1680, mau: 4200 },
-  { month: "Feb (Tournament Finale)", dau: 3420, mau: 5650 }, // Championship finale surge
+  { month: "Feb (Finale)", dau: 3420, mau: 5650 }, // Finale surge
 ];
 
 const COMPLETION_RATE_DATA = [

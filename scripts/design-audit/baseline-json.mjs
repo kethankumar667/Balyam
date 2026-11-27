@@ -243,7 +243,7 @@ const baseline = {
       "design-system/icons": fs.readdirSync(path.join(CLIENT_SRC, "design-system/icons")).filter((f) => /\.tsx?$/.test(f)).length,
       "components/bhalyam": fs.readdirSync(path.join(CLIENT_SRC, "components/bhalyam")).filter((f) => /\.tsx?$/.test(f)).length,
     },
-    dlsButtonAdoption: adoption(["PrimaryButton", "SecondaryButton", "TournamentCTAButton", "RewardButton", "DangerButton"], DLS_HAY),
+    dlsButtonAdoption: adoption(["PrimaryButton", "SecondaryButton", "RewardButton", "DangerButton"], DLS_HAY),
     premiumComponentAdoption: adoption(["PremiumCard", "PremiumStatCard", "PremiumProgressCard", "PremiumHeroCard", "RewardRevealModal", "EmptyStateIllustration", "SkeletonLoader", "PremiumErrorState"], PREMIUM_HAY),
     filesImportingAnyDesignSystem: filesMatching(/from ["'][.\/]*design-system/).length,
     themeConfiguration: {

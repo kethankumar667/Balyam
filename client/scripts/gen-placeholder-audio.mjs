@@ -569,7 +569,6 @@ const MUSIC_MOODS = {
   ludo: { root: 330, scale: [0, 2, 4, 7, 9], bpm: 108 },
   "snake-ladder": { root: 247, scale: [0, 2, 5, 7, 9], bpm: 100 },
   "hand-cricket": { root: 294, scale: [0, 4, 7, 9, 12], bpm: 116 },
-  tournament: { root: 196, scale: [0, 3, 5, 7, 10], bpm: 124 },
   victory: { root: 349, scale: [0, 4, 7, 12, 16], bpm: 132 },
 };
 

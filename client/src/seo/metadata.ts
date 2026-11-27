@@ -355,31 +355,6 @@ const RAW_PUBLIC_ROUTES_METADATA: Record<string, RouteMetadata> = {
       "Explore personal scorecards and your last five recorded results per game mode.",
     twitterImage: DEFAULT_OG_IMAGE,
   },
-  "/tournaments": {
-    path: "/tournaments",
-    title: "Multiplayer Tournaments & Nostalgia Cups | BHALYAM Events",
-    description:
-      "Join competitive multiplayer tournaments, weekend nostalgia cups, and special showdowns on Bhalyam.",
-    keywords: [
-      "online tournaments",
-      "gaming tournaments",
-      "hand cricket tournament",
-      "ludo cup",
-      "multiplayer championships",
-      "esports nostalgia",
-    ],
-    canonical: `${BASE_URL}/tournaments`,
-    ogTitle: "Tournaments & Events | BHALYAM",
-    ogDescription:
-      "Compete in exciting multiplayer tournaments and win prestigious profile badges on Bhalyam.",
-    ogImage: DEFAULT_OG_IMAGE,
-    ogType: "website",
-    twitterCard: "summary_large_image",
-    twitterTitle: "Multiplayer Tournaments & Nostalgia Cups | BHALYAM Events",
-    twitterDescription:
-      "Participate in community brackets, school-gang tournaments, and championship finals.",
-    twitterImage: DEFAULT_OG_IMAGE,
-  },
   "/about": {
     path: "/about",
     title: "About BHALYAM | The Story Behind India's 90s Digital Veranda",

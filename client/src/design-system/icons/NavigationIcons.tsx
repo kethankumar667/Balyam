@@ -44,10 +44,6 @@ export const ProfileNavIcon: React.FC<IconProps> = ({ size = 20, className = "",
   <User size={size} className={className} aria-hidden="true" {...props} />
 );
 
-export const TournamentsNavIcon: React.FC<IconProps> = ({ size = 20, className = "", ...props }) => (
-  <Swords size={size} className={className} aria-hidden="true" {...props} />
-);
-
 export const AchievementsNavIcon: React.FC<IconProps> = ({ size = 20, className = "", ...props }) => (
   <Award size={size} className={className} aria-hidden="true" {...props} />
 );

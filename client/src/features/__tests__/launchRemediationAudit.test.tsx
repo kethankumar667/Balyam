@@ -530,7 +530,7 @@ describe("Launch Remediation — Phase 2B Accessibility Hardening", () => {
     expect(radiogroup).toBeDefined();
 
     const radios = screen.getAllByRole("radio");
-    expect(radios.length).toBe(8);
+    expect(radios.length).toBe(7);
 
     // Initial item is selected (gameplay) with tabIndex 0, all others -1
     expect(radios[0].getAttribute("aria-checked")).toBe("true");
@@ -547,11 +547,11 @@ describe("Launch Remediation — Phase 2B Accessibility Hardening", () => {
 
     // End key navigates to last category
     fireEvent.keyDown(radios[1], { key: "End" });
-    expect(radios[7].getAttribute("aria-checked")).toBe("true");
-    expect(radios[7].tabIndex).toBe(0);
+    expect(radios[6].getAttribute("aria-checked")).toBe("true");
+    expect(radios[6].tabIndex).toBe(0);
 
     // Home key navigates back to first category
-    fireEvent.keyDown(radios[7], { key: "Home" });
+    fireEvent.keyDown(radios[6], { key: "Home" });
     expect(radios[0].getAttribute("aria-checked")).toBe("true");
     expect(radios[0].tabIndex).toBe(0);
   });

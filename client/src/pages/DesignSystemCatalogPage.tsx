@@ -8,7 +8,6 @@ import {
   SURFACES,
   PrimaryButton,
   SecondaryButton,
-  TournamentCTAButton,
   RewardButton,
   DangerButton,
   StandardLoungePageLayout,
@@ -20,7 +19,6 @@ import {
   RankTierIcon,
   GameCategoryIcon,
   AchievementRarityBadge,
-  TournamentCupIcon,
   ChampionCrownIcon,
   StreakFlameIcon,
   LevelSparkleIcon,
@@ -85,9 +83,6 @@ export default function DesignSystemCatalogPage() {
           <div className="flex flex-wrap gap-3 items-center">
             <PrimaryButton>Primary Button</PrimaryButton>
             <SecondaryButton>Secondary Button</SecondaryButton>
-            <TournamentCTAButton leftIcon={<TournamentCupIcon size={14} />}>
-              Tournament Arena
-            </TournamentCTAButton>
             <RewardButton leftIcon={<ChampionCrownIcon size={14} />}>
               Claim Rewards
             </RewardButton>
@@ -222,8 +217,8 @@ export default function DesignSystemCatalogPage() {
             </SecondaryButton>
           </div>
           <EmptyStateIllustration
-            type="tournaments"
-            title="No tournaments to display"
+            type="matches"
+            title="No matches to display"
             description="This is an empty-state preview. Explore the game catalog to start a game."
             actionText="Browse Games"
             onAction={() => navigate("/games")}

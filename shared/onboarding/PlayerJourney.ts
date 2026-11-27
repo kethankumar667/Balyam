@@ -2,8 +2,7 @@ export type OnboardingMilestone =
   | "PROFILE_COMPLETED"
   | "FIRST_MATCH_PLAYED"
   | "FIRST_WIN"
-  | "FIRST_ACHIEVEMENT_UNLOCKED"
-  | "FIRST_TOURNAMENT_VIEWED";
+  | "FIRST_ACHIEVEMENT_UNLOCKED";
 
 export interface StarterQuest {
   id: OnboardingMilestone;
@@ -42,15 +41,6 @@ export const STARTER_QUESTS: StarterQuest[] = [
     icon: "🏆",
     actionRoute: "/games",
     actionText: "Explore",
-  },
-  {
-    id: "FIRST_TOURNAMENT_VIEWED",
-    title: "Scout the Tournament Arena",
-    description: "View live competitive brackets and seasonal rewards.",
-    xpReward: 25,
-    icon: "⚔️",
-    actionRoute: "/tournaments",
-    actionText: "Tournaments",
   },
 ];
 

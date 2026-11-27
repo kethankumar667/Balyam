@@ -38,7 +38,7 @@ export function ModeMenu({ data, start }: { data: ArcadeSave; start: (mode: Mode
     </div>
     <section className="mt-8 rounded-2xl border border-white/15 bg-slate-900/80 p-4 text-xs leading-6 text-slate-300">
       <p className="font-semibold text-slate-100">Personal competition, honestly labelled</p>
-      <p>Finished runs save to your account and keep a device best when storage is allowed. These are client-reported scores, not verified global rankings. Daily runs are repeatable and pausable; this is not a ranked tournament.</p>
+      <p>Finished runs save to your account and keep a device best when storage is allowed. These are client-reported scores, not verified global rankings. Daily runs are repeatable and pausable; this is not a ranked event.</p>
       {data.legacyBest > 0 && <p className="mt-2">Historical classic best: <strong className="tabular-nums text-amber-200">{data.legacyBest.toLocaleString()}</strong>. Preserved separately because the old game used different rules.</p>}
     </section>
   </main>;

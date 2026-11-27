@@ -197,7 +197,7 @@ function loadWallet(userId: string | null, guestId: string | null): Promise<void
 
 /**
  * Triggers an authoritative wallet refresh for the current session identity.
- * Used after asynchronous reward disbursements (daily streak, tournaments, matches).
+ * Used after asynchronous reward disbursements (daily streak, matches).
  */
 export function refreshCurrentWallet(): Promise<void> {
   return loadWallet(useAuthStore.getState().userId, getGuestIdSnapshot());

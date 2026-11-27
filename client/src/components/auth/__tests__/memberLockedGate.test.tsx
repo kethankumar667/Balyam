@@ -14,14 +14,6 @@ function renderWithProviders(ui: React.ReactElement) {
 }
 
 describe("MemberLockedGate", () => {
-  it("renders locked state for Tournaments", () => {
-    renderWithProviders(<MemberLockedGate feature="tournaments" />);
-
-    expect(screen.getByText(/Tournaments are Locked for Guests/i)).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Create Free Account/i })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Sign In/i })).toBeTruthy();
-  });
-
   it("renders locked state for Leaderboard", () => {
     renderWithProviders(<MemberLockedGate feature="leaderboard" />);
 

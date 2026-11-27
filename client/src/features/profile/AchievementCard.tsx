@@ -16,8 +16,8 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
   onSelect,
 }) => {
   const getRarity = (ach: Achievement): AchievementRarity => {
-    if (ach.id === "ten_tournament_wins" || ach.id === "season_champion") return "mythic";
-    if (ach.id === "triple_crown" || ach.id === "tournament_champion" || ach.id === "lounge_legend") return "legendary";
+    if (ach.id === "season_champion") return "mythic";
+    if (ach.id === "lounge_legend") return "legendary";
     if (ach.id.includes("master") || ach.category === "resilience") return "epic";
     if (ach.category === "skill") return "rare";
     return "common";

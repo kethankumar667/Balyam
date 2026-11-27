@@ -6,8 +6,6 @@ import {
   AchievementRarityBadge,
   HomeNavIcon,
   GamesNavIcon,
-  TournamentsNavIcon,
-  TournamentCupIcon,
   ChampionCrownIcon,
   MicOnIcon,
   StatusConnectedIcon,
@@ -48,11 +46,9 @@ describe("Design System Iconography Suite", () => {
     }
   });
 
-  it("renders Navigation, Tournament, Voice, Status, Social, and FancyLock icons", () => {
+  it("renders Navigation, Voice, Status, Social, and FancyLock icons", () => {
     expect(React.createElement(HomeNavIcon)).toBeDefined();
     expect(React.createElement(GamesNavIcon)).toBeDefined();
-    expect(React.createElement(TournamentsNavIcon)).toBeDefined();
-    expect(React.createElement(TournamentCupIcon)).toBeDefined();
     expect(React.createElement(ChampionCrownIcon)).toBeDefined();
     expect(React.createElement(MicOnIcon)).toBeDefined();
     expect(React.createElement(StatusConnectedIcon)).toBeDefined();

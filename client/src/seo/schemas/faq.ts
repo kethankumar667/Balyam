@@ -33,7 +33,7 @@ export const SUPPORT_FAQS_LIST: FAQItem[] = [
   {
     question: "Do I need an account to play BHALYAM?",
     answer:
-      "No! BHALYAM is open to all visitors. As a guest, you can immediately join any room code, play solo vs bots, run pass & play seats on your phone, and enjoy voice chat. Creating a free Member account unlocks hosting shareable rooms, tracking lifetime XP & achievements, and participating in weekly tournaments.",
+      "No! BHALYAM is open to all visitors. As a guest, you can immediately join any room code, play solo vs bots, run pass & play seats on your phone, and enjoy voice chat. Creating a free Member account unlocks hosting shareable rooms, tracking lifetime XP & achievements, and keeping your progress across devices.",
   },
   {
     question: "How do I start my very first game?",

@@ -2,11 +2,9 @@ import { describe, it, expect, vi } from "vitest";
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import LeaderboardTable from "../rankings/LeaderboardTable";
-import TournamentCard from "../tournaments/TournamentCard";
 import type { LeaderboardEntry } from "@shared/ranking/PlayerRank";
-import type { Tournament } from "@shared/tournaments/Tournament";
 
-describe("Priority 6: Leaderboards & Tournaments User Journey", () => {
+describe("Priority 6: Leaderboards User Journey", () => {
   const mockEntries: LeaderboardEntry[] = [
     {
       playerId: "p_1",
@@ -127,57 +125,6 @@ describe("Priority 6: Leaderboards & Tournaments User Journey", () => {
       fireEvent.click(winRateBtn);
 
       expect(onSelectMetric).toHaveBeenCalledWith("winRate");
-    });
-  });
-
-  describe("2. Tournament Discovery & Cards", () => {
-    const mockTournament: Tournament = {
-      id: "tourney_ludo_diwali",
-      title: "Diwali Grand Ludo Championship",
-      description: "Knockout championship with mega XP rewards!",
-      game: "ludo",
-      type: "SINGLE_ELIMINATION",
-      status: "REGISTRATION_OPEN",
-      startsAt: Date.now() + 86400000,
-      createdAt: Date.now(),
-      createdBy: "admin",
-      currentRound: 1,
-      totalRounds: 4,
-      config: {
-        minPlayers: 4,
-        maxPlayers: 16,
-        allowLateJoin: false,
-        autoAdvanceByes: true,
-        checkInRequired: true,
-        visibility: "PUBLIC",
-      },
-      rewards: [
-        { placement: 1, name: "Champion", xp: 500 },
-      ],
-      participants: [
-        { playerId: "p_1", displayName: "Ace", seed: 1, checkedIn: true, status: "REGISTERED" },
-      ],
-    };
-
-    it("renders tournament title, game badge, participant count, and prize pool", () => {
-      const onRegister = vi.fn().mockResolvedValue(undefined);
-      const onViewBracket = vi.fn();
-
-      render(
-        <TournamentCard
-          tournament={mockTournament}
-          currentPlayerId="player_viewer"
-          onRegister={onRegister}
-          onViewBracket={onViewBracket}
-        />
-      );
-
-      expect(screen.getByText("Diwali Grand Ludo Championship")).toBeDefined();
-      expect(screen.getByText(/Players/i)).toBeDefined();
-
-      const registerBtn = screen.getByRole("button", { name: /Register/i });
-      fireEvent.click(registerBtn);
-      expect(onRegister).toHaveBeenCalledWith("tourney_ludo_diwali");
     });
   });
 });

@@ -145,23 +145,6 @@ export interface MatchSummaryRecord {
   participants: MatchParticipantRecord[];
 }
 
-export type TournamentRecordStatus =
-  | "REGISTERED"
-  | "CHECKED_IN"
-  | "ELIMINATED"
-  | "WINNER"
-  | "WITHDRAWN";
-
-export interface TournamentRecordRow {
-  tournamentId: string;
-  playerId: string;
-  tournamentName?: string | null;
-  game?: string | null;
-  placing?: number | null;
-  status: TournamentRecordStatus;
-  recordedAt: number;
-}
-
 export interface SeasonStatsRecord {
   seasonId: string;
   playerId: string;
@@ -267,10 +250,6 @@ export interface ProgressionRepository {
     playerId: string,
     opts?: { limit?: number; offset?: number; game?: string },
   ): Promise<MatchPage>;
-
-  /* tournaments */
-  upsertTournamentRecord(record: TournamentRecordRow): Promise<void>;
-  listTournamentRecords(playerId: string): Promise<TournamentRecordRow[]>;
 
   /* seasons */
   upsertSeasonStats(record: SeasonStatsRecord): Promise<void>;

@@ -396,33 +396,6 @@ class ProgressionSync {
     this.enqueue("removeFriend", (r) => r.removeFriend(playerId, friendPlayerId));
   }
 
-  /* ────────────────────── tournaments ────────────────────── */
-
-  tournamentRecordSaved(record: {
-    tournamentId: string;
-    playerId: string;
-    tournamentName?: string;
-    game?: string;
-    placing?: number;
-    status: "REGISTERED" | "CHECKED_IN" | "ELIMINATED" | "WINNER" | "WITHDRAWN";
-  }): void {
-    this.identitySeen(
-      record.playerId,
-      record.playerId.startsWith("guest_") ? "guest" : "member",
-      record.playerId.startsWith("guest_") ? null : record.playerId,
-    );
-    this.enqueue("upsertTournamentRecord", (r) =>
-      r.upsertTournamentRecord({
-        tournamentId: record.tournamentId,
-        playerId: record.playerId,
-        tournamentName: record.tournamentName ?? null,
-        game: record.game ?? null,
-        placing: record.placing ?? null,
-        status: record.status,
-        recordedAt: Date.now(),
-      }),
-    );
-  }
 }
 
 export const progressionSync = new ProgressionSync();

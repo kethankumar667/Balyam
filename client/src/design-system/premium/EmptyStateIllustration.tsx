@@ -3,7 +3,7 @@ import { GLASSMORPHISM } from "./glassmorphism";
 import { SecondaryButton, TYPOGRAPHY } from "../dls";
 import { Gamepad2, Trophy, Users, Flag, Zap } from "lucide-react";
 
-export type EmptyStateType = "matches" | "achievements" | "friends" | "tournaments" | "challenges";
+export type EmptyStateType = "matches" | "achievements" | "friends" | "challenges";
 
 interface EmptyStateIllustrationProps {
   type: EmptyStateType;
@@ -44,13 +44,6 @@ export const EmptyStateIllustration: React.FC<EmptyStateIllustrationProps> = ({
           defaultTitle: "No Friends Added Yet",
           defaultDesc: "Connect with opponents from recent rooms or add fellow players by their ID.",
           defaultAction: "Find Opponents",
-        };
-      case "tournaments":
-        return {
-          icon: Flag,
-          defaultTitle: "No Tournaments Available",
-          defaultDesc: "Championship brackets are scheduled regularly. Check back soon for the next kickoff.",
-          defaultAction: "View Schedule",
         };
       case "challenges":
       default:

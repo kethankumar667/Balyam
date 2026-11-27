@@ -2,12 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import React, { lazy } from "react";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import { BrowserRouter, MemoryRouter } from "react-router-dom";
-import TournamentsPage from "../TournamentsPage";
 import MyRecordsPage from "../MyRecordsPage";
 import OfflineBanner from "../../components/games/OfflineBanner";
 import {
   RoomSkeleton,
-  TournamentSkeleton,
   GangSkeleton,
 } from "../../design-system/dls/Skeleton";
 import App from "../../App";
@@ -15,54 +13,6 @@ import * as opApi from "../../lib/operationalApi";
 import { useAuthStore } from "../../store/authStore";
 
 describe("UI Hardening Remediation Suite", () => {
-  describe("Test A: Tournament filter semantics", () => {
-    it("uses native button controls with aria-pressed and removes all partial tab semantics", () => {
-      useAuthStore.setState({ isSuperAdmin: true });
-      render(
-        <BrowserRouter>
-          <TournamentsPage />
-        </BrowserRouter>
-      );
-
-      // 1. Filter container has role="group", accurate accessible name, and NOT role="tablist"
-      const filterGroup = screen.getByRole("group", { name: "Tournament games" });
-      expect(filterGroup).toBeDefined();
-      expect(filterGroup.getAttribute("role")).toBe("group");
-      expect(filterGroup.getAttribute("role")).not.toBe("tablist");
-
-      // 2. Filter controls are native HTML buttons
-      const hcButton = screen.getByRole("button", {
-        name: /Select Hand Cricket Tournament Cup/i,
-      });
-      const ludoButton = screen.getByRole("button", {
-        name: /Select Ludo Masters Tournament Cup/i,
-      });
-
-      expect(hcButton.tagName.toLowerCase()).toBe("button");
-      expect(ludoButton.tagName.toLowerCase()).toBe("button");
-
-      // 3. Neither control has role="tab" or aria-selected
-      expect(hcButton.getAttribute("role")).toBeNull();
-      expect(ludoButton.getAttribute("role")).toBeNull();
-      expect(hcButton.getAttribute("aria-selected")).toBeNull();
-      expect(ludoButton.getAttribute("aria-selected")).toBeNull();
-
-      // 4. Exposes aria-pressed: Hand Cricket starts selected (true), Ludo unselected (false)
-      expect(hcButton.getAttribute("aria-pressed")).toBe("true");
-      expect(ludoButton.getAttribute("aria-pressed")).toBe("false");
-
-      // 5. Activating Ludo button switches aria-pressed state cleanly
-      fireEvent.click(ludoButton);
-      expect(hcButton.getAttribute("aria-pressed")).toBe("false");
-      expect(ludoButton.getAttribute("aria-pressed")).toBe("true");
-
-      // 6. Activating Hand Cricket button switches back
-      fireEvent.click(hcButton);
-      expect(hcButton.getAttribute("aria-pressed")).toBe("true");
-      expect(ludoButton.getAttribute("aria-pressed")).toBe("false");
-    });
-  });
-
   describe("Test B: Score Board filter semantics", () => {
     it("uses native button controls with aria-pressed for game arena selection and retains search accessible name", () => {
       useAuthStore.setState({ isSuperAdmin: true });
@@ -157,10 +107,9 @@ describe("UI Hardening Remediation Suite", () => {
   });
 
   describe("Test D: Skeleton accessibility", () => {
-    it("ensures RoomSkeleton, TournamentSkeleton, and GangSkeleton are aria-hidden with no focusable controls and have stable testIds", () => {
+    it("ensures RoomSkeleton and GangSkeleton are aria-hidden with no focusable controls and have stable testIds", () => {
       const skeletons = [
         { name: "RoomSkeleton", element: <RoomSkeleton />, testId: "room-skeleton" },
-        { name: "TournamentSkeleton", element: <TournamentSkeleton />, testId: "tournament-skeleton" },
         { name: "GangSkeleton", element: <GangSkeleton />, testId: "gang-skeleton" },
       ];
 
@@ -201,22 +150,6 @@ describe("UI Hardening Remediation Suite", () => {
 
       // Verifies exact RoomSkeleton identity and absence of other skeletons
       expect(container.querySelector('[data-testid="room-skeleton"]')).not.toBeNull();
-      expect(container.querySelector('[data-testid="tournament-skeleton"]')).toBeNull();
-      expect(container.querySelector('[data-testid="gang-skeleton"]')).toBeNull();
-      expect(container.querySelector('[data-testid="dashboard-skeleton"]')).toBeNull();
-    });
-
-    it("selects TournamentSkeleton when navigating to /tournaments", () => {
-      const PendingTournaments = createPendingLazy();
-      const { container } = render(
-        <MemoryRouter initialEntries={["/tournaments"]}>
-          <App components={{ TournamentsPage: PendingTournaments }} />
-        </MemoryRouter>
-      );
-
-      // Verifies exact TournamentSkeleton identity and absence of other skeletons
-      expect(container.querySelector('[data-testid="tournament-skeleton"]')).not.toBeNull();
-      expect(container.querySelector('[data-testid="room-skeleton"]')).toBeNull();
       expect(container.querySelector('[data-testid="gang-skeleton"]')).toBeNull();
       expect(container.querySelector('[data-testid="dashboard-skeleton"]')).toBeNull();
     });
@@ -232,7 +165,6 @@ describe("UI Hardening Remediation Suite", () => {
       // Verifies exact GangSkeleton identity and absence of other skeletons
       expect(container.querySelector('[data-testid="gang-skeleton"]')).not.toBeNull();
       expect(container.querySelector('[data-testid="room-skeleton"]')).toBeNull();
-      expect(container.querySelector('[data-testid="tournament-skeleton"]')).toBeNull();
       expect(container.querySelector('[data-testid="dashboard-skeleton"]')).toBeNull();
     });
 
@@ -254,7 +186,6 @@ describe("UI Hardening Remediation Suite", () => {
       // Verifies exact DashboardSkeleton identity and absence of other skeletons
       expect(container.querySelector('[data-testid="dashboard-skeleton"]')).not.toBeNull();
       expect(container.querySelector('[data-testid="room-skeleton"]')).toBeNull();
-      expect(container.querySelector('[data-testid="tournament-skeleton"]')).toBeNull();
       expect(container.querySelector('[data-testid="gang-skeleton"]')).toBeNull();
     });
   });

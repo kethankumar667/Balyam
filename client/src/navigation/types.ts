@@ -8,7 +8,6 @@ export type NavigationSectionId =
   | "profile"
   | "settings"
   | "help"
-  | "tournament"
   | "leaderboard"
   | "admin";
 

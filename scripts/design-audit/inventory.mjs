@@ -40,7 +40,7 @@ for (const dir of LIB_DIRS) {
 
 heading("DLS Button adoption (product code only — excludes tests, the catalogue page, and Buttons.tsx itself)");
 const DLS_HAY = prod.filter((s) => !/design-system\/dls\/|DesignSystemCatalogPage/.test(s.rel));
-for (const name of ["PrimaryButton", "SecondaryButton", "TournamentCTAButton", "RewardButton", "DangerButton"]) {
+for (const name of ["PrimaryButton", "SecondaryButton", "RewardButton", "DangerButton"]) {
   const hits = filesMatching(new RegExp(`\\b${name}\\b`), DLS_HAY);
   row(`  ${name}`, hits.length);
   for (const f of hits) console.log("       " + f);

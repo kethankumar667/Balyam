@@ -3,7 +3,6 @@ import { logger } from "../lib/logger.js";
 import { verifyAccessToken, devAssertionsAllowed } from "../lib/supabaseAuth.js";
 import { verifyGuestToken } from "./guestToken.js";
 import { GuestProvisioningThrottledError, tryTakeGuestProvisioningSlot } from "./guestProvisioningGate.js";
-import { operationalAuthConfig } from "../security/operationalAuth.js";
 import { progressionRepository } from "../persistence/index.js";
 import { adminPlayerService, AdminPlayerError } from "../admin/AdminPlayerService.js";
 
@@ -194,7 +193,7 @@ export async function touchGuestIdentity(guestId: string): Promise<void> {
  * never told). Their first authenticated request is verified fine by
  * `verifyAccessToken` (the Supabase session is real), but nothing had ever
  * written their `player_identities` row — that write only happened to fire
- * from `profileSaved`/`matchFinished`/friend/party/tournament writes
+ * from `profileSaved`/`matchFinished`/friend writes
  * (`ProgressionSync.ts`), none of which run on sign-up. `ensure_wallet()`
  * (the Postgres function) refuses to create that row itself by design (see
  * the migration's own §1a comment) and raises `IDENTITY_NOT_FOUND` instead,
@@ -440,40 +439,6 @@ export function requireParticipantParams(...params: string[]): RequestHandler {
     next();
   };
 }
-
-/**
- * Administrative routes on the player API.
- *
- * Starting a tournament and writing a match result decide who advances and who
- * is eliminated. At baseline both were open to anyone with the URL. There is
- * no organiser role in the tournament model to check against — every seeded
- * tournament has `createdBy: "system"` — so the honest gate is the operational
- * one this deployment already has, rather than inventing a role hierarchy in a
- * P0 fix.
- *
- * Reuses the operational credential deliberately: one admin boundary in this
- * codebase, not two that can disagree.
- */
-export const requireTournamentAdmin: RequestHandler = (req, res, next) => {
-  const { secret, adminUserIds } = operationalAuthConfig();
-
-  const key = req.headers["x-operational-key"];
-  if (typeof key === "string" && secret.length > 0 && key.trim() === secret) {
-    next();
-    return;
-  }
-
-  if (req.player?.kind === "member" && adminUserIds.includes(req.player.playerId)) {
-    next();
-    return;
-  }
-
-  logger.warn({
-    message: `Tournament admin action refused: ${req.method} ${req.path}`,
-    module: "AUTH",
-  });
-  deny(res, 403, "This action is restricted to tournament administrators.");
-};
 
 /**
  * The caller's id, for a handler that has already passed a guard.

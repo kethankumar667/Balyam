@@ -77,8 +77,6 @@ export interface Capabilities {
   /** Attach a big screen to a room (`/tv/:code`) without taking a seat.
    *  Member-only: it is a code-led way into a room, same as `joinByCode`. */
   spectate: boolean;
-  /** Participate in or browse competitive tournaments. Member-only. */
-  viewTournaments: boolean;
   /** View global leaderboards and seasonal rankings. Open to all players. */
   viewLeaderboards: boolean;
   /** View persistent career profile and personal stats. Member-only. */
@@ -109,7 +107,6 @@ const GUEST: Capabilities = {
   editProfileName: false,
   voiceChat: true,
   spectate: false,
-  viewTournaments: false,
   viewLeaderboards: true,
   viewProfile: false,
   viewReferrals: false,
@@ -131,7 +128,6 @@ const MEMBER: Capabilities = {
   editProfileName: true,
   voiceChat: true,
   spectate: true,
-  viewTournaments: true,
   viewLeaderboards: true,
   viewProfile: true,
   viewReferrals: true,
@@ -153,7 +149,6 @@ const SUPER_ADMIN: Capabilities = {
   editProfileName: true,
   voiceChat: true,
   spectate: true,
-  viewTournaments: true,
   viewLeaderboards: true,
   viewProfile: true,
   viewReferrals: true,

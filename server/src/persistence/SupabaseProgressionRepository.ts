@@ -15,7 +15,6 @@ import type {
   SeasonClaimRecord,
   SeasonSnapshotRecord,
   SeasonStatsRecord,
-  TournamentRecordRow,
   XpLedgerEntry,
   ScorecardSnapshot,
   ScorecardCommit,
@@ -506,50 +505,6 @@ export class SupabaseProgressionRepository implements ProgressionRepository {
         };
       }),
     };
-  }
-
-  /* ── tournaments ── */
-
-  async upsertTournamentRecord(record: TournamentRecordRow): Promise<void> {
-    await this.db.upsert(
-      "tournament_records",
-      [
-        {
-          tournament_id: record.tournamentId,
-          player_id: record.playerId,
-          tournament_name: record.tournamentName ?? null,
-          game: record.game ?? null,
-          placement: record.placing ?? null,
-          status: record.status,
-          recorded_at: iso(record.recordedAt),
-        },
-      ],
-      "tournament_id,player_id",
-    );
-  }
-
-  async listTournamentRecords(playerId: string): Promise<TournamentRecordRow[]> {
-    const rows = await this.db.select<{
-      tournament_id: string;
-      player_id: string;
-      tournament_name: string | null;
-      game: string | null;
-      placement: number | null;
-      status: TournamentRecordRow["status"];
-      recorded_at: string;
-    }>(
-      "tournament_records",
-      `player_id=eq.${encodeURIComponent(playerId)}&order=recorded_at.desc`,
-    );
-    return rows.map((r) => ({
-      tournamentId: r.tournament_id,
-      playerId: r.player_id,
-      tournamentName: r.tournament_name,
-      game: r.game,
-      placing: r.placement,
-      status: r.status,
-      recordedAt: ms(r.recorded_at),
-    }));
   }
 
   /* ── seasons ── */
