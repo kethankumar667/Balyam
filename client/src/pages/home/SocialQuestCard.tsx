@@ -62,6 +62,8 @@ function InviteCode({ shareCode }: { shareCode: string }) {
  * "Social quest", the connect stage of the journey. It is a summary: how many friends have qualified, the three pack
  * rewards, the member's code, and one action. The qualifying rules, who is pending, the share options and the refresh
  * live in the invite drawer behind the action; wearing the pack (and the Admin Pass explanation) lives on `/referrals`.
+ * Every member gets a quiet link to that page, worded for what they will find there; a guest has none, the page is
+ * for members.
  */
 export function SocialQuestCard({ isMember, className }: { isMember: boolean; className?: string }) {
   const { progress, loading, error, notice, retry } = useReferralProgress(isMember);
@@ -128,9 +130,9 @@ export function SocialQuestCard({ isMember, className }: { isMember: boolean; cl
             {known && progress.shareCode && <InviteCode shareCode={progress.shareCode} />}
             {error && <p role="alert" className="m-0 text-center text-xs leading-relaxed text-journey-gold">{error}</p>}
             {notice && <p role="status" className="m-0 text-center text-xs leading-relaxed text-journey-gold">{notice}</p>}
-            {canWearPack && (
+            {isMember && (
               <Link to="/referrals" className="flex min-h-[44px] items-center justify-center text-xs font-bold text-journey-violet underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journey-gold">
-                {hasAdminPass ? "Admin Pass: wear your pack" : "Pack unlocked: wear it"}
+                {hasAdminPass ? "Admin Pass: wear your pack" : canWearPack ? "Pack unlocked: wear it" : "See your crew and rewards"}
               </Link>
             )}
           </div>

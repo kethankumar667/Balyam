@@ -105,7 +105,7 @@ describe("Social quest card: where the pack is worn", () => {
     expect(screen.getAllByRole("button", { name: "Invite friends" })).toHaveLength(1);
   });
 
-  it("points a member whose pack is unlocked to it, and offers nothing to a member whose pack is not", () => {
+  it("points a member whose pack is unlocked to it, and does not offer to wear a pack that is not yet earned", () => {
     mocks.progress = { ...base, qualifiedFriends: 3, rewardGranted: true };
     show();
     expect(screen.getByRole("link", { name: "Pack unlocked: wear it" })).toHaveAttribute("href", "/referrals");
@@ -113,6 +113,31 @@ describe("Social quest card: where the pack is worn", () => {
     mocks.progress = { ...base };
     show();
     expect(screen.queryByRole("link", { name: /wear/i })).toBeNull();
+  });
+});
+
+describe("Social quest card: the way to the Crew Quest page", () => {
+  it("gives every signed-in member exactly one link to /referrals, even before any friend or pack", () => {
+    show();
+    expect(document.querySelectorAll('a[href="/referrals"]')).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "See your crew and rewards" })).toHaveAttribute("href", "/referrals");
+  });
+
+  it("keeps the link while invitations are still loading or failed to load, since the page has its own retry", () => {
+    mocks.progress = null;
+    mocks.loading = true;
+    show();
+    expect(screen.getByRole("link", { name: "See your crew and rewards" })).toHaveAttribute("href", "/referrals");
+    cleanup();
+    mocks.loading = false;
+    mocks.error = "Invitations could not be loaded.";
+    show();
+    expect(screen.getByRole("link", { name: "See your crew and rewards" })).toHaveAttribute("href", "/referrals");
+  });
+
+  it("offers a guest no link to it, since the page is for members", () => {
+    show(false);
+    expect(document.querySelector('a[href="/referrals"]')).toBeNull();
   });
 });
 
