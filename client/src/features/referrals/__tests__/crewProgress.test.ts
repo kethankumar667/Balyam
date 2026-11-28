@@ -73,6 +73,22 @@ describe("friendTrack", () => {
     expect(track.note).toMatch(/within 30 days/);
   });
 
+  it("warns 'Ending soon' for the last week of a window, and not before", () => {
+    expect(friendTrack(friend({ expiresAt: NOW + 7 * DAY }), campaign, NOW).badge).toEqual({ label: "Ending soon", tone: "warn" });
+    expect(friendTrack(friend({ expiresAt: NOW + DAY }), campaign, NOW).badge).toEqual({ label: "Ending soon", tone: "warn" });
+    expect(friendTrack(friend({ expiresAt: NOW + 8 * DAY }), campaign, NOW).badge).toEqual({ label: "Joined", tone: "info" });
+  });
+
+  it("tells the inviter they can give an expired friend more days, only while that is still possible", () => {
+    const ended = friend({ status: "EXPIRED", joinedAt: NOW - 32 * DAY, expiresAt: NOW - 2 * DAY });
+    expect(friendTrack(ended, campaign, NOW).note).toBe("No eligible match was played within 30 days. You can give them 30 more days.");
+    // Went quiet more than 30 days ago, or already had the extra time: just the plain fact.
+    const lateEnded = friend({ status: "EXPIRED", joinedAt: NOW - 75 * DAY, expiresAt: NOW - 45 * DAY });
+    expect(friendTrack(lateEnded, campaign, NOW).note).toBe("No eligible match was played within 30 days.");
+    const alreadyRevived = friend({ status: "EXPIRED", joinedAt: NOW - 62 * DAY, expiresAt: NOW - 2 * DAY });
+    expect(friendTrack(alreadyRevived, campaign, NOW).note).toBe("No eligible match was played within 30 days.");
+  });
+
   it("treats a joined friend whose time has passed (before the server marks it) as ended too", () => {
     expect(friendTrack(friend({ expiresAt: NOW - 1 }), campaign, NOW).badge.label).toBe("Window ended");
   });

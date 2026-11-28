@@ -111,6 +111,27 @@ describe("referral HTTP boundaries", () => {
     mocks.identity = "none";
     expect((await request("/redeem", { code: "BHALYAM-K7M2P" })).status).toBe(401);
   });
+  it("revives a friend's window for the verified inviter only, and never on a caller-named player or a bad position", async () => {
+    const rpc = vi.spyOn(db, "rpc").mockResolvedValue({ ok: true, expiresAt: 1_795_000_000_000 });
+    const request = await app();
+    const revived = await request("/revive", { ordinal: 2, playerId: "someone-else" });
+    expect(revived.status).toBe(200);
+    expect(await revived.json()).toEqual({ ok: true, expiresAt: 1_795_000_000_000 });
+    expect(rpc).toHaveBeenLastCalledWith("referral_revive", { p_referrer_id: "verified-caller", p_ordinal: 2 });
+
+    rpc.mockClear();
+    for (const ordinal of [0, -1, 1.5, 1001, "2", null, undefined]) {
+      const refused = await request("/revive", { ordinal });
+      expect(await refused.json()).toEqual({ ok: false, code: "NOT_FOUND" });
+    }
+    expect(rpc).not.toHaveBeenCalled();
+
+    mocks.identity = "guest";
+    expect((await request("/revive", { ordinal: 1 })).status).toBe(403);
+    mocks.identity = "none";
+    expect((await request("/revive", { ordinal: 1 })).status).toBe(401);
+    expect(rpc).not.toHaveBeenCalled();
+  });
   it("reads the overview for the verified member and refuses guests and the signed-out", async () => {
     const rpc = vi.spyOn(db, "rpc").mockResolvedValue({ shareCode: "BHALYAM-K7M2P", friends: [] });
     const request = await app();

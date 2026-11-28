@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Check, Gamepad2, Gem, UsersRound } from "lucide-react";
-import type { ReferralFriend, ReferralOverview } from "@shared/referrals";
+import { REFERRAL_REVIVE_DAYS, canReviveFriend, type ReferralFriend, type ReferralOverview, type ReferralReviveResult } from "@shared/referrals";
 import { AlbumAvatar } from "../../../components/gang/album/AlbumAvatar";
+import { REFERRAL_REVIVE_REFUSAL_COPY } from "../../../lib/referrals";
 import { PlayTogetherButton } from "../PlayTogetherButton";
 import { ReferralChip } from "../ReferralChip";
 import { describeBonus, formatShortDate } from "../referralCopy";
@@ -55,7 +56,39 @@ function MiniTrack({ steps }: { steps: FriendTrack["steps"] }) {
   );
 }
 
-function CrewMemberCard({ friend, campaign, now }: { friend: ReferralFriend; campaign: ReferralOverview["campaign"]; now: number }) {
+type ReviveHandler = (ordinal: number) => Promise<ReferralReviveResult>;
+const REVIVE_FAILED = "We could not give them more time. Please try again.";
+
+/**
+ * "Give them 30 more days", once, on a friend whose window ended. The server decides whether it is allowed and
+ * says why when it is not; on success the page re-reads the list and this card becomes a running countdown.
+ */
+function ReviveAction({ ordinal, friendName, onRevive }: { ordinal: number; friendName: string; onRevive: ReviveHandler }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const give = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await onRevive(ordinal);
+      if (!result.ok) setError(REFERRAL_REVIVE_REFUSAL_COPY[result.code] ?? REVIVE_FAILED);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : REVIVE_FAILED);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="mt-3">
+      <button type="button" onClick={give} disabled={busy} aria-label={`Give ${friendName} ${REFERRAL_REVIVE_DAYS} more days`} className={`${GHOST_BUTTON} disabled:opacity-60`}>
+        {busy ? "Giving more time…" : `Give them ${REFERRAL_REVIVE_DAYS} more days`}
+      </button>
+      {error && <p role="alert" className="m-0 mt-2 text-xs leading-relaxed text-rose-700 dark:text-rose-300">{error}</p>}
+    </div>
+  );
+}
+
+function CrewMemberCard({ friend, campaign, now, onRevive }: { friend: ReferralFriend; campaign: ReferralOverview["campaign"]; now: number; onRevive?: ReviveHandler }) {
   const track = friendTrack(friend, campaign, now);
   const yours = describeBonus(friend.yourBonus, campaign, now);
   const theirs = describeBonus(friend.theirBonus, campaign, now);
@@ -84,6 +117,7 @@ function CrewMemberCard({ friend, campaign, now }: { friend: ReferralFriend; cam
         </div>
       )}
       {canPlay && <PlayTogetherButton friendName={friend.displayName} label="Play Together" className="mt-3" />}
+      {onRevive && canReviveFriend(friend, now) && <ReviveAction ordinal={friend.ordinal} friendName={friend.displayName} onRevive={onRevive} />}
     </li>
   );
 }
@@ -92,9 +126,11 @@ interface CrewListProps {
   friends: ReferralFriend[];
   campaign: ReferralOverview["campaign"];
   serverNow: number;
+  /** Gives a friend whose window ended one more. Without it no card offers the button. */
+  onRevive?: ReviveHandler;
 }
 
-export function CrewList({ friends, campaign, serverNow }: CrewListProps) {
+export function CrewList({ friends, campaign, serverNow, onRevive }: CrewListProps) {
   const [showAll, setShowAll] = useState(false);
   const shown = showAll ? friends : friends.slice(0, VISIBLE_FRIENDS);
   return (
@@ -121,7 +157,7 @@ export function CrewList({ friends, campaign, serverNow }: CrewListProps) {
         </div>
       ) : (
         <ul className="m-0 mt-4 list-none space-y-3 p-0">
-          {shown.map((friend) => <CrewMemberCard key={friend.ordinal} friend={friend} campaign={campaign} now={serverNow} />)}
+          {shown.map((friend) => <CrewMemberCard key={friend.ordinal} friend={friend} campaign={campaign} now={serverNow} onRevive={onRevive} />)}
         </ul>
       )}
     </section>

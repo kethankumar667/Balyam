@@ -1,5 +1,8 @@
-import type { ReferralFriend, ReferralOverview } from "@shared/referrals";
+import { REFERRAL_REVIVE_DAYS, canReviveFriend, type ReferralFriend, type ReferralOverview } from "@shared/referrals";
 import { daysLeft, formatCoins } from "../referralCopy";
+
+/** From this many days left the card says the window is closing, so the inviter has time to play together. */
+const ENDING_SOON_DAYS = 7;
 
 /** done: finished. current: where this is now. upcoming: not reached yet. ended: it will not happen (window over, held, withdrawn). */
 export type StepState = "done" | "current" | "upcoming" | "ended";
@@ -64,13 +67,18 @@ export function friendTrack(friend: ReferralFriend, campaign: ReferralOverview["
   ];
 
   if (friend.status === "EXPIRED" || (friend.status === "JOINED" && !windowOpen)) {
-    return { steps, badge: { label: "Window ended", tone: "muted" }, note: `No eligible match was played within ${campaign.windowDays} days.` };
+    const ended = `No eligible match was played within ${campaign.windowDays} days.`;
+    return {
+      steps,
+      badge: { label: "Window ended", tone: "muted" },
+      note: canReviveFriend(friend, now) ? `${ended} You can give them ${REFERRAL_REVIVE_DAYS} more days.` : ended,
+    };
   }
   if (friend.status === "JOINED") {
     const left = daysLeft(friend.expiresAt, now);
     return {
       steps,
-      badge: { label: "Joined", tone: "info" },
+      badge: left <= ENDING_SOON_DAYS ? { label: "Ending soon", tone: "warn" } : { label: "Joined", tone: "info" },
       note: `Next: play one match with another person · ${left} ${left === 1 ? "day" : "days"} left`,
     };
   }

@@ -38,7 +38,7 @@ function PageSkeleton() {
  */
 export default function ReferralsPage() {
   const canView = useAuthStore(state => state.capabilities.viewReferrals);
-  const { overview, loading, error, retry, redeem, detach } = useReferralOverview(canView);
+  const { overview, loading, error, retry, redeem, detach, revive } = useReferralOverview(canView);
   const [theme] = useTheme();
 
   if (!canView) return <MemberLockedGate feature="referrals" />;
@@ -72,7 +72,7 @@ export default function ReferralsPage() {
                 <ReferredBySection overview={overview} redeem={redeem} detach={detach} />
               </div>
               <div className="min-w-0 xl:col-span-12"><InvitationJourney totals={overview.totals} campaign={overview.campaign} /></div>
-              <div className="min-w-0 xl:col-span-7"><CrewList friends={overview.friends} campaign={overview.campaign} serverNow={overview.serverNow} /></div>
+              <div className="min-w-0 xl:col-span-7"><CrewList friends={overview.friends} campaign={overview.campaign} serverNow={overview.serverNow} onRevive={revive} /></div>
               <div className="min-w-0 space-y-4 xl:col-span-5">
                 <NostalgiaVault pack={overview.pack} />
                 {/* Where the pack is worn. The home overview only points here; the Admin Pass explanation lives with the button. */}

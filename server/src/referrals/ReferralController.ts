@@ -65,5 +65,10 @@ export function createReferralRouter(service: ReferralService | null): Router {
     try { res.json(await service!.detach(req.player!.playerId)); }
     catch (err) { failed(res, err); }
   });
+  // The inviter gives one friend whose window ended one more window. Only ever the caller's own friend.
+  router.post("/revive", requireIdentity, member, memberBudget, async (req, res) => {
+    try { res.json(await service!.revive(req.player!.playerId, req.body?.ordinal)); }
+    catch (err) { failed(res, err); }
+  });
   return router;
 }

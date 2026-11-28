@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { ReferralAttributionResult, ReferralOverview } from "@shared/referrals";
+import type { ReferralAttributionResult, ReferralOverview, ReferralReviveResult } from "@shared/referrals";
 import { useAuthStore } from "../store/authStore";
 import { useProgressionVersion } from "../store/progressionVersionStore";
 import { useCosmeticsStore } from "../store/cosmeticsStore";
@@ -8,6 +8,7 @@ import {
   detachReferralCode,
   fetchReferralOverview,
   redeemReferralCode,
+  reviveReferralFriend,
   syncReferrals,
 } from "../lib/referrals";
 
@@ -68,6 +69,13 @@ export function useReferralOverview(enabled: boolean) {
     return result;
   }, []);
 
+  /** Give a friend whose window ended one more. On success the list is re-read so the card shows the new countdown. */
+  const revive = useCallback(async (ordinal: number): Promise<ReferralReviveResult> => {
+    const result = await reviveReferralFriend(ordinal);
+    if (result.ok) setAttempt(n => n + 1);
+    return result;
+  }, []);
+
   const owned = enabled && userId === state.owner;
   return {
     overview: owned ? state.overview : null,
@@ -76,5 +84,6 @@ export function useReferralOverview(enabled: boolean) {
     retry,
     redeem,
     detach,
+    revive,
   };
 }

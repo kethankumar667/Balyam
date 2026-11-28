@@ -4,6 +4,8 @@ import {
   type ReferralOverview,
   type ReferralProgress,
   type ReferralRefusal,
+  type ReferralReviveRefusal,
+  type ReferralReviveResult,
 } from "@shared/referrals";
 import { apiFetch } from "./playerIdentity";
 import { getSupabase } from "./supabase/client";
@@ -51,11 +53,22 @@ export const REFERRAL_REFUSAL_COPY: Record<ReferralRefusal, string> = {
   NOT_ATTACHED: "There is no code to remove.",
 };
 
+/** What to tell an inviter when the server declines to give a friend more time. */
+export const REFERRAL_REVIVE_REFUSAL_COPY: Record<ReferralReviveRefusal, string> = {
+  NOT_FOUND: "We could not find that friend. Refresh the page and try again.",
+  ALREADY_QUALIFIED: "This friend has already played, so they do not need more time.",
+  STILL_OPEN: "Their window is still open, so there is nothing to extend yet.",
+  ALREADY_REVIVED: "This friend has already had their extra 30 days.",
+  TOO_LATE: "It has been more than 30 days since their window ended, so it cannot be extended now.",
+};
+
 export const syncReferrals = () => referralRequest<ReferralProgress>("/sync", {});
 export const attributeReferral = (token: string) => referralRequest<ReferralAttributionResult>("/attribute", { token });
 export const fetchReferralOverview = () => referralRequest<ReferralOverview>("/overview");
 export const redeemReferralCode = (code: string) => referralRequest<ReferralAttributionResult>("/redeem", { code });
 export const detachReferralCode = () => referralRequest<ReferralAttributionResult>("/detach", {});
+/** `ordinal` is the friend's place in the overview list; the server checks it is one of this member's own. */
+export const reviveReferralFriend = (ordinal: number) => referralRequest<ReferralReviveResult>("/revive", { ordinal });
 /** Public yes/no check of a typed code; it never says whose it is. */
 export const checkReferralCode = (code: string) => referralRequest<{ valid: boolean }>(`/code/${encodeURIComponent(code)}`, undefined, true);
 

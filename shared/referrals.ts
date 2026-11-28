@@ -5,6 +5,14 @@ export const REFERRAL_TARGET = 3;
 export const REFERRAL_WINDOW_DAYS = 30;
 export const REFERRAL_WINDOW_MS = REFERRAL_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
+/** What one revive adds, counted from the moment the inviter gives it. Mirrors `referral_revive` in the database. */
+export const REFERRAL_REVIVE_DAYS = 30;
+/** A window can be revived for this long after it ended; later than that the friend has simply gone quiet. */
+export const REFERRAL_REVIVE_GRACE_DAYS = 30;
+const REFERRAL_REVIVE_GRACE_MS = REFERRAL_REVIVE_GRACE_DAYS * 24 * 60 * 60 * 1000;
+/** Slack for the millisecond rounding between the two ends of a window when working out whether it was revived. */
+const REVIVE_DETECTION_SLACK_MS = 1_000;
+
 export const NOSTALGIA_PACK = [
   { id: "aura_nostalgia_gold", name: "Golden Reunion", category: "AVATAR_AURA", scope: "GLOBAL" },
   { id: "title_gang_leader", name: "Gang Leader", category: "PODIUM_TITLE", scope: "GLOBAL" },
@@ -245,6 +253,32 @@ export interface ReferralFriend {
   via: "link" | "code";
   yourBonus: ReferralBonusView;
   theirBonus: ReferralBonusView;
+}
+
+/** Why a revive was refused. The database decides; these are the answers it can give. */
+export type ReferralReviveRefusal =
+  | "NOT_FOUND"
+  | "ALREADY_QUALIFIED"
+  | "STILL_OPEN"
+  | "ALREADY_REVIVED"
+  | "TOO_LATE";
+
+export type ReferralReviveResult =
+  | { ok: true; expiresAt: number }
+  | { ok: false; code: ReferralReviveRefusal };
+
+/**
+ * Whether the inviter can still give this friend one more window. A hint for the page: the database re-checks every
+ * condition. A revived window is longer than the first (30 days) one, which is how "already used" is told without
+ * the overview carrying another field.
+ */
+export function canReviveFriend(
+  friend: Pick<ReferralFriend, "status" | "joinedAt" | "expiresAt">,
+  now: number,
+): boolean {
+  if (friend.status !== "EXPIRED") return false;
+  const alreadyRevived = friend.expiresAt - friend.joinedAt > REFERRAL_WINDOW_MS + REVIVE_DETECTION_SLACK_MS;
+  return !alreadyRevived && now - friend.expiresAt <= REFERRAL_REVIVE_GRACE_MS;
 }
 
 /** The member who referred this one, shown to the invitee. */

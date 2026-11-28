@@ -5,9 +5,13 @@ import {
   type ReferralAttributionResult,
   type ReferralOverview,
   type ReferralProgress,
+  type ReferralReviveResult,
 } from "@shared/referrals.js";
 import { mintReferralIntent, readReferralIntent } from "./referralIntent.js";
 import type { ReferralNotifier } from "./ReferralNotifier.js";
+
+/** No member has this many invited friends; anything above is not a list position. */
+const MAX_FRIEND_ORDINAL = 1000;
 
 export class ReferralService {
   constructor(
@@ -70,6 +74,18 @@ export class ReferralService {
   /** "Wrong code? Remove" — allowed only until the first qualifying match. */
   detach(playerId: string): Promise<ReferralAttributionResult> {
     return this.db.rpc<ReferralAttributionResult>("referral_detach", { p_player_id: playerId });
+  }
+
+  /**
+   * The inviter gives one friend whose window ended one more window. `ordinal` is the friend's place in the
+   * overview list, because that list never shows another member's id. The database checks the owner, the state
+   * and that it is used only once; this only refuses an ordinal that cannot be a list position.
+   */
+  async revive(playerId: string, ordinal: unknown): Promise<ReferralReviveResult> {
+    if (typeof ordinal !== "number" || !Number.isInteger(ordinal) || ordinal < 1 || ordinal > MAX_FRIEND_ORDINAL) {
+      return { ok: false, code: "NOT_FOUND" };
+    }
+    return this.db.rpc<ReferralReviveResult>("referral_revive", { p_referrer_id: playerId, p_ordinal: ordinal });
   }
 
   /** Everything the Referrals page shows, in one read. */

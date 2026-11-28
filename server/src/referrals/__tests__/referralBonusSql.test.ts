@@ -68,7 +68,7 @@ beforeAll(async () => {
     await db.query("INSERT INTO player_identities VALUES ($1, 'member', $2, null)", [uid(i), uid(i)]);
     await db.query("INSERT INTO profiles VALUES ($1, $2, $3, $4, '2001-08-06')", [uid(i), `Player ${i}`, `avatar-${i}`, `p${i}@example.com`]);
   }
-  for (const file of ["20261108000000_referrals", "20261108000001_nostalgia_pack", "20261111000000_referral_bonus", "20261112000000_referral_event_context", "20261113000000_referral_admin"]) {
+  for (const file of ["20261108000000_referrals", "20261108000001_nostalgia_pack", "20261111000000_referral_bonus", "20261112000000_referral_event_context", "20261113000000_referral_admin", "20261117000000_referral_revive"]) {
     await db.exec(await readFile(new URL(`../../../../supabase/migrations/${file}.sql`, import.meta.url), "utf8"));
   }
   // The migration's own campaign starts the bonus at "now"; these tests accept friends "an hour ago".
@@ -468,6 +468,111 @@ describe("the operator console", () => {
       await expect(db.query("SELECT referral_admin_set_campaign('a', 'b', '{\"inviterBonus\": 1}'::jsonb)")).rejects.toThrow("permission denied");
       await expect(db.query("SELECT referral_admin_events_list(5)")).rejects.toThrow("permission denied");
       await expect(db.query("SELECT * FROM referral_admin_events")).rejects.toThrow("permission denied");
+    } finally {
+      await db.exec("RESET ROLE");
+    }
+  });
+});
+
+describe("giving a friend whose window ended one more window", () => {
+  type Revive = { ok: true; expiresAt: number } | { ok: false; code: string };
+  const REFERRER = 31;
+  // 32 ended two days ago · 33 still open · 34 already qualified · 35 ended 45 days ago · 36 played during the gap.
+  const FRIENDS = { revivable: 32, open: 33, qualified: 34, tooLate: 35, playedInGap: 36 } as const;
+  const revive = (referrer: number, ordinal: number) => value<Revive>("SELECT referral_revive($1, $2)", [uid(referrer), ordinal]);
+  const ordinalOf = async (friend: number) => (await overview(REFERRER)).friends.find((f) => f.displayName === `Player ${friend}`)!.ordinal;
+  const lapse = (friend: number, endedDaysAgo: number) => db.query(
+    "UPDATE referral_attributions SET accepted_at = now() - make_interval(days => $2), expires_at = now() - make_interval(days => $3) WHERE invitee_id = $1",
+    [uid(friend), endedDaysAgo + 30, endedDaysAgo]);
+  const friendRow = async (friend: number) => (await db.query<{ expires_at: Date; revived_at: Date | null; qualified_at: Date | null }>(
+    "SELECT expires_at, revived_at, qualified_at FROM referral_attributions WHERE invitee_id = $1", [uid(friend)])).rows[0]!;
+
+  beforeAll(async () => {
+    for (let i = 31; i <= 36; i++) {
+      const created = new Date(now - hour).toISOString();
+      await db.query("INSERT INTO auth.users VALUES ($1, $2, $3)", [uid(i), created, created]);
+      await db.query("INSERT INTO player_identities VALUES ($1, 'member', $2, null)", [uid(i), uid(i)]);
+      await db.query("INSERT INTO profiles VALUES ($1, $2, $3, $4, '2001-08-06')", [uid(i), `Player ${i}`, `avatar-${i}`, `p${i}@example.com`]);
+    }
+    const code = await codeOf(REFERRER);
+    for (const friend of Object.values(FRIENDS)) expect(await redeem(friend, code)).toEqual({ ok: true });
+    await match("revive-qualified", FRIENDS.qualified, 25);
+    await db.query("SELECT referral_qualify_open()");
+    await lapse(FRIENDS.revivable, 2);
+    await lapse(FRIENDS.tooLate, 45);
+    await lapse(FRIENDS.playedInGap, 3);
+    // A real match with another person, played AFTER the first window closed (two days ago) and before any revive.
+    await match("revive-gap", FRIENDS.playedInGap, 25, { started: now - 2 * day, finished: now - 2 * day + 60_000 });
+  }, 30000);
+
+  it("refuses to qualify a match that finished after the window, until the window is given back", async () => {
+    await db.query("SELECT referral_qualify_open()");
+    expect((await friendRow(FRIENDS.playedInGap)).qualified_at).toBeNull();
+  });
+
+  it("gives one expired friend 30 more days from now, and records that it was used", async () => {
+    const result = await revive(REFERRER, await ordinalOf(FRIENDS.revivable));
+    expect(result.ok).toBe(true);
+    const expiresAt = (result as { expiresAt: number }).expiresAt;
+    expect(Math.abs(expiresAt - (Date.now() + 30 * day))).toBeLessThan(5 * 60_000);
+    const row = await friendRow(FRIENDS.revivable);
+    expect(row.revived_at).not.toBeNull();
+    expect(row.expires_at.getTime()).toBe(expiresAt);
+    const view = (await overview(REFERRER)).friends.find((f) => f.displayName === "Player 32")!;
+    expect(view.status).toBe("JOINED");
+  });
+
+  it("says STILL_OPEN to a second tap while the new window is running", async () => {
+    expect(await revive(REFERRER, await ordinalOf(FRIENDS.revivable))).toEqual({ ok: false, code: "STILL_OPEN" });
+  });
+
+  it("allows the revive only once: ALREADY_REVIVED when that window has also ended", async () => {
+    await db.query("UPDATE referral_attributions SET accepted_at = now() - interval '62 days', expires_at = now() - interval '2 days' WHERE invitee_id = $1", [uid(FRIENDS.revivable)]);
+    expect(await revive(REFERRER, await ordinalOf(FRIENDS.revivable))).toEqual({ ok: false, code: "ALREADY_REVIVED" });
+  });
+
+  it("does not touch a friend whose window is still open, or one who already qualified", async () => {
+    const before = (await friendRow(FRIENDS.open)).expires_at.getTime();
+    expect(await revive(REFERRER, await ordinalOf(FRIENDS.open))).toEqual({ ok: false, code: "STILL_OPEN" });
+    expect(await revive(REFERRER, await ordinalOf(FRIENDS.qualified))).toEqual({ ok: false, code: "ALREADY_QUALIFIED" });
+    expect((await friendRow(FRIENDS.open)).expires_at.getTime()).toBe(before);
+    expect((await friendRow(FRIENDS.open)).revived_at).toBeNull();
+  });
+
+  it("will not revive a friend who went quiet more than 30 days ago", async () => {
+    expect(await revive(REFERRER, await ordinalOf(FRIENDS.tooLate))).toEqual({ ok: false, code: "TOO_LATE" });
+    expect((await friendRow(FRIENDS.tooLate)).revived_at).toBeNull();
+  });
+
+  it("only ever reaches the caller's own friends", async () => {
+    // Player 20 has three friends; ordinal 4 belongs to nobody they invited, whatever Player 31's list holds.
+    expect(await revive(20, 4)).toEqual({ ok: false, code: "NOT_FOUND" });
+    expect(await revive(REFERRER, 99)).toEqual({ ok: false, code: "NOT_FOUND" });
+  });
+
+  it("is refused for an unverified account", async () => {
+    await expect(revive(14, 1)).rejects.toThrow("REFERRAL_VERIFIED_MEMBER_REQUIRED");
+  });
+
+  it("counts a real match played during the gap once the window is back, by the next sweep", async () => {
+    expect((await friendRow(FRIENDS.playedInGap)).qualified_at).toBeNull();
+    expect((await revive(REFERRER, await ordinalOf(FRIENDS.playedInGap))).ok).toBe(true);
+    await db.query("SELECT referral_qualify_open()");
+    expect((await friendRow(FRIENDS.playedInGap)).qualified_at).not.toBeNull();
+    // Qualifying is all a revive can lead to: the inviter's cap and the gateway still decide the coins.
+    expect(await value("SELECT referral_bonus_reserve($1)", [uid(FRIENDS.playedInGap)])).toMatchObject({ state: "RESERVED" });
+  });
+
+  it("keeps the table's own limit: a window longer than 90 days is still impossible", async () => {
+    await expect(db.query(
+      "UPDATE referral_attributions SET expires_at = accepted_at + interval '2161 hours' WHERE invitee_id = $1", [uid(FRIENDS.open)],
+    )).rejects.toThrow(/referral_attributions_window_check/);
+  });
+
+  it("cannot be called from the browser", async () => {
+    await db.exec("SET ROLE authenticated");
+    try {
+      await expect(db.query("SELECT referral_revive($1, 1)", [uid(REFERRER)])).rejects.toThrow("permission denied");
     } finally {
       await db.exec("RESET ROLE");
     }
