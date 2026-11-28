@@ -1,5 +1,5 @@
 import { SCHOOL_SLATE_ID, SCHOOL_SLATE_SCOPES } from "./cosmetics.js";
-import type { CosmeticCategory, CosmeticGameScope } from "./cosmetics.js";
+import type { CosmeticCategory, CosmeticGameScope, EquippedCosmeticsLoadout } from "./cosmetics.js";
 
 export const REFERRAL_TARGET = 3;
 export const REFERRAL_WINDOW_DAYS = 30;
@@ -35,6 +35,20 @@ export function packEquipTargets(): PackEquipTarget[] {
       ? SCHOOL_SLATE_SCOPES.map((scope) => ({ id: item.id, category: item.category, scope }))
       : [{ id: item.id, category: item.category, scope: item.scope }],
   );
+}
+
+/**
+ * True only when EVERY slot "Equip pack" fills already holds the pack's item: the aura, the title and the slate in each
+ * of its six games. One slot changed by hand (say, a different aura bought in the shop) makes it false again, so the
+ * button comes back and re-wearing the pack is possible.
+ */
+export function isPackEquipped(equipped: Pick<EquippedCosmeticsLoadout, "tableThemes" | "avatarAura" | "podiumTitle">): boolean {
+  return packEquipTargets().every((target) => {
+    if (target.category === "AVATAR_AURA") return equipped.avatarAura === target.id;
+    if (target.category === "PODIUM_TITLE") return equipped.podiumTitle === target.id;
+    if (target.category === "TABLE_THEME") return equipped.tableThemes[target.scope] === target.id;
+    return false;
+  });
 }
 
 export interface ReferralProgress {
